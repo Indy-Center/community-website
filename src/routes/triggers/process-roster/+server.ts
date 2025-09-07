@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { fetchRoster } from '$lib/server/vatsim/vatusaDataClient';
-import { vatsimControllersTable, usersTable } from '$lib/server/db/schema';
-import { refreshCertifications } from '$lib/server/services/certification';
+import { vatsimControllersTable, usersTable } from '$lib/db/schema';
+import { refreshCertifications } from '$lib/server/certification';
 import { syncUserMembership } from '$lib/server/user';
 
 const ARTCC_ID = 'ZID';

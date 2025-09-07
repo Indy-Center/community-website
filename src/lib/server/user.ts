@@ -1,92 +1,38 @@
-import type {
-	Database,
-	userCertificationsTable,
-	userEndorsementsTable,
-	userRolesTable
-} from '$lib/server/db';
-import { and, eq, inArray } from 'drizzle-orm';
-import { usersTable, vatsimControllersTable } from './db/schema';
-import { generateCertificationsForUser } from './services/certification';
-
-export type User = typeof usersTable.$inferSelect & {
-	controller: typeof vatsimControllersTable.$inferSelect | null;
-	certifications: (typeof userCertificationsTable.$inferSelect)[];
-	endorsements: (typeof userEndorsementsTable.$inferSelect)[];
-	roles: (typeof userRolesTable.$inferSelect)[];
-};
-
-export type CreateUserParams = typeof usersTable.$inferInsert;
-
-// User utility functions for role checking and user operations
-export const userUtils = {
-	hasRole: (user: User, role: string): boolean => {
-		return user.roles.some((r) => r.role === role);
-	},
-
-	hasAnyRole: (user: User, roles: string[]): boolean => {
-		return roles.some((role) => userUtils.hasRole(user, role));
-	},
-
-	hasAllRoles: (user: User, roles: string[]): boolean => {
-		return roles.every((role) => userUtils.hasRole(user, role));
-	},
-
-	isAdmin: (user: User): boolean => {
-		return userUtils.hasRole(user, 'admin');
-	},
-
-	isModerator: (user: User): boolean => {
-		return userUtils.hasRole(user, 'moderator');
-	},
-
-	isController: (user: User): boolean => {
-		return user.membership === 'controller' || !!user.controller;
-	},
-
-	isStaff: (user: User): boolean => {
-		return userUtils.hasAnyRole(user, ['admin', 'moderator', 'staff']);
-	},
-
-	hasCertification: (user: User, certification: string): boolean => {
-		return user.certifications.some((c) => c.certification === certification);
-	},
-
-	hasEndorsement: (user: User, endorsement: string): boolean => {
-		return user.endorsements.some((e) => e.endorsement === endorsement);
-	},
-
-	getFullName: (user: User): string => {
-		return user.preferredName
-			? `${user.preferredName} ${user.lastName}`
-			: `${user.firstName} ${user.lastName}`;
-	}
-};
+import type { Database } from '$lib/server/db';
+import { eq } from 'drizzle-orm';
+import { usersTable, vatsimControllersTable } from '$lib/db/schema';
+import { generateCertificationsForUser } from './certification';
+import type { User, CreateUserParams } from '$lib/user';
 
 export async function findUser(db: Database, id: string): Promise<User | null> {
-	return await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, id),
-		with: {
-			controller: true,
-			certifications: true,
-			endorsements: true,
-			roles: true
-		}
-	});
+	return (
+		(await db.query.usersTable.findFirst({
+			where: eq(usersTable.id, id),
+			with: {
+				controller: true,
+				certifications: true,
+				endorsements: true,
+				roles: true
+			}
+		})) ?? null
+	);
 }
 
 export async function findUserByCid(db: Database, cid: string): Promise<User | null> {
-	return await db.query.usersTable.findFirst({
-		where: eq(usersTable.cid, cid),
-		with: {
-			controller: true,
-			certifications: true,
-			endorsements: true,
-			roles: true
-		}
-	});
+	return (
+		(await db.query.usersTable.findFirst({
+			where: eq(usersTable.cid, cid),
+			with: {
+				controller: true,
+				certifications: true,
+				endorsements: true,
+				roles: true
+			}
+		})) ?? null
+	);
 }
 
-export async function createUser(db: Database, params: CreateUserParams) {
+export async function createUser(db: Database, params: CreateUserParams): Promise<User> {
 	// Check if user already exists
 	const existingUser = await findUserByCid(db, params.cid);
 	if (existingUser) {
@@ -99,7 +45,11 @@ export async function createUser(db: Database, params: CreateUserParams) {
 	return user;
 }
 
-export async function updateUser(db: Database, cid: string, updates: Partial<CreateUserParams>) {
+export async function updateUser(
+	db: Database,
+	cid: string,
+	updates: Partial<CreateUserParams>
+): Promise<User> {
 	const [user] = await db
 		.update(usersTable)
 		.set(updates)
@@ -109,7 +59,7 @@ export async function updateUser(db: Database, cid: string, updates: Partial<Cre
 	return user;
 }
 
-export async function syncUserMembership(db: Database, cid: string) {
+export async function syncUserMembership(db: Database, cid: string): Promise<User | null> {
 	// Check if user is in controller roster
 	const controller = await db.query.vatsimControllersTable.findFirst({
 		where: eq(vatsimControllersTable.cid, cid)

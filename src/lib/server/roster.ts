@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Database } from '$lib/server/db';
-import { userCertificationsTable, usersTable, vatsimControllersTable } from './db/schema';
+import { userCertificationsTable, usersTable, vatsimControllersTable } from '../db/schema';
 
 export async function listRoster(db: Database) {
 	const rows = await db

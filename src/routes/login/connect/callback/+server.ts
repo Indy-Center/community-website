@@ -1,7 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { decodeIdToken, OAuth2Tokens } from 'arctic';
 import { client } from '$lib/server/oauth';
-import { usersTable } from '$lib/server/db/schema';
+import { usersTable } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession, generateSessionToken, setSessionTokenCookie } from '$lib/server/session';
 import { env } from '$env/dynamic/private';

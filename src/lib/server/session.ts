@@ -1,4 +1,4 @@
-import { userSessionsTable, usersTable } from '$lib/server/db/schema';
+import { userSessionsTable, usersTable } from '$lib/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
 import type { User } from '$lib/server/user';
