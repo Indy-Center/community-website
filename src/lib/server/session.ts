@@ -1,16 +1,12 @@
-import { userSessionsTable, usersTable } from '$lib/db/schema';
+import { userSessionsTable, usersTable } from '$lib/db/schema/users';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
 
 import { eq } from 'drizzle-orm';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { Cookies, RequestEvent } from '@sveltejs/kit';
 import type { Database } from '$lib/server/db';
 import { addDays } from 'date-fns';
-import type { Role, User } from '$lib/user';
-
-type UserWithRelations = User & {
-	roles: Role[];
-};
+import type { User } from '$lib/db/schema/users';
 
 export function generateSessionToken(): string {
 	return encodeBase32LowerCaseNoPadding(crypto.getRandomValues(new Uint8Array(20)));
@@ -55,7 +51,6 @@ export async function validateSessionToken(
 		with: {
 			controller: true,
 			certifications: true,
-			endorsements: true,
 			roles: true
 		}
 	});
@@ -95,8 +90,8 @@ export async function invalidateSession(sessionId: string, db: Database) {
 	await db.delete(userSessionsTable).where(eq(userSessionsTable.id, sessionId));
 }
 
-export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date): void {
-	event.cookies.set('session', token, {
+export function setSessionTokenCookie(cookies: Cookies, token: string, expiresAt: Date): void {
+	cookies.set('session', token, {
 		httpOnly: true,
 		sameSite: 'lax',
 		expires: expiresAt,
@@ -104,8 +99,8 @@ export function setSessionTokenCookie(event: RequestEvent, token: string, expire
 	});
 }
 
-export function deleteSessionTokenCookie(event: RequestEvent): void {
-	event.cookies.set('session', '', {
+export function deleteSessionTokenCookie(cookies: Cookies): void {
+	cookies.set('session', '', {
 		httpOnly: true,
 		sameSite: 'lax',
 		maxAge: 0,
@@ -120,5 +115,5 @@ export type Session = {
 };
 
 export type SessionValidationResult =
-	| { session: Session; user: UserWithRelations }
+	| { session: Session; user: User }
 	| { session: null; user: null };

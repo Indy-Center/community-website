@@ -1,18 +1,20 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { decodeIdToken, OAuth2Tokens } from 'arctic';
 import { client } from '$lib/server/oauth';
-import { usersTable } from '$lib/db/schema';
+import { usersTable } from '$lib/db/schema/users';
 import { eq } from 'drizzle-orm';
 import { createSession, generateSessionToken, setSessionTokenCookie } from '$lib/server/session';
 import { env } from '$env/dynamic/private';
 import { fetchUserData } from '$lib/server/vatsim/vatsimConnectClient';
-import { createUser, findUserByCid, updateUser, syncUserMembership } from '$lib/server/user';
 
-export async function GET(event: RequestEvent): Promise<Response> {
+import type { User } from '$lib/db/schema/users';
+import { syncUserMembership } from '$lib/server/membership';
+
+export async function GET({ locals, url, cookies }: RequestEvent): Promise<Response> {
 	// Extract query parameters
-	const code = event.url.searchParams.get('code');
-	const state = event.url.searchParams.get('state');
-	const storedState = event.cookies.get('connect_oauth_state');
+	const code = url.searchParams.get('code');
+	const state = url.searchParams.get('state');
+	const storedState = cookies.get('connect_oauth_state');
 
 	// Validate parameters
 	if (!code || !state || !storedState) {
@@ -68,35 +70,50 @@ export async function GET(event: RequestEvent): Promise<Response> {
 	}
 
 	// Check if user already exists
-	const existingUser = await findUserByCid(event.locals.db, userDetails.cid);
+	const existingUser = await locals.db.query.usersTable.findFirst({
+		where: eq(usersTable.cid, userDetails.cid)
+	});
 
-	let user;
+	let user: User;
 	if (existingUser) {
 		// Update existing user's basic info
-		user = await updateUser(event.locals.db, userDetails.cid, {
-			firstName: userDetails.personal.name_first,
-			lastName: userDetails.personal.name_last,
-			email: userDetails.personal.email
-		});
+		const [updatedUser] = await locals.db
+			.update(usersTable)
+			.set({
+				firstName: userDetails.personal.name_first,
+				lastName: userDetails.personal.name_last,
+				email: userDetails.personal.email,
+				data: userDetails
+			})
+			.where(eq(usersTable.id, existingUser.id))
+			.returning();
+
+		user = updatedUser;
 	} else {
 		// Create new user
-		user = await createUser(event.locals.db, {
-			id: crypto.randomUUID(),
-			cid: userDetails.cid,
-			firstName: userDetails.personal.name_first,
-			lastName: userDetails.personal.name_last,
-			email: userDetails.personal.email,
-			membership: 'basic'
-		});
+		const [newUser] = await locals.db
+			.insert(usersTable)
+			.values({
+				id: crypto.randomUUID(),
+				cid: userDetails.cid,
+				firstName: userDetails.personal.name_first,
+				lastName: userDetails.personal.name_last,
+				email: userDetails.personal.email,
+				membership: 'basic',
+				data: userDetails
+			})
+			.returning();
+
+		user = newUser;
 	}
 
 	// Sync controller membership and certifications
-	user = (await syncUserMembership(event.locals.db, userDetails.cid)) || user;
+	await syncUserMembership(locals.db, user);
 
 	// Create session
 	const sessionToken = generateSessionToken();
-	const session = await createSession(sessionToken, user.id, event.locals.db);
-	setSessionTokenCookie(event, sessionToken, session.expiresAt);
+	const session = await createSession(sessionToken, user.id, locals.db);
+	setSessionTokenCookie(cookies, sessionToken, session.expiresAt);
 
 	return new Response(null, {
 		status: 302,

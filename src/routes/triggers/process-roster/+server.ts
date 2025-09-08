@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { fetchRoster } from '$lib/server/vatsim/vatusaDataClient';
-import { vatsimControllersTable, usersTable } from '$lib/db/schema';
+import { vatsimControllersTable, usersTable } from '$lib/db/schema/users';
 import { refreshCertifications } from '$lib/server/certification';
 import { syncUserMembership } from '$lib/server/user';
 

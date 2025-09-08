@@ -8,7 +8,7 @@ export const GET = async (event: RequestEvent) => {
 		await invalidateSession(sessionId, event.locals.db);
 	}
 
-	deleteSessionTokenCookie(event);
+	deleteSessionTokenCookie(event.cookies);
 
 	throw redirect(302, '/');
 };
