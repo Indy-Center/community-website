@@ -1,8 +1,7 @@
 import type { User } from '$lib/db/schema/users';
 import { and, eq, isNotNull, notInArray } from 'drizzle-orm';
 import type { Database } from './db';
-import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
-import logger from './logger';
+import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { addMonths } from 'date-fns';
@@ -14,7 +13,7 @@ import { addMonths } from 'date-fns';
  * @param user the user to process membership sync on
  */
 export async function syncUserMembership(db: Database, user: User) {
-	logger.info(
+	console.log(
 		`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
@@ -25,22 +24,22 @@ export async function syncUserMembership(db: Database, user: User) {
 	});
 
 	if (controller && user.membership !== 'controller') {
-		logger.info(`User ${user.id} is now a controller.`);
+		console.log(`User ${user.id} is now a controller.`);
 		// Update Their Status
 		await db.update(usersTable).set({ membership: 'controller' }).where(eq(usersTable.id, user.id));
 
 		// Do new controller processing
 		await processNewController(db, user);
 	} else if (!controller && user.membership === 'controller') {
-		logger.info(`User ${user.id} is no longer a controller.`);
+		console.log(`User ${user.id} is no longer a controller.`);
 		await db.update(usersTable).set({ membership: 'community' }).where(eq(usersTable.id, user.id));
 	}
 
-	logger.info(`Membership sync for user ${user.id} complete.`);
+	console.log(`Membership sync for user ${user.id} complete.`);
 }
 
 async function processNewController(db: Database, user: User) {
-	logger.info(
+	console.log(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
@@ -49,13 +48,13 @@ async function processNewController(db: Database, user: User) {
 
 	await grantOperatingInitials(db, user);
 
-	logger.info(
+	console.log(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
 	);
 }
 
 async function grantInitialCertifications(db: Database, user: User) {
-	logger.info(
+	console.log(
 		`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
@@ -74,11 +73,11 @@ async function grantInitialCertifications(db: Database, user: User) {
 			)
 			.onConflictDoNothing()
 			.returning();
-		logger.info(
+		console.log(
 			`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	} else {
-		logger.info(
+		console.log(
 			`No initial certificates found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
@@ -120,7 +119,7 @@ function determineCertificationsFromRating(rating: string) {
 async function grantOperatingInitials(db: Database, user: User) {
 	const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
-	logger.info(
+	console.log(
 		`Granting operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
@@ -151,19 +150,19 @@ async function grantOperatingInitials(db: Database, user: User) {
 			.update(usersTable)
 			.set({ operatingInitials: initials })
 			.where(eq(usersTable.id, user.id));
-		logger.info(
+		console.log(
 			`Granted operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	} else {
 		await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
-		logger.info(
+		console.log(
 			`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
 }
 
 export async function syncMemberships(db: Database) {
-	logger.info('Starting bulk membership sync...');
+	console.log('Starting bulk membership sync...');
 
 	// Demote controllers not in vatsim controllers table
 	const demotedResult = await db
@@ -180,7 +179,7 @@ export async function syncMemberships(db: Database) {
 		)
 		.returning({ id: usersTable.id, cid: usersTable.cid });
 
-	logger.info(`Demoted ${demotedResult.length} users from controller to community`);
+	console.log(`Demoted ${demotedResult.length} users from controller to community`);
 
 	// Get and promote community members who should be controllers
 	const usersToPromote = await db
@@ -190,7 +189,7 @@ export async function syncMemberships(db: Database) {
 		.where(eq(usersTable.membership, 'community'));
 
 	for (const user of usersToPromote) {
-		logger.info(`Promoting user ${user.id} (${user.cid}) to controller`);
+		console.log(`Promoting user ${user.id} (${user.cid}) to controller`);
 
 		const [updatedUser] = await db
 			.update(usersTable)
@@ -201,6 +200,6 @@ export async function syncMemberships(db: Database) {
 		await processNewController(db, updatedUser);
 	}
 
-	logger.info(`Promoted ${usersToPromote.length} users from community to controller`);
-	logger.info('Bulk membership sync complete');
+	console.log(`Promoted ${usersToPromote.length} users from community to controller`);
+	console.log('Bulk membership sync complete');
 }

@@ -1,6 +1,5 @@
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import type { Database } from '$lib/server/db';
-import logger from '$lib/server/logger';
 import { syncMemberships } from '$lib/server/membership';
 import { fetchRoster } from '$lib/server/vatsim/vatusaDataClient';
 import type { VatusaRosterMember } from '$lib/types/vatusa';
@@ -31,7 +30,7 @@ async function processRoster(db: Database, roster: VatusaRosterMember[]) {
 }
 
 async function syncVatsimControllers(db: Database, roster: VatusaRosterMember[]) {
-	logger.info(`Syncing ${roster.length} VATSIM controllers`);
+	console.log(`Syncing ${roster.length} VATSIM controllers`);
 	const rosterValues = roster.map((member) => ({
 		data: member,
 		cid: String(member.cid)
@@ -42,12 +41,12 @@ async function syncVatsimControllers(db: Database, roster: VatusaRosterMember[])
 		...rosterValues.map((value) => db.insert(vatsimControllersTable).values(value))
 	]);
 
-	logger.info(`Synced ${rosterValues.length} VATSIM controllers`);
+	console.log(`Synced ${rosterValues.length} VATSIM controllers`);
 	return rosterValues.length;
 }
 
 async function renewCertifications(db: Database) {
-	logger.info(`Renewing certifications`);
+	console.log(`Renewing certifications`);
 	const result = await db
 		.update(userCertificationsTable)
 		.set({
@@ -64,5 +63,5 @@ async function renewCertifications(db: Database) {
 		)
 		.returning();
 
-	logger.info(`Renewed ${result.length} certifications`);
+	console.log(`Renewed ${result.length} certifications`);
 }
