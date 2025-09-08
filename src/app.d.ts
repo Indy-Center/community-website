@@ -1,8 +1,9 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
 import type { Database } from '$lib/server/db';
-import type { Session, User } from '$lib/server/session';
+import type { Session } from '$lib/server/session';
 import type { VatsimUserData } from '$lib/server/vatsim/vatsimConnectClient';
+import type { UserWithRelations } from '$lib/user';
 
 // for information about these interfaces
 declare global {
@@ -14,7 +15,7 @@ declare global {
 		}
 		interface Locals {
 			db: Database;
-			user?: User;
+			user?: UserWithRelations;
 			session?: Session;
 			userVatsimData?: VatsimUserData;
 			userRoles?: string[];

@@ -1,12 +1,16 @@
 import { userSessionsTable, usersTable } from '$lib/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
-import type { User } from '$lib/server/user';
 
 import { eq } from 'drizzle-orm';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Database } from '$lib/server/db';
 import { addDays } from 'date-fns';
+import type { Role, User } from '$lib/user';
+
+type UserWithRelations = User & {
+	roles: Role[];
+};
 
 export function generateSessionToken(): string {
 	return encodeBase32LowerCaseNoPadding(crypto.getRandomValues(new Uint8Array(20)));
@@ -116,8 +120,5 @@ export type Session = {
 };
 
 export type SessionValidationResult =
-	| { session: Session; user: User }
+	| { session: Session; user: UserWithRelations }
 	| { session: null; user: null };
-
-// Re-export User type for convenience
-export type { User } from '$lib/server/user';

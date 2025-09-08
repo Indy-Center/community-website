@@ -1,222 +1,170 @@
 <script lang="ts">
 	import PageHero from '$lib/components/PageHero.svelte';
-	import EventCard from '$lib/components/events/EventCard.svelte';
-	import type { PageData } from './$types';
+	import VatsimEventsSelect from '$lib/components/VatsimEventsSelect.svelte';
+	import DatabaseEventCard from '$lib/components/events/DatabaseEventCard.svelte';
+	import { hasAnyRole } from '$lib/user.js';
+	import { goto } from '$app/navigation';
+	import IconCreate from '~icons/mdi/plus';
+	import { format } from 'date-fns';
+	import { UTCDate } from '@date-fns/utc';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
+	let { events, vatsimEvents } = data;
+	
+	// Sort events by start time and separate next event from others
+	const sortedEvents = events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+	const nextEvent = sortedEvents[0];
+	const otherEvents = sortedEvents.slice(1);
 
-	let selectedEvent = $state(null);
-	let showModal = $state(false);
-
-	function openEventModal(event) {
-		selectedEvent = event;
-		showModal = true;
-	}
-
-	function closeModal() {
-		showModal = false;
-		selectedEvent = null;
-	}
-
-	function handleModalClick(event) {
-		event.stopPropagation();
-	}
-
-	function handleCloseClick(event) {
-		event.preventDefault();
-		event.stopPropagation();
-		showModal = false;
-		selectedEvent = null;
+	function handleVatsimSelect(eventId: number) {
+		goto(`/events/create?import=${eventId}`);
 	}
 </script>
 
-<svelte:head>
-	<title>Indy Center | Events</title>
-	<meta name="description" content="Upcoming events at Indianapolis ARTCC - Join us for exciting aviation events, group flights, and ATC training opportunities." />
-</svelte:head>
+<PageHero size="compact">
+	<h1 class="mb-1 text-xl font-bold text-white sm:text-lg md:text-lg lg:text-xl">Events</h1>
+	<p class="mx-auto mb-1 max-w-2xl text-xs leading-tight text-gray-300 sm:text-xs lg:text-sm">
+		The upcoming events for Indy Center.
+	</p>
+</PageHero>
 
-<div class="flex w-full flex-col justify-center gap-2">
-	<PageHero size="compact">
-		<h1 class="mb-1 text-xl font-bold text-white sm:text-lg md:text-lg lg:text-xl">
-			Upcoming Events
-		</h1>
-		<p class="mx-auto mb-1 max-w-2xl text-xs leading-tight text-gray-300 sm:text-xs lg:text-sm">
-			Join us for exciting aviation events, group flights, and ATC training opportunities.
-		</p>
-	</PageHero>
-
-	<!-- Events Section -->
-	<div class="w-full bg-gray-900">
-		<div class="mx-auto max-w-6xl px-4 py-8">
-			{#if data.events && data.events.length > 0}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-					<!-- Featured Event (First Event) -->
-					{#if data.events[0]}
-						<div class="lg:col-span-2">
-							<div class="mb-4">
-								<h2 class="text-xl font-bold text-white mb-2">Next Event</h2>
-								<div class="h-0.5 bg-gradient-to-r from-sky-500 to-blue-600 rounded-full"></div>
-							</div>
-							<div 
-								class="bg-slate-800 rounded-xl border border-slate-600/50 overflow-hidden shadow-lg"
-							>
-								<!-- Featured Event Image -->
-								<div class="relative h-48 sm:h-56">
-									<div 
-										class="w-full h-full bg-cover bg-center"
-										style="background-image: url('{data.events[0].image}');"
-									>
-										<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-									</div>
-									
-									<!-- Event Badge -->
-									<div class="absolute top-4 left-4">
-										<span class="bg-sky-600/90 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
-											{new Date(data.events[0].starts_at).toLocaleDateString([], {month: 'short', day: 'numeric'})}
-										</span>
-									</div>
-								</div>
-								
-								<!-- Featured Event Content -->
-								<div class="p-6">
-									<h3 class="text-xl font-bold text-white mb-3">{data.events[0].name}</h3>
-									<p class="text-gray-300 text-sm leading-relaxed mb-4">{data.events[0].description}</p>
-									
-									<!-- Featured Event Time -->
-									<div class="flex flex-col sm:flex-row gap-4 text-sm bg-slate-700/30 rounded-lg p-3">
-										<div class="flex items-center gap-2">
-											<span class="text-sky-400 font-medium">
-												{new Date(data.events[0].starts_at).toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric'})}
-											</span>
-										</div>
-										<div class="flex flex-col sm:flex-row gap-2 text-gray-400">
-											<span>UTC: {new Date(data.events[0].starts_at).toISOString().slice(11, 16)}Z - {new Date(data.events[0].ends_at).toISOString().slice(11, 16)}Z</span>
-											<span class="hidden sm:inline">•</span>
-											<span>Local: {new Date(data.events[0].starts_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(data.events[0].ends_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-					
-					<!-- Upcoming Events List (Next 4) -->
-					{#if data.events.length > 1}
-						<div class="lg:col-span-1">
-							<div class="mb-4">
-								<h2 class="text-xl font-bold text-white mb-2">Upcoming Events</h2>
-								<div class="h-0.5 bg-gradient-to-r from-sky-500 to-blue-600 rounded-full"></div>
-							</div>
-							<div class="space-y-3">
-								{#each data.events.slice(1) as event}
-									<!-- Compact Event Item -->
-									<div 
-										onclick={() => openEventModal(event)} 
-										class="bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-600/50 hover:border-sky-500/30 transition-all duration-200 cursor-pointer overflow-hidden"
-									>
-										<div class="flex">
-											<!-- Compact Event Image -->
-											<div class="w-16 h-16 relative flex-shrink-0">
-												<div 
-													class="w-full h-full bg-cover bg-center"
-													style="background-image: url('{event.image}');"
-												>
-													<div class="absolute inset-0 bg-gradient-to-br from-blue-600/60 to-sky-500/40"></div>
-													<div class="absolute inset-0 bg-black/30"></div>
-												</div>
-											</div>
-											
-											<!-- Compact Event Content -->
-											<div class="flex-1 p-3">
-												<h4 class="text-sm font-semibold text-white mb-1 line-clamp-1">{event.name}</h4>
-												<p class="text-gray-400 text-xs mb-2 line-clamp-1">{event.description}</p>
-												
-												<!-- Compact Date and Time -->
-												<div class="flex flex-col gap-1 text-xs">
-													<span class="text-sky-400 font-medium">
-														{new Date(event.starts_at).toLocaleDateString([], {month: 'short', day: 'numeric'})}
-													</span>
-													<span class="text-gray-500">
-														{new Date(event.starts_at).toISOString().slice(11, 16)}Z
-													</span>
-												</div>
-											</div>
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<div class="text-center py-12">
-					<div class="text-gray-400 text-lg mb-2">No upcoming events scheduled</div>
-					<p class="text-gray-500 text-sm">
-						Check back soon for exciting aviation events and training opportunities.
-					</p>
-				</div>
+<!-- Events List -->
+<main class="mx-auto max-w-6xl px-6 py-8">
+	<div class="mb-8 flex items-center justify-end">
+		<div class="flex items-center gap-3">
+			{#if data.user && hasAnyRole(data.user, ['events:manage'])}
+				<VatsimEventsSelect 
+					events={vatsimEvents} 
+					onSelect={handleVatsimSelect}
+					buttonText="Import from VATSIM"
+				/>
+				<!-- Create New Event Button -->
+				<a
+					href="/events/create"
+					class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+				>
+					<IconCreate class="h-4 w-4" />
+					Create New Event
+				</a>
 			{/if}
 		</div>
 	</div>
-</div>
 
-<!-- Event Detail Modal -->
-{#if showModal && selectedEvent}
-	<div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onclick={closeModal}>
-		<div class="bg-slate-800 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden" onclick={handleModalClick}>
-			<!-- Modal Header with Banner -->
-			<div 
-				class="relative h-32 sm:h-40 bg-cover bg-center"
-				style="background-image: url('{selectedEvent.image}');"
+	{#if events.length === 0}
+		<div
+			class="border-opacity-50 bg-opacity-50 rounded-xl border border-slate-700 bg-slate-800 p-12 text-center backdrop-blur-sm"
+		>
+			<div
+				class="bg-opacity-50 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-700"
 			>
-				<div class="absolute inset-0 bg-gradient-to-br from-blue-600/80 to-sky-500/60"></div>
-				<div class="absolute inset-0 bg-black/40"></div>
-				
-				<!-- Close button -->
-				<button 
-					type="button"
-					class="absolute top-2 right-2 sm:top-3 sm:right-3 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors duration-200 cursor-pointer z-10"
-					onclick={() => { showModal = false; selectedEvent = null; }}
-				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-					</svg>
-				</button>
-				
-				<div class="relative p-3 sm:p-4 h-full flex flex-col justify-end">
-					<h2 class="text-lg sm:text-xl font-bold text-white mb-1">{selectedEvent.name}</h2>
-					<div class="text-sky-200 text-xs sm:text-sm">
-						{new Date(selectedEvent.starts_at).toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'})}
-					</div>
-				</div>
+				<IconCreate class="h-8 w-8 text-gray-400" />
 			</div>
-
-			<!-- Modal Content -->
-			<div class="p-4 overflow-y-auto max-h-[calc(90vh-8rem)] sm:max-h-[calc(90vh-10rem)]">
-				<!-- Description -->
-				<div class="mb-4">
-					<p class="text-gray-300 text-sm leading-relaxed">{selectedEvent.description}</p>
-				</div>
-
-				<!-- Time Information -->
-				<div class="bg-slate-700/50 rounded-lg p-3 mb-4">
-					<div class="space-y-1 text-sm text-gray-300">
-						<div><span class="text-gray-400">UTC:</span> {new Date(selectedEvent.starts_at).toISOString().slice(11, 16)}Z - {new Date(selectedEvent.ends_at).toISOString().slice(11, 16)}Z</div>
-						<div><span class="text-gray-400">Local:</span> {new Date(selectedEvent.starts_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(selectedEvent.ends_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-					</div>
-				</div>
-
-				<!-- Action Button -->
-				{#if selectedEvent.link}
-					<a 
-						href={selectedEvent.link} 
-						target="_blank" 
-						class="w-full block bg-sky-600 hover:bg-sky-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 text-center text-sm cursor-pointer"
-					>
-						View Full Event Details
-					</a>
-				{/if}
+			<h3 class="mb-2 text-lg font-medium text-white">No events scheduled</h3>
+			<p class="mb-6 text-gray-400">
+				Get started by creating your first event or importing from VATSIM.
+			</p>
+			<div class="flex justify-center gap-3">
+				<a
+					href="/events/create"
+					class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl"
+				>
+					<IconCreate class="h-4 w-4" />
+					Create your first event
+				</a>
 			</div>
 		</div>
-	</div>
-{/if}
+	{:else}
+		<!-- Next Event - Detailed View -->
+		{#if nextEvent}
+			<div class="mb-12">
+				<h2 class="mb-6 text-xl font-bold text-white">Next Event</h2>
+				<article
+					class="group relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-r from-slate-800/60 via-slate-800/40 to-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-xl hover:shadow-sky-500/10"
+				>
+					<div class="relative flex flex-col lg:flex-row">
+						<!-- Event Content -->
+						<div class="flex-1 p-8">
+							<div class="mb-4">
+								<h3
+									class="text-2xl font-bold text-white transition-colors duration-300 group-hover:text-sky-300"
+								>
+									{nextEvent.name}
+								</h3>
+							</div>
+
+							<!-- Event Metadata -->
+							<div class="mb-6 flex flex-wrap items-center gap-3">
+								<span
+									class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
+								>
+									<span class="h-2 w-2 rounded-full bg-sky-400"></span>
+									{nextEvent.type}
+								</span>
+								<span
+									class="inline-flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-sm font-medium text-purple-300 backdrop-blur-sm"
+								>
+									<span class="h-2 w-2 rounded-full bg-purple-400"></span>
+									{nextEvent.rosterType}
+								</span>
+							</div>
+
+							{#if nextEvent.description}
+								<p class="mb-6 text-base leading-relaxed text-slate-300">{nextEvent.description}</p>
+							{/if}
+
+							{#if nextEvent.startTime}
+								<div class="flex flex-wrap items-center gap-3">
+									<time
+										class="inline-flex items-center gap-2 rounded-lg border border-slate-600/50 bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 backdrop-blur-sm"
+									>
+										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+										</svg>
+										{format(nextEvent.startTime, 'MMM d, yyyy \'at\' HH:mm', { in: new UTCDate() })} UTC
+									</time>
+									<time
+										class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-300 backdrop-blur-sm"
+									>
+										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+										</svg>
+										{format(nextEvent.startTime, 'MMM d, yyyy \'at\' HH:mm')} Local
+									</time>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Event Banner -->
+						{#if nextEvent.bannerUrl}
+							<div class="relative lg:w-80 lg:flex-shrink-0">
+								<div class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r"></div>
+								<img
+									src={nextEvent.bannerUrl}
+									alt="{nextEvent.name} banner"
+									class="h-48 w-full object-cover lg:h-full lg:rounded-r-2xl"
+									loading="lazy"
+								/>
+							</div>
+						{/if}
+					</div>
+					
+					<!-- Subtle glow effect on hover -->
+					<div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500/0 via-sky-500/0 to-sky-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5"></div>
+				</article>
+			</div>
+		{/if}
+
+		<!-- Other Events - Card Grid -->
+		{#if otherEvents.length > 0}
+			<div>
+				<h2 class="mb-6 text-xl font-bold text-white">Other Upcoming Events</h2>
+				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{#each otherEvents as event}
+						<DatabaseEventCard {event} />
+					{/each}
+				</div>
+			</div>
+		{/if}
+	{/if}
+</main>

@@ -11,7 +11,7 @@ export async function listRoster(db: Database) {
 		})
 		.from(vatsimControllersTable)
 		.leftJoin(usersTable, eq(vatsimControllersTable.cid, usersTable.cid))
-		.leftJoin(userCertificationsTable, eq(usersTable.id, userCertificationsTable.user_id));
+		.leftJoin(userCertificationsTable, eq(usersTable.id, userCertificationsTable.userId));
 
 	// Reduce the rows down to { controller, user, certifications}
 	const result = rows.reduce((acc, row) => {

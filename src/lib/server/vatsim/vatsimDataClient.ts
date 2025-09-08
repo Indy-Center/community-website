@@ -1,5 +1,6 @@
 const VATSIM_METAR_BASE_URL = 'https://metar.vatsim.net';
-const VATSIM_EVENTS_BASE_URL = 'https://my.vatsim.net/api/v2/events/view/division/USA';
+const VATSIM_LIST_EVENTS_BASE_URL = 'https://my.vatsim.net/api/v2/events/view/division/USA';
+const VATSIM_EVENT_BASE_URL = 'https://my.vatsim.net/api/v2/events/view';
 
 import type { VatsimEvent, VatsimEventResponse, VatsimMetarResponse } from '$lib/types/vatsim';
 import { USE_MOCK_DATA, MOCK_EVENTS } from '$lib/mocks';
@@ -28,8 +29,15 @@ export async function fetchEvents(): Promise<VatsimEvent[]> {
 		return MOCK_EVENTS;
 	}
 
-	const response = await fetch(VATSIM_EVENTS_BASE_URL);
+	const response = await fetch(VATSIM_LIST_EVENTS_BASE_URL);
 	const data = (await response.json()) as VatsimEventResponse;
+
+	return data.data;
+}
+
+export async function fetchEvent(id: number): Promise<VatsimEvent> {
+	const response = await fetch(`${VATSIM_EVENT_BASE_URL}/${id}`);
+	const data = (await response.json()) as { data: VatsimEvent };
 
 	return data.data;
 }

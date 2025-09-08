@@ -75,7 +75,7 @@ export async function syncUserMembership(db: Database, cid: string): Promise<Use
 		await updateUser(db, cid, { membership: 'controller' });
 		const updatedUser = await findUserByCid(db, cid);
 		if (updatedUser) {
-			await generateCertificationsForUser(db, updatedUser);
+			await generateCertificationsForUser(db, updatedUser, controller.data);
 		}
 		return updatedUser;
 	} else if (!controller && user.membership === 'controller') {

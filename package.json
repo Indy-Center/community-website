@@ -21,6 +21,8 @@
 		"cf-typegen": "wrangler types ./src/worker-configuration.d.ts"
 	},
 	"devDependencies": {
+		"@date-fns/tz": "^1.4.1",
+		"@date-fns/utc": "^2.1.1",
 		"@iconify/json": "^2.2.379",
 		"@libsql/client": "^0.15.14",
 		"@sveltejs/adapter-cloudflare": "^7.2.3",
@@ -38,14 +40,16 @@
 		"prettier-plugin-tailwindcss": "^0.6.11",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
+		"sveltekit-superforms": "^2.27.1",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.0.0",
+		"ulid": "^3.0.1",
 		"unplugin-icons": "^22.2.0",
 		"vite": "^7.0.4",
-		"wrangler": "^4.33.1"
+		"wrangler": "^4.33.1",
+		"zod": "4.0.10"
 	},
 	"dependencies": {
-		"date-fns": "^4.1.0",
-		"sveltekit-superforms": "^2.27.1"
+		"date-fns": "^4.1.0"
 	}
 }
