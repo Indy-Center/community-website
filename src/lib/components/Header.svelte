@@ -11,20 +11,7 @@
 	import IconChevronDown from '~icons/mdi/chevron-down';
 	import IconMenu from '~icons/mdi/menu';
 	import IconClose from '~icons/mdi/close';
-
-	type User = {
-		id: string;
-		cid: string;
-		firstName: string;
-		lastName: string;
-		preferredName?: string;
-		controller?: {
-			data: {
-				rating_short: string;
-			};
-		} | null;
-		roles: Array<{ role: string }>;
-	};
+	import type { User } from '$lib/db/schema/users';
 
 	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
 
@@ -116,12 +103,12 @@
 						<div class="flex items-center space-x-2">
 							<span class="font-medium">{getFullName(data.user)}</span>
 							<div class="flex items-center space-x-1">
-								{#if data.user.controller?.data?.rating_short}
+								{#if data.user.data.vatsim.rating.short}
 									<div
 										class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
 									>
 										<IconRating class="h-3 w-3" />
-										{data.user.controller.data.rating_short}
+										{data.user.data.vatsim.rating.short}
 									</div>
 								{/if}
 							</div>
@@ -246,12 +233,20 @@
 							</div>
 
 							<div class="mb-3 flex flex-wrap gap-2">
-								{#if data.user.controller?.data?.rating_short}
+								{#if data.user.data.vatsim.rating.short}
 									<div
 										class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
 									>
 										<IconRating class="h-3 w-3" />
-										{data.user.controller.data.rating_short}
+										{data.user.data.vatsim.rating.short}
+									</div>
+								{/if}
+								{#if data.user.data.vatsim.pilotrating.short}
+									<div
+										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
+									>
+										<IconRating class="h-3 w-3" />
+										{data.user.data.vatsim.pilotrating.short}
 									</div>
 								{/if}
 							</div>
