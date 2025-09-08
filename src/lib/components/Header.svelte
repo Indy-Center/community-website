@@ -111,6 +111,14 @@
 										{data.user.data.vatsim.rating.short}
 									</div>
 								{/if}
+								{#if data.user.data.vatsim.pilotrating.short}
+									<div
+										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
+									>
+										<IconRating class="h-3 w-3" />
+										{data.user.data.vatsim.pilotrating.short}
+									</div>
+								{/if}
 							</div>
 						</div>
 						<IconChevronDown
