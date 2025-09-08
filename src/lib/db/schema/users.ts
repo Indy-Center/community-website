@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, type InferInsertModel, type InferSelectModel } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { eventPositionsTable } from './events';
 import { userCertificationsTable } from './certifications';
@@ -7,8 +7,8 @@ import { userRolesTable } from './roles';
 import { vatsimControllersTable } from './vatsimControllers';
 import type { VatsimUserData } from '$lib/types/vatsim';
 
-export type User = typeof usersTable.$inferSelect;
-export type InsertUser = typeof usersTable.$inferInsert;
+export type User = InferSelectModel<typeof usersTable>;
+export type InsertUser = InferInsertModel<typeof usersTable>;
 
 // This is data that originally comes from VATSIM Connect, but is overridable by the User
 export const usersTable = sqliteTable('users', {

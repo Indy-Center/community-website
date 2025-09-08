@@ -1,7 +1,7 @@
 export function load({ locals }: { locals: App.Locals }) {
 	return {
 		user: locals.user,
-		userVatsimData: locals.userVatsimData,
+		roles: locals.roles,
 		session: locals.session
 	};
 }

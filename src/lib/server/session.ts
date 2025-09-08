@@ -1,12 +1,12 @@
+import { userRolesTable } from '$lib/db/schema/roles';
+import type { User } from '$lib/db/schema/users';
 import { userSessionsTable, usersTable } from '$lib/db/schema/users';
+import type { Database } from '$lib/server/db';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
-
-import { eq } from 'drizzle-orm';
-import type { Cookies, RequestEvent } from '@sveltejs/kit';
-import type { Database } from '$lib/server/db';
+import type { Cookies } from '@sveltejs/kit';
 import { addDays } from 'date-fns';
-import type { User } from '$lib/db/schema/users';
+import { eq } from 'drizzle-orm';
 
 export function generateSessionToken(): string {
 	return encodeBase32LowerCaseNoPadding(crypto.getRandomValues(new Uint8Array(20)));
@@ -42,23 +42,20 @@ export async function validateSessionToken(
 	});
 
 	if (!existingSession) {
-		return { session: null, user: null };
+		return { session: null, user: null, roles: null };
 	}
 
-	// Then get the user with all related data
-	const user = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, existingSession.userId),
-		with: {
-			controller: true,
-			certifications: true,
-			roles: true
-		}
-	});
+	// Then get the user
+	const [user] = await db
+		.select()
+		.from(usersTable)
+		.where(eq(usersTable.id, existingSession.userId))
+		.limit(1);
 
 	if (!user) {
 		// Session exists but user doesn't - clean up the orphaned session
 		await db.delete(userSessionsTable).where(eq(userSessionsTable.id, sessionId));
-		return { session: null, user: null };
+		return { session: null, user: null, roles: null };
 	}
 
 	const session = {
@@ -67,11 +64,13 @@ export async function validateSessionToken(
 		expiresAt: existingSession.expiresAt
 	};
 
+	// Session is Expired
 	if (Date.now() >= session.expiresAt.getTime()) {
 		await db.delete(userSessionsTable).where(eq(userSessionsTable.id, sessionId));
-		return { session: null, user: null };
+		return { session: null, user: null, roles: null };
 	}
 
+	// Session is about to expire, so extend it
 	if (Date.now() >= session.expiresAt.getTime() - 1000 * 60 * 60 * 24 * 15) {
 		session.expiresAt = addDays(session.expiresAt, 30);
 
@@ -83,7 +82,11 @@ export async function validateSessionToken(
 			.where(eq(userSessionsTable.id, sessionId));
 	}
 
-	return { session, user };
+	const roles = await db.select().from(userRolesTable).where(eq(userRolesTable.userId, user.id));
+
+	const stringRoles = roles.map((role) => role.role);
+
+	return { session, user, roles: stringRoles };
 }
 
 export async function invalidateSession(sessionId: string, db: Database) {
@@ -115,5 +118,5 @@ export type Session = {
 };
 
 export type SessionValidationResult =
-	| { session: Session; user: User }
-	| { session: null; user: null };
+	| { session: Session; user: User; roles: string[] }
+	| { session: null; user: null; roles: null };

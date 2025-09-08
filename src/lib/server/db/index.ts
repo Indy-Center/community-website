@@ -1,17 +1,20 @@
 import { drizzle as drizzleFactory } from 'drizzle-orm/d1';
+import * as users from '$lib/db/schema/users';
+import * as certifications from '$lib/db/schema/certifications';
+import * as events from '$lib/db/schema/events';
+import * as endorsements from '$lib/db/schema/endorsements';
+import * as vatsimControllers from '$lib/db/schema/vatsimControllers';
+import * as roles from '$lib/db/schema/roles';
 
-// Dynamically import all schema files
-const schemaModules = import.meta.glob('$lib/db/schema/*.ts', { eager: true });
-const schema: Record<string, any> = {};
-
-// Combine all schema exports into a single object
-Object.values(schemaModules).forEach((module: any) => {
-	Object.keys(module).forEach((exportName) => {
-		if (exportName !== 'default') {
-			schema[exportName] = module[exportName];
-		}
-	});
-});
+// Properly typed schema object
+const schema = {
+	...users,
+	...certifications,
+	...events,
+	...endorsements,
+	...vatsimControllers,
+	...roles
+};
 
 // Export the properly typed database instance
 export type Database = ReturnType<typeof drizzle>;

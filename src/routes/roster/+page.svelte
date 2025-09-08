@@ -60,22 +60,17 @@
 		return index === -1 ? 999 : index;
 	}
 
-	let uniqueRatings = $derived(
-		[...new Set(roster.map((member) => member.controller.rating_short))].sort()
-	);
-
 	let filteredAndSortedRoster = $derived(
 		(() => {
 			// Filter first
 			const filtered = data.roster.filter((member) => {
 				const matchesSearch =
 					searchTerm === '' ||
-					member.controller.fname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					member.controller.lname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					member.controller.cid.toString().includes(searchTerm);
+					member.data.fname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					member.data.lname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					member.data.cid.toString().includes(searchTerm);
 
-				const matchesRating =
-					selectedRating === 'all' || member.controller.rating_short === selectedRating;
+				const matchesRating = true;
 				// Remove membership filter since we removed that field
 				const matchesMembership = true;
 
@@ -88,30 +83,30 @@
 
 				switch (sortField) {
 					case 'cid':
-						aVal = a.controller.cid;
-						bVal = b.controller.cid;
+						aVal = a.data.cid;
+						bVal = b.data.cid;
 						break;
 					case 'last_name':
-						aVal = a.controller.lname.toLowerCase();
-						bVal = b.controller.lname.toLowerCase();
+						aVal = a.data.lname.toLowerCase();
+						bVal = b.data.lname.toLowerCase();
 						break;
 					case 'rating_short':
-						aVal = getRatingOrder(a.controller.rating_short);
-						bVal = getRatingOrder(b.controller.rating_short);
+						aVal = getRatingOrder(a.data.rating_short);
+						bVal = getRatingOrder(b.data.rating_short);
 						break;
 					case 'certification':
-						const aHighest = getHighestCertification(a.certifications || []);
-						const bHighest = getHighestCertification(b.certifications || []);
+						const aHighest = getHighestCertification(a.user?.certifications || []);
+						const bHighest = getHighestCertification(b.user?.certifications || []);
 						aVal = getCertificationOrder(aHighest?.certification || null);
 						bVal = getCertificationOrder(bHighest?.certification || null);
 						break;
 					case 'facility_joined_at':
-						aVal = new Date(a.controller.facility_join);
-						bVal = new Date(b.controller.facility_join);
+						aVal = new Date(a.data.facility_join);
+						bVal = new Date(b.data.facility_join);
 						break;
 					case 'last_activity_at':
-						aVal = new Date(a.controller.lastactivity);
-						bVal = new Date(b.controller.lastactivity);
+						aVal = new Date(a.data.lastactivity);
+						bVal = new Date(b.data.lastactivity);
 						break;
 					default:
 						return 0;
@@ -155,18 +150,6 @@
 				</div>
 				<div class="flex gap-3">
 					<div class="relative">
-						<label for="rating-filter" class="sr-only">Filter by rating</label>
-						<select
-							id="rating-filter"
-							bind:value={selectedRating}
-							class="w-full cursor-pointer appearance-none rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 pr-10 text-white hover:bg-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-							style="background-image: none;"
-						>
-							<option value="all">All Ratings</option>
-							{#each uniqueRatings as rating}
-								<option value={rating}>{rating}</option>
-							{/each}
-						</select>
 						<div
 							class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"
 						>
@@ -300,25 +283,21 @@
 					<tbody class="divide-y divide-slate-600">
 						{#each filteredAndSortedRoster as member}
 							<tr class="border-b border-slate-600/50 transition-colors hover:bg-slate-700/30">
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400"
-									>{member.controller.cid}</td
-								>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">{member.data.cid}</td>
 								<td class="px-4 py-3 text-sm font-medium whitespace-nowrap text-white">
-									{member.controller.fname}
-									{member.controller.flag_nameprivacy
-										? member.controller.cid
-										: member.controller.lname}
+									{member.user?.preferredName ? member.user.preferredName : member.data.fname}
+									{member.data.flag_nameprivacy ? member.data.cid : member.data.lname}
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap">
 									<span
 										class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white shadow-sm"
 									>
-										{member.controller.rating_short}
+										{member.data.rating_short}
 									</span>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap">
-									{#if member.certifications}
-										{@const highestCert = getHighestCertification(member.certifications)}
+									{#if member.user?.certifications}
+										{@const highestCert = getHighestCertification(member.user.certifications)}
 										<div class="flex flex-wrap gap-1">
 											<!-- Highest certified certificate -->
 											{#if highestCert}
@@ -348,7 +327,7 @@
 								</td>
 								<td class="px-4 py-3 text-sm">
 									<div class="flex flex-wrap gap-1">
-										{#each member.controller.roles.filter((role) => role.facility === 'ZID') as role}
+										{#each member.data.roles.filter((role) => role.facility === 'ZID') as role}
 											<span
 												class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white"
 											>
@@ -358,10 +337,10 @@
 									</div>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">
-									{parseISO(member.controller.facility_join).toLocaleDateString()}
+									{parseISO(member.data.facility_join).toLocaleDateString()}
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">
-									{parseISO(member.controller.lastactivity).toLocaleDateString()}
+									{parseISO(member.data.lastactivity).toLocaleDateString()}
 								</td>
 							</tr>
 						{:else}

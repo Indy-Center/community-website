@@ -1,6 +1,8 @@
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
-import { relations } from 'drizzle-orm';
+import { relations, type InferSelectModel } from 'drizzle-orm';
+
+export type UserRole = InferSelectModel<typeof userRolesTable>;
 
 // Roles for Application Functionality
 export const userRolesTable = sqliteTable('user_roles', {

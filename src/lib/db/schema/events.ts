@@ -39,7 +39,7 @@ export const eventPositionsTable = sqliteTable('event_positions', {
 });
 
 export const eventRelations = relations(eventsTable, ({ many }) => ({
-	eventPositions: many(eventPositionsTable)
+	positions: many(eventPositionsTable)
 }));
 
 export const eventPositionRelations = relations(eventPositionsTable, ({ one }) => ({

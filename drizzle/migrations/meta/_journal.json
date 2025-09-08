@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1757218124089,
-      "tag": "0000_fat_dracula",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1757260123503,
-      "tag": "0001_grey_black_crow",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1757352095811,
-      "tag": "0002_simple_hardball",
+      "when": 1757374138124,
+      "tag": "0000_nasty_spiral",
       "breakpoints": true
     }
   ]

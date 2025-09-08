@@ -26,16 +26,7 @@
 		roles: Array<{ role: string }>;
 	};
 
-	let { data }: { data: { user: User | undefined } } = $props();
-
-	// Client-side user utility functions
-	function hasRole(user: User, role: string): boolean {
-		return user.roles.some((r) => r.role === role);
-	}
-
-	function isAdmin(user: User): boolean {
-		return hasRole(user, 'admin');
-	}
+	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
 
 	function getFullName(user: User): string {
 		return user.preferredName
@@ -66,7 +57,7 @@
 
 	const links = $derived([
 		...BASE_LINKS,
-		...(data.user && isAdmin(data.user)
+		...(data.user && data.roles?.includes('admin')
 			? [
 					{
 						label: 'Admin',

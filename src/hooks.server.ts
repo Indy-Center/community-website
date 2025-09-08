@@ -23,13 +23,14 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 		return await resolve(event);
 	}
 
-	const { user, session } = await validateSessionToken(token, event.locals.db);
+	const { user, session, roles } = await validateSessionToken(token, event.locals.db);
 
 	if (!session) {
 		deleteSessionTokenCookie(event.cookies);
 		return await resolve(event);
 	}
 	event.locals.user = user;
+	event.locals.roles = roles;
 
 	setSessionTokenCookie(event.cookies, token, session.expiresAt);
 	event.locals.session = session;

@@ -2,7 +2,6 @@
 
 import type { Database } from '$lib/server/db';
 import type { Session } from '$lib/server/session';
-import type { VatsimUserData } from '$lib/server/vatsim/vatsimConnectClient';
 import type { UserWithRelations } from '$lib/user';
 
 // for information about these interfaces
@@ -17,8 +16,7 @@ declare global {
 			db: Database;
 			user?: UserWithRelations;
 			session?: Session;
-			userVatsimData?: VatsimUserData;
-			userRoles?: string[];
+			roles?: string[];
 		}
 	}
 }

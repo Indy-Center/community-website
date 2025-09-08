@@ -30,7 +30,7 @@
 		{
 			"binding": "DB",
 			"database_name": "website-db",
-			"database_id": "fea99a92-69e3-423a-95c1-44c232c81c67",
+			"database_id": "fd51d586-3679-4a01-ae18-64e12c5da4aa",
 			"migrations_dir": "./drizzle/migrations"
 		}
 	]

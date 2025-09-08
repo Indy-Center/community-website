@@ -1,18 +1,20 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import PageHero from '$lib/components/PageHero.svelte';
 	import VatsimEventsSelect from '$lib/components/VatsimEventsSelect.svelte';
-	import DatabaseEventCard from '$lib/components/events/DatabaseEventCard.svelte';
-	import { hasAnyRole } from '$lib/user.js';
-	import { goto } from '$app/navigation';
-	import IconCreate from '~icons/mdi/plus';
+	import { utc } from '@date-fns/utc';
 	import { format } from 'date-fns';
-	import { UTCDate } from '@date-fns/utc';
+	import IconClock from '~icons/mdi/clock-outline';
+	import IconGlobe from '~icons/mdi/earth';
+	import IconCreate from '~icons/mdi/plus';
 
 	let { data } = $props();
 	let { events, vatsimEvents } = data;
-	
+
 	// Sort events by start time and separate next event from others
-	const sortedEvents = events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+	const sortedEvents = events.sort(
+		(a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+	);
 	const nextEvent = sortedEvents[0];
 	const otherEvents = sortedEvents.slice(1);
 
@@ -32,9 +34,9 @@
 <main class="mx-auto max-w-6xl px-6 py-8">
 	<div class="mb-8 flex items-center justify-end">
 		<div class="flex items-center gap-3">
-			{#if data.user && hasAnyRole(data.user, ['events:manage'])}
-				<VatsimEventsSelect 
-					events={vatsimEvents} 
+			{#if data.user && data.roles?.includes('events:manage')}
+				<VatsimEventsSelect
+					events={vatsimEvents}
 					onSelect={handleVatsimSelect}
 					buttonText="Import from VATSIM"
 				/>
@@ -117,19 +119,14 @@
 									<time
 										class="inline-flex items-center gap-2 rounded-lg border border-slate-600/50 bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 backdrop-blur-sm"
 									>
-										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-										</svg>
-										{format(nextEvent.startTime, 'MMM d, yyyy \'at\' HH:mm', { in: new UTCDate() })} UTC
+										<IconGlobe class="h-4 w-4" />
+										{format(utc(nextEvent.startTime), "MMM d, yyyy 'at' HH:mm")} Zulu
 									</time>
 									<time
 										class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-300 backdrop-blur-sm"
 									>
-										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-										</svg>
-										{format(nextEvent.startTime, 'MMM d, yyyy \'at\' HH:mm')} Local
+										<IconClock class="h-4 w-4" />
+										{format(nextEvent.startTime, "MMM d, yyyy 'at' HH:mm")} Local
 									</time>
 								</div>
 							{/if}
@@ -138,7 +135,9 @@
 						<!-- Event Banner -->
 						{#if nextEvent.bannerUrl}
 							<div class="relative lg:w-80 lg:flex-shrink-0">
-								<div class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r"></div>
+								<div
+									class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r"
+								></div>
 								<img
 									src={nextEvent.bannerUrl}
 									alt="{nextEvent.name} banner"
@@ -148,22 +147,12 @@
 							</div>
 						{/if}
 					</div>
-					
-					<!-- Subtle glow effect on hover -->
-					<div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500/0 via-sky-500/0 to-sky-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5"></div>
-				</article>
-			</div>
-		{/if}
 
-		<!-- Other Events - Card Grid -->
-		{#if otherEvents.length > 0}
-			<div>
-				<h2 class="mb-6 text-xl font-bold text-white">Other Upcoming Events</h2>
-				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{#each otherEvents as event}
-						<DatabaseEventCard {event} />
-					{/each}
-				</div>
+					<!-- Subtle glow effect on hover -->
+					<div
+						class="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500/0 via-sky-500/0 to-sky-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-5"
+					></div>
+				</article>
 			</div>
 		{/if}
 	{/if}

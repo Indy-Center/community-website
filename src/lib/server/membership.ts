@@ -1,5 +1,5 @@
 import type { User } from '$lib/db/schema/users';
-import { eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull, notInArray } from 'drizzle-orm';
 import type { Database } from './db';
 import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
 import logger from './logger';
@@ -127,11 +127,10 @@ async function grantOperatingInitials(db: Database, user: User) {
 	const combinations = [];
 	for (let i = 0; i < Math.min(user.firstName.length, 4); i++) {
 		for (let j = 0; j < Math.min(user.lastName.length, 4); j++) {
+			const combo = user.firstName.charAt(i).toUpperCase() + user.lastName.charAt(j).toUpperCase();
 			// Filter out any offensive combinations like SS
-			if (
-				!BANNED_INITIAL_COMBINATIONS.includes(user.firstName.charAt(i) + user.lastName.charAt(j))
-			) {
-				combinations.push(user.firstName.charAt(i) + user.lastName.charAt(j));
+			if (!BANNED_INITIAL_COMBINATIONS.includes(combo)) {
+				combinations.push(combo);
 			}
 		}
 	}
@@ -161,4 +160,47 @@ async function grantOperatingInitials(db: Database, user: User) {
 			`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
+}
+
+export async function syncMemberships(db: Database) {
+	logger.info('Starting bulk membership sync...');
+
+	// Demote controllers not in vatsim controllers table
+	const demotedResult = await db
+		.update(usersTable)
+		.set({ membership: 'community', operatingInitials: null })
+		.where(
+			and(
+				eq(usersTable.membership, 'controller'),
+				notInArray(
+					usersTable.cid,
+					db.select({ cid: vatsimControllersTable.cid }).from(vatsimControllersTable)
+				)
+			)
+		)
+		.returning({ id: usersTable.id, cid: usersTable.cid });
+
+	logger.info(`Demoted ${demotedResult.length} users from controller to community`);
+
+	// Get and promote community members who should be controllers
+	const usersToPromote = await db
+		.select({ id: usersTable.id, cid: usersTable.cid })
+		.from(usersTable)
+		.innerJoin(vatsimControllersTable, eq(usersTable.cid, vatsimControllersTable.cid))
+		.where(eq(usersTable.membership, 'community'));
+
+	for (const user of usersToPromote) {
+		logger.info(`Promoting user ${user.id} (${user.cid}) to controller`);
+
+		const [updatedUser] = await db
+			.update(usersTable)
+			.set({ membership: 'controller' })
+			.where(eq(usersTable.id, user.id))
+			.returning();
+
+		await processNewController(db, updatedUser);
+	}
+
+	logger.info(`Promoted ${usersToPromote.length} users from community to controller`);
+	logger.info('Bulk membership sync complete');
 }
