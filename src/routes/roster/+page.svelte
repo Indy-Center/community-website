@@ -3,7 +3,6 @@
 	import IconArrowDown from '~icons/mdi/arrow-down';
 	import IconUnfoldMoreHorizontal from '~icons/mdi/unfold-more-horizontal';
 	import IconChevronDown from '~icons/mdi/chevron-down';
-	import PageHero from '$lib/components/PageHero.svelte';
 	import { parseISO } from 'date-fns';
 
 	let { data } = $props();
@@ -124,54 +123,47 @@
 	<title>Indy Center | Roster</title>
 </svelte:head>
 
-<div class="flex w-full flex-col justify-center gap-2">
-	<PageHero size="compact">
-		<h1 class="mb-1 text-xl font-bold text-white sm:text-lg md:text-lg lg:text-xl">
-			Controller Roster
-		</h1>
-		<p class="mx-auto mb-1 max-w-2xl text-xs leading-tight text-gray-300 sm:text-xs lg:text-sm">
-			The active home and visiting controllers of Indy Center.
-		</p>
-	</PageHero>
-	<!-- Roster Section -->
-	<div class="w-full bg-gray-900">
-		<div class="mx-auto max-w-6xl px-4 py-8">
-			<!-- Search and Filter Controls -->
-			<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div class="flex max-w-md flex-1">
-					<label for="search-input" class="sr-only">Search members by name or CID</label>
-					<input
-						id="search-input"
-						type="text"
-						bind:value={searchTerm}
-						placeholder="Search by name or CID..."
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-					/>
-				</div>
-				<div class="flex gap-3">
-					<div class="relative">
-						<div
-							class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"
-						>
-							<IconChevronDown class="h-4 w-4" aria-hidden="true" />
-						</div>
-					</div>
-				</div>
-			</div>
+<div class="mb-8">
+	<h1 class="text-3xl font-bold text-white">Controller Roster</h1>
+	<p class="mt-2 text-gray-400">The active home and visiting controllers of Indy Center.</p>
+</div>
 
-			<!-- Results count -->
-			<div class="mb-4 text-sm text-gray-400">
-				Showing {filteredAndSortedRoster.length} members
+<!-- Search and Filter Controls -->
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex max-w-md flex-1">
+		<label for="search-input" class="sr-only">Search members by name or CID</label>
+		<input
+			id="search-input"
+			type="text"
+			bind:value={searchTerm}
+			placeholder="Search by name or CID..."
+			class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+		/>
+	</div>
+	<div class="flex gap-3">
+		<div class="relative">
+			<div
+				class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"
+			>
+				<IconChevronDown class="h-4 w-4" aria-hidden="true" />
 			</div>
+		</div>
+	</div>
+</div>
 
-			<div class="overflow-x-auto rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
-				<table class="w-full text-white" role="table">
-					<caption class="sr-only">
-						Controller roster showing {filteredAndSortedRoster.length} members with their ratings, roles,
-						and activity information. Use the search and filter controls above to narrow the results.
-					</caption>
-					<thead class="bg-slate-700">
-						<tr>
+<!-- Results count -->
+<div class="mb-4 text-sm text-gray-400">
+	Showing {filteredAndSortedRoster.length} members
+</div>
+
+<div class="overflow-x-auto rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
+	<table class="w-full text-white" role="table">
+		<caption class="sr-only">
+			Controller roster showing {filteredAndSortedRoster.length} members with their ratings, roles,
+			and activity information. Use the search and filter controls above to narrow the results.
+		</caption>
+		<thead class="bg-slate-700">
+			<tr>
 							<th
 								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
 								onclick={() => handleSort('cid')}
@@ -351,8 +343,5 @@
 							</tr>
 						{/each}
 					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
+	</table>
 </div>

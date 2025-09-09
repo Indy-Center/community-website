@@ -2,8 +2,12 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import Header from '$lib/components/Header.svelte';
+	import { page } from '$app/stores';
 
 	let { children, data } = $props();
+	
+	// Check if current page is home
+	let isHomePage = $derived($page.url.pathname === '/');
 </script>
 
 <svelte:head>
@@ -12,11 +16,20 @@
 </svelte:head>
 
 <div class="flex min-h-screen w-full flex-col bg-gray-900">
-	<div class="absolute top-0 z-20 w-full">
+	<div class="absolute top-0 z-20 w-full bg-slate-800/95 border-b border-slate-700/50 backdrop-blur-lg">
 		<Header {data} />
 	</div>
 	<main class="flex w-full flex-1 flex-col">
-		{@render children?.()}
+		{#if isHomePage}
+			{@render children?.()}
+		{:else}
+			<!-- Standard page layout for non-home pages -->
+			<div class="w-full bg-gray-900 pt-16">
+				<div class="mx-auto max-w-6xl px-4 py-8">
+					{@render children?.()}
+				</div>
+			</div>
+		{/if}
 	</main>
 	<footer class="flex shrink-0 items-center justify-center bg-gray-900 py-3">
 		<div class="mx-auto max-w-6xl px-4 text-center">
