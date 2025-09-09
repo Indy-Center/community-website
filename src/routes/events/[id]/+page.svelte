@@ -19,6 +19,33 @@
 	function formatRosterType(rosterType: string): string {
 		return rosterType.charAt(0).toUpperCase() + rosterType.slice(1);
 	}
+
+	// Format date range - show single date if same day, range if different days
+	function formatDateRange(startDate: Date, endDate: Date, useUtc = false): string {
+		const formatFn = useUtc ? 
+			(date: Date) => format(utc(date), "MMM d, yyyy") : 
+			(date: Date) => format(date, "MMM d, yyyy");
+
+		const startDateStr = formatFn(startDate);
+		const endDateStr = formatFn(endDate);
+
+		if (startDateStr === endDateStr) {
+			return startDateStr; // Same day: "Sep 12, 2025"
+		} else {
+			// Different days: "Sep 12 - 13, 2025" or "Sep 30 - Oct 1, 2025"
+			const startMonth = useUtc ? format(utc(startDate), "MMM") : format(startDate, "MMM");
+			const startDay = useUtc ? format(utc(startDate), "d") : format(startDate, "d");
+			const endMonth = useUtc ? format(utc(endDate), "MMM") : format(endDate, "MMM");
+			const endDay = useUtc ? format(utc(endDate), "d") : format(endDate, "d");
+			const year = useUtc ? format(utc(endDate), "yyyy") : format(endDate, "yyyy");
+
+			if (startMonth === endMonth) {
+				return `${startMonth} ${startDay} - ${endDay}, ${year}`;
+			} else {
+				return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+			}
+		}
+	}
 </script>
 
 <svelte:head>
@@ -66,13 +93,13 @@
 							class="inline-flex items-center gap-2 rounded-lg border border-slate-600/50 bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 backdrop-blur-sm"
 						>
 							<IconGlobe class="h-4 w-4" />
-							{format(utc(event.startTime), "MMM d, yyyy 'at' HH:mm")} - {format(utc(event.endTime), "HH:mm")} Zulu
+							{format(utc(event.startTime), "MMM d, yyyy 'at' HH:mm")} - {format(utc(event.endTime), "MMM d, yyyy 'at' HH:mm")} Zulu
 						</time>
 						<time
 							class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-300 backdrop-blur-sm"
 						>
 							<IconClock class="h-4 w-4" />
-							{format(event.startTime, "MMM d, yyyy 'at' HH:mm")} - {format(event.endTime, "HH:mm")} Local
+							{format(event.startTime, "MMM d, yyyy 'at' HH:mm")} - {format(event.endTime, "MMM d, yyyy 'at' HH:mm")} Local
 						</time>
 					</div>
 				{/if}
@@ -138,27 +165,33 @@
 						<dt class="text-sm font-medium text-gray-400">Roster Type</dt>
 						<dd class="text-sm text-white">{formatRosterType(event.rosterType)}</dd>
 					</div>
-					{#if event.startTime}
+					{#if event.startTime && event.endTime}
 						<div>
-							<dt class="text-sm font-medium text-gray-400">Start Time</dt>
-							<dd class="text-sm text-white">
-								{format(utc(event.startTime), "EEEE, MMMM d, yyyy")}
-								<br />
-								<span class="text-sky-300">{format(utc(event.startTime), "HH:mm")} UTC</span>
-								• 
-								<span class="text-gray-300">{format(event.startTime, "HH:mm")} Local</span>
-							</dd>
-						</div>
-					{/if}
-					{#if event.endTime}
-						<div>
-							<dt class="text-sm font-medium text-gray-400">End Time</dt>
-							<dd class="text-sm text-white">
-								{format(utc(event.endTime), "EEEE, MMMM d, yyyy")}
-								<br />
-								<span class="text-sky-300">{format(utc(event.endTime), "HH:mm")} UTC</span>
-								• 
-								<span class="text-gray-300">{format(event.endTime, "HH:mm")} Local</span>
+							<dt class="text-sm font-medium text-gray-400 mb-2">Event Times</dt>
+							<dd class="space-y-2">
+								<!-- UTC -->
+								<div class="flex items-center gap-2">
+									<IconGlobe class="h-4 w-4 text-sky-400 flex-shrink-0" />
+									<div class="text-sm">
+										<span class="text-sky-300 font-medium">{format(utc(event.startTime), "MMM d, yyyy")}</span>
+										<span class="text-white ml-2">
+											{format(utc(event.startTime), "HH:mm")} - {format(utc(event.endTime), "HH:mm")}
+										</span>
+										<span class="text-xs text-gray-500 ml-1">UTC</span>
+									</div>
+								</div>
+								
+								<!-- Local -->
+								<div class="flex items-center gap-2">
+									<IconClock class="h-4 w-4 text-gray-400 flex-shrink-0" />
+									<div class="text-sm">
+										<span class="text-gray-300 font-medium">{format(event.startTime, "MMM d, yyyy")}</span>
+										<span class="text-white ml-2">
+											{format(event.startTime, "HH:mm")} - {format(event.endTime, "HH:mm")}
+										</span>
+										<span class="text-xs text-gray-500 ml-1">Local</span>
+									</div>
+								</div>
 							</dd>
 						</div>
 					{/if}
