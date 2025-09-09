@@ -6,6 +6,8 @@ import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { addMonths } from 'date-fns';
 
+const BANNED_INITIAL_COMBINATIONS = ['SS'];
+
 /**
  * Looks at the user's information to determine the status of their membership.
  *
@@ -117,33 +119,19 @@ function determineCertificationsFromRating(rating: string) {
  * - and so on. If fail, set to null.
  */
 async function grantOperatingInitials(db: Database, user: User) {
-	const BANNED_INITIAL_COMBINATIONS = ['SS'];
-
-	console.log(
-		`Granting operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
-
-	const combinations = [];
-	for (let i = 0; i < Math.min(user.firstName.length, 4); i++) {
-		for (let j = 0; j < Math.min(user.lastName.length, 4); j++) {
-			const combo = user.firstName.charAt(i).toUpperCase() + user.lastName.charAt(j).toUpperCase();
-			// Filter out any offensive combinations like SS
-			if (!BANNED_INITIAL_COMBINATIONS.includes(combo)) {
-				combinations.push(combo);
+	const existingInitials = (
+		await db.query.usersTable.findMany({
+			where: isNotNull(usersTable.operatingInitials),
+			columns: {
+				operatingInitials: true
 			}
-		}
-	}
+		})
+	)
+		.map((user) => user.operatingInitials!)
+		.concat(BANNED_INITIAL_COMBINATIONS);
 
-	const existingInitials: { operatingInitials: string }[] = await db.query.usersTable.findMany({
-		where: isNotNull(usersTable.operatingInitials),
-		columns: {
-			operatingInitials: true
-		}
-	});
-
-	const initials = combinations.find(
-		(combination) => !existingInitials.some((initial) => initial.operatingInitials === combination)
-	);
+	const combinations = generateOperatingInitialCombinations(user.firstName, user.lastName);
+	const initials = combinations.find((combination) => !existingInitials.includes(combination));
 
 	if (initials) {
 		await db
@@ -151,7 +139,7 @@ async function grantOperatingInitials(db: Database, user: User) {
 			.set({ operatingInitials: initials })
 			.where(eq(usersTable.id, user.id));
 		console.log(
-			`Granted operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+			`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	} else {
 		await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
@@ -159,6 +147,9 @@ async function grantOperatingInitials(db: Database, user: User) {
 			`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
+	console.log(
+		`Granting operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 }
 
 export async function syncMemberships(db: Database) {
@@ -202,4 +193,31 @@ export async function syncMemberships(db: Database) {
 
 	console.log(`Promoted ${usersToPromote.length} users from community to controller`);
 	console.log('Bulk membership sync complete');
+}
+
+function generateOperatingInitialCombinations(firstName: string, lastName: string) {
+	const combinations = [
+		...generatePyramidCombinations(lastName),
+		...generatePyramidCombinations(firstName),
+		...generateAlphabeticalCombinations(lastName),
+		...generateAlphabeticalCombinations(firstName)
+	];
+
+	return combinations;
+}
+
+function generatePyramidCombinations(input: string) {
+	const pyramid = [];
+	for (let i = input.length - 1; i > 0; i--) {
+		const combo = input[0] + input[i];
+		pyramid.push(combo.toUpperCase());
+	}
+
+	return pyramid;
+}
+
+function generateAlphabeticalCombinations(input: string) {
+	const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+	return generatePyramidCombinations(input[0] + ALPHABET);
 }
