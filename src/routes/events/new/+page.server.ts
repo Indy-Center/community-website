@@ -5,14 +5,33 @@ import { fail, superValidate } from 'sveltekit-superforms';
 import { eventsTable } from '$lib/db/schema/events';
 import { redirect } from '@sveltejs/kit';
 
-export const load = async ({ locals, params }) => {
+export const load = async ({ locals, params, url }) => {
 	if (!locals.roles?.includes('events:manage')) {
 		return redirect(302, '/');
 	}
 
 	const vatsimEvents = await fetchEvents();
 
-	const form = await superValidate(zod4(eventSchema));
+	// Check for importId to pre-fill form from VATSIM event
+	const importId = url.searchParams.get('importId');
+	let prefilledData: any = {};
+
+	if (importId) {
+		const vatsimEvent = vatsimEvents.find((event) => event.id === Number(importId));
+		if (vatsimEvent) {
+			prefilledData = {
+				name: vatsimEvent.name,
+				description: vatsimEvent.description,
+				bannerUrl: vatsimEvent.banner || '',
+				startTime: new Date(vatsimEvent.start_time).toISOString().slice(0, 16),
+				endTime: new Date(vatsimEvent.end_time).toISOString().slice(0, 16)
+			};
+		}
+	}
+
+	const form = Object.keys(prefilledData).length > 0
+		? await superValidate(prefilledData, zod4(eventSchema))
+		: await superValidate(zod4(eventSchema));
 
 	return {
 		vatsimEvents,
@@ -28,7 +47,8 @@ export const actions = {
 		const form = await superValidate(request, zod4(eventSchema));
 
 		if (!form.valid) {
-			return fail(400, { form });
+			const vatsimEvents = await fetchEvents();
+			return fail(400, { form, vatsimEvents });
 		}
 
 		console.log(`Saving new event "${form.data.name}"`);

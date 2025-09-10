@@ -11,7 +11,7 @@ export const eventsTable = sqliteTable('events', {
 	rosterType: text('roster_type', { enum: ['open', 'assigned', 'none'] })
 		.notNull()
 		.default('none'),
-	bannerUrl: text('banner_url').notNull(),
+	bannerUrl: text('banner_url'),
 	description: text('description').notNull(),
 	startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
 	endTime: integer('end_time', { mode: 'timestamp' }).notNull(),
