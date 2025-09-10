@@ -1,12 +1,27 @@
 import type { User } from '$lib/db/schema/users';
-import { and, eq, isNotNull, notInArray } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, not, notInArray } from 'drizzle-orm';
 import type { Database } from './db';
-import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
+import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
 import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { addMonths } from 'date-fns';
+import { userRolesTable } from '$lib/db/schema/roles';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
+
+const ARTCC_ID = 'ZID';
+
+// These roles are given based off VATUSA membership and can be removed
+// when the user falls off the roster.
+const VATUSA_ROLES_TO_MEMBERSHIP_ROLES = {
+	EC: ['events:manage'],
+	WM: ['admin', 'events:manage', 'users:manage'],
+	ATM: ['admin', 'events:manage', 'users:manage'],
+	DATM: ['admin', 'events:manage'],
+	TA: ['admin', 'training:manage', 'users:manage']
+};
+
+const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP_ROLES).flat();
 
 /**
  * Looks at the user's information to determine the status of their membership.
@@ -31,16 +46,27 @@ export async function syncUserMembership(db: Database, user: User) {
 		await db.update(usersTable).set({ membership: 'controller' }).where(eq(usersTable.id, user.id));
 
 		// Do new controller processing
-		await processNewController(db, user);
+		await processNewController(db, user, controller);
 	} else if (!controller && user.membership === 'controller') {
 		console.log(`User ${user.id} is no longer a controller.`);
-		await db.update(usersTable).set({ membership: 'community' }).where(eq(usersTable.id, user.id));
+		// Do leaving controller processing
+		await processLeavingController(db, user);
 	}
 
 	console.log(`Membership sync for user ${user.id} complete.`);
 }
 
-async function processNewController(db: Database, user: User) {
+async function processLeavingController(db: Database, user: User) {
+	console.log(
+		`Processing leaving controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
+
+	await grantRoles(db, user, null);
+
+	await db.update(usersTable).set({ membership: 'community' }).where(eq(usersTable.id, user.id));
+}
+
+async function processNewController(db: Database, user: User, controller: VatsimController) {
 	console.log(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
@@ -49,6 +75,8 @@ async function processNewController(db: Database, user: User) {
 	await grantInitialCertifications(db, user);
 
 	await grantOperatingInitials(db, user);
+
+	await grantRoles(db, user, controller);
 
 	console.log(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
@@ -152,6 +180,61 @@ async function grantOperatingInitials(db: Database, user: User) {
 	);
 }
 
+async function grantRoles(db: Database, user: User, controller: VatsimController | null) {
+	// Remove any of the VATUSA Roles that might already exist for the user
+	await db
+		.delete(userRolesTable)
+		.where(
+			and(
+				eq(userRolesTable.userId, user.id),
+				inArray(userRolesTable.role, VATUSA_MANAGED_MEMBERSHIP_ROLES)
+			)
+		);
+
+	// If no controller is found, don't grant any roles
+	if (!controller) {
+		console.log(
+			`No controller found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		);
+
+		return;
+	}
+
+	console.log(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+
+	// Get the user's VATUSA roles for this facility
+	const vatsimRoles = controller.data.roles
+		.filter((role) => role.facility === ARTCC_ID)
+		.map((role) => role.role);
+
+	console.log(
+		`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`
+	);
+
+	// Now build a set of roles to apply to the user
+	const rolesToApply = Array.from(
+		new Set(
+			vatsimRoles.flatMap((role) => {
+				if (Object.keys(VATUSA_ROLES_TO_MEMBERSHIP_ROLES).includes(role)) {
+					return VATUSA_ROLES_TO_MEMBERSHIP_ROLES[
+						role as keyof typeof VATUSA_ROLES_TO_MEMBERSHIP_ROLES
+					].map((role) => role);
+				}
+				return [];
+			})
+		)
+	);
+
+	console.log(
+		`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`
+	);
+
+	// Apply the roles to the user
+	await db
+		.insert(userRolesTable)
+		.values(rolesToApply.map((role) => ({ userId: user.id, role: role })));
+}
+
 export async function syncMemberships(db: Database) {
 	console.log('Starting bulk membership sync...');
 
@@ -168,16 +251,21 @@ export async function syncMemberships(db: Database) {
 				)
 			)
 		)
-		.returning({ id: usersTable.id, cid: usersTable.cid });
+		.returning();
 
 	console.log(`Demoted ${demotedResult.length} users from controller to community`);
+
+	// Do leaving controller processing
+	for (const user of demotedResult) {
+		await processLeavingController(db, user);
+	}
 
 	// Get and promote community members who should be controllers
 	const usersToPromote = await db
 		.select({ id: usersTable.id, cid: usersTable.cid })
 		.from(usersTable)
 		.innerJoin(vatsimControllersTable, eq(usersTable.cid, vatsimControllersTable.cid))
-		.where(eq(usersTable.membership, 'community'));
+		.where(not(eq(usersTable.membership, 'controller')));
 
 	for (const user of usersToPromote) {
 		console.log(`Promoting user ${user.id} (${user.cid}) to controller`);
@@ -188,7 +276,13 @@ export async function syncMemberships(db: Database) {
 			.where(eq(usersTable.id, user.id))
 			.returning();
 
-		await processNewController(db, updatedUser);
+		const controller = await db.query.vatsimControllersTable.findFirst({
+			where: eq(vatsimControllersTable.cid, user.cid)
+		});
+
+		if (controller) {
+			await processNewController(db, updatedUser, controller);
+		}
 	}
 
 	console.log(`Promoted ${usersToPromote.length} users from community to controller`);
