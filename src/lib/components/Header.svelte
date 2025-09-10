@@ -12,6 +12,7 @@
 	import IconMenu from '~icons/mdi/menu';
 	import IconClose from '~icons/mdi/close';
 	import type { User } from '$lib/db/schema/users';
+	import MembershipBadge from './MembershipBadge.svelte';
 
 	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
 
@@ -99,7 +100,7 @@
 							? 'rounded-t-lg rounded-b-none border border-b-0 border-slate-600/30 bg-sky-600/20 text-white'
 							: 'rounded-lg text-gray-300 hover:scale-105 hover:bg-white/10 hover:text-white'}"
 					>
-						<IconAccount class="h-6 w-6 text-sky-400" />
+						<MembershipBadge size="sm" membership={data.user.membership} />
 						<div class="flex items-center space-x-2">
 							<span class="font-medium">{getFullName(data.user)}</span>
 							<div class="flex items-center space-x-1">
@@ -231,7 +232,7 @@
 					<div class="mt-3 border-t border-slate-600/30 pt-3">
 						<div class="rounded-lg bg-slate-700/30 px-4 py-3">
 							<div class="mb-3 flex items-center space-x-3">
-								<IconAccount class="h-8 w-8 text-sky-400" />
+								<MembershipBadge size="sm" membership={data.user.membership} />
 								<div>
 									<div class="text-sm font-semibold text-white">
 										{getFullName(data.user)}
