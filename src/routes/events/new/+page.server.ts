@@ -66,7 +66,7 @@ export const actions = {
 				rosterType: form.data.rosterType,
 				startTime: form.data.startTime,
 				endTime: form.data.endTime,
-				isPublished: true
+				isPublished: false
 			})
 			.returning();
 
