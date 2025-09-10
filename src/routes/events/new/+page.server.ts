@@ -21,6 +21,7 @@ export const load = async ({ locals, params, url }) => {
 		if (vatsimEvent) {
 			prefilledData = {
 				name: vatsimEvent.name,
+				type: 'support',
 				description: vatsimEvent.description,
 				bannerUrl: vatsimEvent.banner || '',
 				startTime: new Date(vatsimEvent.start_time).toISOString().slice(0, 16),
@@ -29,9 +30,10 @@ export const load = async ({ locals, params, url }) => {
 		}
 	}
 
-	const form = Object.keys(prefilledData).length > 0
-		? await superValidate(prefilledData, zod4(eventSchema))
-		: await superValidate(zod4(eventSchema));
+	const form =
+		Object.keys(prefilledData).length > 0
+			? await superValidate(prefilledData, zod4(eventSchema))
+			: await superValidate(zod4(eventSchema));
 
 	return {
 		vatsimEvents,

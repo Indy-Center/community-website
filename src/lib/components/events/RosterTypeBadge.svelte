@@ -2,7 +2,7 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import IconAccountGroup from '~icons/mdi/account-group';
 
-	let { rosterType }: { rosterType: string } = $props();
+	let { rosterType, size = 'md' }: { rosterType: string; size?: 'sm' | 'md' } = $props();
 
 	const label = $derived.by(() => {
 		switch (rosterType) {
@@ -18,4 +18,4 @@
 	});
 </script>
 
-<Badge icon={IconAccountGroup} {label} color="purple" />
+<Badge icon={IconAccountGroup} {label} {size} color="purple" />
