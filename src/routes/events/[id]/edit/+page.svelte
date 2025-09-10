@@ -4,6 +4,10 @@
 	const { data } = $props();
 </script>
 
+<svelte:head>
+	<title>Indy Center | Edit Event</title>
+</svelte:head>
+
 <div class="mb-8">
 	<h1 class="text-3xl font-bold text-white">Edit Event</h1>
 	<p class="mt-2 text-gray-400">Fill out the form below to edit the event</p>

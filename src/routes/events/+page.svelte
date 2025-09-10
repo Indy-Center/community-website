@@ -34,6 +34,10 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Indy Center | Events</title>
+</svelte:head>
+
 <div class="mb-8">
 	<div class="flex items-center justify-between gap-3">
 		<h1 class="text-3xl font-bold text-white">Events</h1>

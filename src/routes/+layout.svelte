@@ -1,22 +1,22 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
 	import Header from '$lib/components/Header.svelte';
 	import { page } from '$app/stores';
 
 	let { children, data } = $props();
-	
+
 	// Check if current page is home
 	let isHomePage = $derived($page.url.pathname === '/');
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
 	<title>Indy Center | Welcome to Indy</title>
 </svelte:head>
 
 <div class="flex min-h-screen w-full flex-col bg-gray-900">
-	<div class="absolute top-0 z-20 w-full bg-slate-800/95 border-b border-slate-700/50 backdrop-blur-lg">
+	<div
+		class="absolute top-0 z-20 w-full border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-lg"
+	>
 		<Header {data} />
 	</div>
 	<main class="flex w-full flex-1 flex-col">
