@@ -1,15 +1,17 @@
 <script lang="ts">
+	import { format } from 'date-fns';
+	import { utc } from '@date-fns/utc';
 	import IconClock from '~icons/mdi/clock-outline';
-	import IconPublish from '~icons/mdi/publish';
-	import IconDraft from '~icons/mdi/publish-off';
+	import IconGlobe from '~icons/mdi/earth';
+	import IconAccount from '~icons/mdi/account-group';
 	import IconEdit from '~icons/mdi/pencil';
+	import IconImage from '~icons/mdi/image';
 	import IconTextLong from '~icons/mdi/text-long';
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import Panel from '$lib/components/Panel.svelte';
 	import EventDetailsPanel from '$lib/components/events/EventDetailsPanel.svelte';
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
 	import { canManageEvents } from '$lib/utils/permissions.js';
-	import ActionButton from '$lib/components/ActionButton.svelte';
 
 	const { data } = $props();
 	const { event } = data;
@@ -38,7 +40,11 @@
 						Edit Event
 					</a>
 
-					<DeleteButton />
+					<DeleteButton
+						action="delete"
+						message="Are you sure you want to delete this event?"
+						label="Delete Event"
+					/>
 				</div>
 			{/if}
 		</div>
@@ -82,21 +88,9 @@
 		</div>
 
 		<!-- Sidebar -->
-		<div class="flex flex-col space-y-6">
+		<div class="space-y-6">
 			<!-- Event Info Card -->
 			<EventDetailsPanel {event} />
-			{#if canManageEvents(data?.roles)}
-				{#if event.isPublished}
-					<ActionButton
-						action="unpublish"
-						label="Event: Published"
-						icon={IconPublish}
-						color="sky"
-					/>
-				{:else}
-					<ActionButton action="publish" label="Event: Draft" icon={IconDraft} color="purple" />
-				{/if}
-			{/if}
 		</div>
 	</div>
 {:else}

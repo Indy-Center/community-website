@@ -8,6 +8,8 @@
 	import VatsimEventDropdown from '$lib/components/events/VatsimEventDropdown.svelte';
 	import EventTypeBadge from '$lib/components/events/EventTypeBadge.svelte';
 	import RosterTypeBadge from '$lib/components/events/RosterTypeBadge.svelte';
+	import { canManageEvents } from '$lib/utils/permissions.js';
+	import type { Event } from '$lib/db/schema/events';
 
 	let { data } = $props();
 	let { events, vatsimEvents } = data;
@@ -20,11 +22,15 @@
 	const otherEvents = sortedEvents.slice(1);
 
 	// Check if the next event is currently in progress
-	const isEventInProgress = (event) => {
+	const isEventInProgress = (event: Event) => {
 		const now = new Date();
 		const startTime = new Date(event.startTime);
 		const endTime = new Date(event.endTime);
 		return now >= startTime && now <= endTime;
+	};
+
+	const isEventPublished = (event: Event) => {
+		return event.isPublished;
 	};
 </script>
 
@@ -32,7 +38,7 @@
 	<div class="flex items-center justify-between gap-3">
 		<h1 class="text-3xl font-bold text-white">Events</h1>
 		<div class="flex items-center gap-3">
-			{#if data.user && data.roles?.includes('events:manage')}
+			{#if canManageEvents(data?.roles)}
 				<!-- VATSIM Import Dropdown -->
 				<VatsimEventDropdown {vatsimEvents} />
 
@@ -62,31 +68,16 @@
 			<IconCreate class="h-8 w-8 text-gray-400" />
 		</div>
 		<h3 class="mb-2 text-lg font-medium text-white">No events scheduled</h3>
-		{#if data.user && data.roles?.includes('events:manage')}
+		{#if canManageEvents(data?.roles)}
 			<p class="mb-6 text-gray-400">
 				Get started by creating your first event or importing from VATSIM.
 			</p>
-			<div class="flex justify-center gap-3">
-				<!-- VATSIM Import Dropdown -->
-				<VatsimEventDropdown {vatsimEvents} />
-
-				<a
-					href="/events/new"
-					class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
-				>
-					<IconCreate class="h-4 w-4" />
-					Create your first event
-				</a>
-			</div>
 		{/if}
 	</div>
 {:else}
 	<!-- Next Event - Featured -->
 	{#if nextEvent}
-		<div class="mb-12">
-			<h2 class="mb-6 text-xl font-bold text-white">
-				{isEventInProgress(nextEvent) ? 'Event In Progress' : 'Next Event'}
-			</h2>
+		<div class="mb-8">
 			<a href="/events/{nextEvent.id}" class="block">
 				<article
 					class="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-r from-slate-800/60 via-slate-800/40 to-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-xl hover:shadow-sky-500/10"
@@ -109,7 +100,9 @@
 							</div>
 
 							{#if nextEvent.description}
-								<p class="mb-4 text-sm leading-relaxed text-slate-300 line-clamp-3">{nextEvent.description}</p>
+								<p class="mb-4 line-clamp-3 text-sm leading-relaxed text-slate-300">
+									{nextEvent.description}
+								</p>
 							{/if}
 
 							{#if nextEvent.startTime}
@@ -143,16 +136,29 @@
 									loading="lazy"
 								/>
 								<!-- Dynamic Badge -->
-								<div class="absolute left-3 top-3">
-									{#if isEventInProgress(nextEvent)}
-										<div class="rounded-full bg-green-500/20 border border-green-500/50 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm">
-											In Progress
-										</div>
-									{:else}
-										<div class="rounded-full bg-sky-500/20 border border-sky-500/50 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm">
-											Next Event
-										</div>
-									{/if}
+								<div class="absolute top-3 left-3">
+									<div class="flex items-center gap-2">
+										{#if !isEventPublished(nextEvent)}
+											<div
+												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-3 py-1.5 text-sm font-medium text-yellow-300 backdrop-blur-sm"
+											>
+												Draft Event
+											</div>
+										{/if}
+										{#if isEventInProgress(nextEvent)}
+											<div
+												class="rounded-full border border-green-500/50 bg-green-500/20 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm"
+											>
+												In Progress
+											</div>
+										{:else}
+											<div
+												class="rounded-full border border-sky-500/50 bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
+											>
+												Next Event
+											</div>
+										{/if}
+									</div>
 								</div>
 							</div>
 						{:else}
@@ -169,16 +175,29 @@
 									></div>
 								</div>
 								<!-- Dynamic Badge -->
-								<div class="absolute left-3 top-3">
-									{#if isEventInProgress(nextEvent)}
-										<div class="rounded-full bg-green-500/20 border border-green-500/50 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm">
-											In Progress
-										</div>
-									{:else}
-										<div class="rounded-full bg-sky-500/20 border border-sky-500/50 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm">
-											Next Event
-										</div>
-									{/if}
+								<div class="absolute top-3 left-3">
+									<div class="flex items-center gap-2">
+										{#if !isEventPublished(nextEvent)}
+											<div
+												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-3 py-1.5 text-sm font-medium text-yellow-300 backdrop-blur-sm"
+											>
+												Draft Event
+											</div>
+										{/if}
+										{#if isEventInProgress(nextEvent)}
+											<div
+												class="rounded-full border border-green-500/50 bg-green-500/20 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm"
+											>
+												In Progress
+											</div>
+										{:else}
+											<div
+												class="rounded-full border border-sky-500/50 bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
+											>
+												Next Event
+											</div>
+										{/if}
+									</div>
 								</div>
 							</div>
 						{/if}
@@ -196,7 +215,6 @@
 	<!-- Other Upcoming Events -->
 	{#if otherEvents.length > 0}
 		<div class="mb-8">
-			<h2 class="mb-6 text-xl font-bold text-white">Upcoming Events</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each otherEvents as event}
 					<a href="/events/{event.id}" class="group block h-full">
@@ -216,13 +234,15 @@
 										class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
 									></div>
 									<!-- Dynamic Badge for Grid Events -->
-									{#if isEventInProgress(event)}
-										<div class="absolute left-2 top-2">
-											<div class="rounded-full bg-green-500/20 border border-green-500/50 px-2 py-0.5 text-xs font-medium text-green-300 backdrop-blur-sm">
-												In Progress
+									<div class="absolute top-2 left-2">
+										{#if !isEventPublished(event)}
+											<div
+												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
+											>
+												Draft
 											</div>
-										</div>
-									{/if}
+										{/if}
+									</div>
 								</div>
 							{:else}
 								<!-- Fallback banner with gradient -->
@@ -235,14 +255,15 @@
 									<div
 										class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
 									></div>
-									<!-- Dynamic Badge for Grid Events -->
-									{#if isEventInProgress(event)}
-										<div class="absolute left-2 top-2">
-											<div class="rounded-full bg-green-500/20 border border-green-500/50 px-2 py-0.5 text-xs font-medium text-green-300 backdrop-blur-sm">
-												In Progress
+									<div class="absolute top-2 left-2">
+										{#if !isEventPublished(event)}
+											<div
+												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
+											>
+												Draft
 											</div>
-										</div>
-									{/if}
+										{/if}
+									</div>
 								</div>
 							{/if}
 

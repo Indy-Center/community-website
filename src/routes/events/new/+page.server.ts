@@ -1,12 +1,13 @@
+import { eventsTable } from '$lib/db/schema/events';
 import { eventSchema } from '$lib/forms/events';
 import { fetchEvents } from '$lib/server/vatsim/vatsimDataClient';
-import { zod4 } from 'sveltekit-superforms/adapters';
-import { fail, superValidate } from 'sveltekit-superforms';
-import { eventsTable } from '$lib/db/schema/events';
+import { canManageEvents } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
+import { fail, superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
 
 export const load = async ({ locals, params, url }) => {
-	if (!locals.roles?.includes('events:manage')) {
+	if (!canManageEvents(locals.roles)) {
 		return redirect(302, '/');
 	}
 
@@ -43,7 +44,7 @@ export const load = async ({ locals, params, url }) => {
 
 export const actions = {
 	default: async ({ request, locals }) => {
-		if (!locals.roles?.includes('events:manage')) {
+		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
 		const form = await superValidate(request, zod4(eventSchema));

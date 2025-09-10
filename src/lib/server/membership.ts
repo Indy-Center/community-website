@@ -6,6 +6,7 @@ import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { addMonths } from 'date-fns';
 import { userRolesTable } from '$lib/db/schema/roles';
+import { Role } from '$lib/utils/permissions';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
@@ -14,11 +15,11 @@ const ARTCC_ID = 'ZID';
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
 const VATUSA_ROLES_TO_MEMBERSHIP_ROLES = {
-	EC: ['events:manage'],
-	WM: ['admin', 'events:manage', 'users:manage'],
-	ATM: ['admin', 'events:manage', 'users:manage'],
-	DATM: ['admin', 'events:manage'],
-	TA: ['admin', 'training:manage', 'users:manage']
+	EC: [Role.CAN_MANAGE_EVENTS],
+	WM: [Role.ADMIN],
+	ATM: [Role.ADMIN],
+	DATM: [Role.ADMIN],
+	TA: [Role.ADMIN]
 };
 
 const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP_ROLES).flat();

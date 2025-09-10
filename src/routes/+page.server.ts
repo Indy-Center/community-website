@@ -13,7 +13,11 @@ export const load = async ({ locals }) => {
 
 	const events = await locals.db.query.eventsTable.findMany({
 		orderBy: asc(eventsTable.startTime),
-		where: and(gt(eventsTable.endTime, new Date()), eq(eventsTable.type, 'community')),
+		where: and(
+			gt(eventsTable.endTime, new Date()),
+			eq(eventsTable.type, 'community'),
+			eq(eventsTable.isPublished, true)
+		),
 		limit: 4
 	});
 
