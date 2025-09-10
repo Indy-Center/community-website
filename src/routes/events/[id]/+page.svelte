@@ -9,7 +9,7 @@
 	import EventDetailsPanel from '$lib/components/events/EventDetailsPanel.svelte';
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
 	import { canManageEvents } from '$lib/utils/permissions.js';
-	import ActionButton from '$lib/components/ActionButton.svelte';
+	import ActionToggle from '$lib/components/ActionToggle.svelte';
 
 	const { data } = $props();
 	const { event } = data;
@@ -86,16 +86,13 @@
 			<!-- Event Info Card -->
 			<EventDetailsPanel {event} />
 			{#if canManageEvents(data?.roles)}
-				{#if event.isPublished}
-					<ActionButton
-						action="unpublish"
-						label="Event: Published"
-						icon={IconPublish}
-						color="sky"
-					/>
-				{:else}
-					<ActionButton action="publish" label="Event: Draft" icon={IconDraft} color="purple" />
-				{/if}
+				<ActionToggle
+					action="?/togglePublish"
+					currentState={event.isPublished}
+					label={event.isPublished ? 'Published' : 'Draft'}
+					icon={event.isPublished ? IconPublish : IconDraft}
+					color="green"
+				/>
 			{/if}
 		</div>
 	</div>

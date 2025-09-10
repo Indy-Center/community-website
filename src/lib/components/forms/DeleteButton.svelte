@@ -4,7 +4,7 @@
 </script>
 
 <ActionButton
-	action="delete"
+	action="?/delete"
 	message="Are you sure? This action cannot be undone."
 	label="Delete"
 	icon={IconTrash}

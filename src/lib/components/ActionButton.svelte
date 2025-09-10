@@ -23,7 +23,7 @@
 
 <form
 	method="POST"
-	action="?/{action}"
+	{action}
 	onsubmit={(e) => {
 		if (message) {
 			if (!confirm(message)) {

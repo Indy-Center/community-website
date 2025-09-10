@@ -39,12 +39,6 @@
 						<IconEdit class="h-4 w-4" />
 						Edit Event
 					</a>
-
-					<DeleteButton
-						action="delete"
-						message="Are you sure you want to delete this event?"
-						label="Delete Event"
-					/>
 				</div>
 			{/if}
 		</div>
