@@ -8,7 +8,6 @@
 </script>
 
 <Panel
-	mode="light"
 	title="Controllers Online"
 	icon={IconAccountGroup}
 	overflow={controllers.length > 0}
@@ -20,7 +19,7 @@
 			{/each}
 		{:else}
 			<div class="py-2">
-				<span class="p-2 text-sm text-gray-500">No controllers online</span>
+				<span class="p-2 text-sm text-slate-400">No controllers online</span>
 			</div>
 		{/if}
 	</div>

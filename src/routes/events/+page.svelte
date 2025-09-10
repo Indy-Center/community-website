@@ -115,13 +115,13 @@
 										class="inline-flex items-center gap-2 rounded-lg border border-slate-600/50 bg-slate-700/50 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur-sm"
 									>
 										<IconGlobe class="h-4 w-4" />
-										{format(utc(nextEvent.startTime), "MMM d, yyyy 'at' HH:mm")} Zulu
+										{format(utc(nextEvent.startTime), "MMM d, yyyy 'at' HH:mm")} UTC
 									</time>
 									<time
 										class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm font-medium text-sky-300 backdrop-blur-sm"
 									>
 										<IconClock class="h-4 w-4" />
-										{format(nextEvent.startTime, "MMM d, yyyy 'at' HH:mm")} Local
+										{format(nextEvent.startTime, "MMM d, yyyy 'at' HH:mm")} {format(nextEvent.startTime, 'zzz')}
 									</time>
 								</div>
 							{/if}
@@ -140,7 +140,7 @@
 									loading="lazy"
 								/>
 								<!-- Dynamic Badge -->
-								<div class="absolute top-3 left-3">
+								<div class="absolute top-3 right-3">
 									<div class="flex items-center gap-2">
 										{#if !isEventPublished(nextEvent)}
 											<div
@@ -297,11 +297,11 @@
 										<div class="flex flex-col gap-0.5 text-xs">
 											<time class="inline-flex items-center gap-1 text-slate-400">
 												<IconGlobe class="h-3 w-3" />
-												{format(utc(event.startTime), "MMM d 'at' HH:mm")} Z
+												{format(utc(event.startTime), "MMM d 'at' HH:mm")} UTC
 											</time>
 											<time class="inline-flex items-center gap-1 text-sky-300">
 												<IconClock class="h-3 w-3" />
-												{format(event.startTime, "MMM d 'at' HH:mm")} Local
+												{format(event.startTime, "MMM d 'at' HH:mm")} {format(event.startTime, 'zzz')}
 											</time>
 										</div>
 									{/if}

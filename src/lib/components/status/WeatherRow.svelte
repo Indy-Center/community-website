@@ -16,15 +16,23 @@
 
 	function parseMetar(metar: string) {
 		const parts = metar.split(' ');
-		const windMatch = metar.match(/(\d{3})(\d{2,3})(?:G(\d{2,3}))?KT/);
-		const visibilityMatch = metar.match(/(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)SM/);
-		const tempMatch = metar.match(/(M?\d{2})\/(M?\d{2})/);
-		const altimeterMatch = metar.match(/A(\d{4})/);
-		const ceilingMatch = metar.match(/(?:BKN|OVC)(\d{3})/);
-
-		// Parse visibility - handle fractions like "1 1/4SM"
+		
+		// Wind parsing - handle variable winds and calm conditions
+		const windMatch = metar.match(/(\d{3})(\d{2,3})(?:G(\d{2,3}))?KT/) || 
+		                  metar.match(/(VRB)(\d{2,3})(?:G(\d{2,3}))?KT/);
+		const calmMatch = metar.match(/00000KT/);
+		
+		// Visibility parsing - handle various formats including P6SM (greater than 6)
 		let visibility = null;
-		if (visibilityMatch) {
+		const p6smMatch = metar.match(/P6SM/);
+		const visibilityMatch = metar.match(/(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)SM/);
+		const m14smMatch = metar.match(/M1\/4SM/); // Less than 1/4 mile
+		
+		if (p6smMatch) {
+			visibility = 10; // Treat P6SM as 10+ for flight rules
+		} else if (m14smMatch) {
+			visibility = 0.1; // Less than 1/4 mile
+		} else if (visibilityMatch) {
 			const visStr = visibilityMatch[1];
 			if (visStr.includes('/')) {
 				// Handle fractions like "3/4" or "1 1/4"
@@ -44,15 +52,25 @@
 			}
 		}
 
-		// Parse ceiling height (in hundreds of feet)
+		// Temperature and dewpoint
+		const tempMatch = metar.match(/(M?\d{2})\/(M?\d{2})/);
+		
+		// Altimeter setting
+		const altimeterMatch = metar.match(/A(\d{4})/);
+		
+		// Ceiling parsing - look for BKN or OVC layers
+		const ceilingMatch = metar.match(/(?:BKN|OVC)(\d{3})/);
 		const ceiling = ceilingMatch ? parseInt(ceilingMatch[1]) * 100 : null;
 
 		return {
-			wind: windMatch
+			wind: calmMatch 
+				? { direction: '000', speed: '00', gusts: null, calm: true }
+				: windMatch
 				? {
 						direction: windMatch[1],
 						speed: windMatch[2],
-						gusts: windMatch[3]
+						gusts: windMatch[3],
+						variable: windMatch[1] === 'VRB'
 					}
 				: null,
 			visibility,
@@ -64,90 +82,90 @@
 	}
 
 	function getFlightConditions(visibility, ceiling) {
-		// LIFR: Ceiling < 500ft or Visibility < 1SM
-		if ((ceiling !== null && ceiling < 500) || (visibility !== null && visibility < 1)) {
-			return { category: 'LIFR', color: 'text-red-600', bg: 'bg-red-50' };
+		// Determine the most restrictive condition
+		let ceilingCategory = 'VFR';
+		let visibilityCategory = 'VFR';
+
+		// Ceiling categories
+		if (ceiling !== null) {
+			if (ceiling < 500) {
+				ceilingCategory = 'LIFR';
+			} else if (ceiling < 1000) {
+				ceilingCategory = 'IFR';
+			} else if (ceiling <= 3000) {
+				ceilingCategory = 'MVFR';
+			}
 		}
-		// IFR: Ceiling 500-999ft or Visibility 1-2SM
-		if (
-			(ceiling !== null && ceiling >= 500 && ceiling < 1000) ||
-			(visibility !== null && visibility >= 1 && visibility < 3)
-		) {
-			return { category: 'IFR', color: 'text-red-500', bg: 'bg-red-50' };
+
+		// Visibility categories  
+		if (visibility !== null) {
+			if (visibility < 1) {
+				visibilityCategory = 'LIFR';
+			} else if (visibility < 3) {
+				visibilityCategory = 'IFR';
+			} else if (visibility <= 5) {
+				visibilityCategory = 'MVFR';
+			}
 		}
-		// MVFR: Ceiling 1000-3000ft or Visibility 3-5SM
-		if (
-			(ceiling !== null && ceiling >= 1000 && ceiling <= 3000) ||
-			(visibility !== null && visibility >= 3 && visibility <= 5)
-		) {
-			return { category: 'MVFR', color: 'text-blue-600', bg: 'bg-blue-50' };
+
+		// Take the most restrictive condition
+		const categories = ['VFR', 'MVFR', 'IFR', 'LIFR'];
+		const worstCategory = Math.max(
+			categories.indexOf(ceilingCategory),
+			categories.indexOf(visibilityCategory)
+		);
+		const finalCategory = categories[worstCategory];
+
+		// Return appropriate styling for each category
+		switch (finalCategory) {
+			case 'LIFR':
+				return { category: 'LIFR', color: 'text-purple-300', bg: 'bg-purple-500/20 border-purple-500/30' };
+			case 'IFR':
+				return { category: 'IFR', color: 'text-red-300', bg: 'bg-red-500/20 border-red-500/30' };
+			case 'MVFR':
+				return { category: 'MVFR', color: 'text-blue-300', bg: 'bg-blue-500/20 border-blue-500/30' };
+			case 'VFR':
+			default:
+				return { category: 'VFR', color: 'text-green-300', bg: 'bg-green-500/20 border-green-500/30' };
 		}
-		// VFR: Everything else
-		return { category: 'VFR', color: 'text-green-600', bg: 'bg-green-50' };
 	}
 
 	const parsed = $derived(parseMetar(metar));
 	const flightConditions = $derived(getFlightConditions(parsed.visibility, parsed.ceiling));
 </script>
 
-<div class="border-b border-gray-100 last:border-b-0">
-	<button
-		class="flex w-full cursor-pointer items-center justify-between gap-4 px-3 py-2 text-left transition-colors hover:bg-gray-50"
-		onclick={() => (expanded = !expanded)}
+<div
+	class="group relative flex items-center gap-3 rounded border border-slate-700/60 bg-slate-800/60 px-3 py-2 transition-all hover:border-sky-500/30"
+>
+	<!-- Airport code with flight conditions color -->
+	<div
+		class="flex-shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-sm font-bold {flightConditions.color} {flightConditions.bg}"
 	>
-		<div class="flex items-center gap-2">
-			<IconChevronDown
-				class="h-3 w-3 text-gray-500 {expanded
-					? 'rotate-180'
-					: ''} transition-transform duration-200"
-			/>
+		{id}
+	</div>
 
-			<div
-				class="flex-shrink-0 rounded-sm border-1 px-1 py-0.5 font-mono text-sm font-bold {flightConditions.color} {flightConditions.bg}"
-			>
-				{id}
+	<!-- Weather info -->
+	<div class="flex-1 space-y-0.5 text-xs">
+		<!-- Wind -->
+		<div class="flex items-center gap-1">
+			<IconWeatherWindy class="h-3 w-3 text-slate-400" />
+			{#if parsed.wind && !parsed.wind.calm}
+				<span class="font-medium text-slate-200">
+					{#if parsed.wind.variable}<span class="text-yellow-400">VRB</span>{:else}{parsed.wind.direction}°{/if}@<span class="text-sky-300">{parsed.wind.speed}</span>{#if parsed.wind.gusts}<span class="text-orange-400">G{parsed.wind.gusts}</span>{/if}
+				</span>
+			{:else if parsed.wind?.calm}
+				<span class="text-slate-200 font-medium">Calm</span>
+			{/if}
+		</div>
+		
+		<!-- Altimeter -->
+		{#if parsed.altimeter}
+			<div class="flex items-center gap-1">
+				<IconGauge class="h-3 w-3 text-slate-400" />
+				<span class="font-medium text-slate-200">
+					{parsed.altimeter}"
+				</span>
 			</div>
-		</div>
-		<div class="flex flex-wrap items-center gap-3 text-xs">
-			{#if parsed.wind}
-				<div class="flex items-center gap-1 text-gray-700">
-					<IconWeatherWindy class="h-3 w-3 text-gray-500" />
-					<span
-						>{parsed.wind.direction}° {parsed.wind.speed}kt{#if parsed.wind.gusts}<span
-								class="ml-1 text-orange-600">G{parsed.wind.gusts}</span
-							>{/if}</span
-					>
-				</div>
-			{/if}
-			{#if parsed.visibility !== null}
-				<div class="flex items-center gap-1 text-gray-700">
-					<IconEye class="h-3 w-3 text-gray-500" />
-					<span
-						>{parsed.visibility % 1 === 0
-							? parsed.visibility
-							: parsed.visibility.toFixed(2).replace(/\.?0+$/, '')}SM</span
-					>
-				</div>
-			{/if}
-			{#if parsed.temperature}
-				<div class="flex items-center gap-1 text-gray-700">
-					<IconThermometer class="h-3 w-3 text-gray-500" />
-					<span>{parsed.temperature}°C</span>
-				</div>
-			{/if}
-			{#if parsed.altimeter}
-				<div class="flex items-center gap-1 text-gray-700">
-					<IconGauge class="h-3 w-3 text-gray-500" />
-					<span>{parsed.altimeter}"</span>
-				</div>
-			{/if}
-		</div>
-	</button>
-	{#if expanded}
-		<div class="px-3 pb-2">
-			<code class="block rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600"
-				>{metar}</code
-			>
-		</div>
-	{/if}
+		{/if}
+	</div>
 </div>

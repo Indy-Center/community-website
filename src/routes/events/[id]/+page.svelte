@@ -30,6 +30,14 @@
 			<!-- Action Buttons (if user has permissions) -->
 			{#if canManageEvents(data?.roles)}
 				<div class="flex flex-shrink-0 gap-3">
+					<ActionToggle
+						action="?/togglePublish"
+						currentState={event.isPublished}
+						label={event.isPublished ? 'Published' : 'Draft'}
+						icon={event.isPublished ? IconPublish : IconDraft}
+						color="green"
+					/>
+
 					<a
 						href="/events/{event.id}/edit"
 						class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
@@ -44,57 +52,45 @@
 		</div>
 	</div>
 
-	<!-- Main Content Area -->
-	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-		<!-- Event Details - Main Column -->
-		<div class="space-y-8 lg:col-span-2">
-			<!-- Event Banner -->
-			{#if event.bannerUrl}
-				<div
-					class="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm"
-				>
-					<img
-						src={event.bannerUrl}
-						alt="{event.name} banner"
-						class="h-64 w-full object-cover sm:h-80"
-						loading="lazy"
-					/>
-				</div>
-			{/if}
+	<!-- Banner and Event Information -->
+	<div class="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+		<!-- Event Banner -->
+		{#if event.bannerUrl}
+			<div
+				class="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm"
+			>
+				<img
+					src={event.bannerUrl}
+					alt="{event.name} banner"
+					class="h-64 w-full object-cover sm:h-80 lg:h-full"
+					loading="lazy"
+				/>
+			</div>
+		{/if}
 
-			<!-- Event Description -->
-			<Panel title="Event Details" icon={IconTextLong} mode="dark">
+		<!-- Event Information -->
+		<EventDetailsPanel {event} />
+	</div>
+
+	<!-- Description and Positions -->
+	<div class="grid grid-cols-1 gap-8 {event.rosterType !== 'none' ? 'lg:grid-cols-2' : ''}">
+		<!-- Event Description -->
+		<Panel title="Event Details" icon={IconTextLong} mode="dark">
+			<div class="p-8">
+				<div class="prose max-w-none prose-invert">
+					<p class="leading-relaxed whitespace-pre-line text-slate-300">{event.description}</p>
+				</div>
+			</div>
+		</Panel>
+
+		<!-- Event Positions -->
+		{#if event.rosterType !== 'none'}
+			<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
 				<div class="p-8">
-					<div class="prose max-w-none prose-invert">
-						<p class="leading-relaxed whitespace-pre-line text-slate-300">{event.description}</p>
-					</div>
+					<p class="text-slate-400">Position roster coming soon...</p>
 				</div>
 			</Panel>
-
-			<!-- Event Positions (placeholder for future) -->
-			{#if event.rosterType !== 'none'}
-				<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
-					<div class="p-8">
-						<p class="text-slate-400">Position roster coming soon...</p>
-					</div>
-				</Panel>
-			{/if}
-		</div>
-
-		<!-- Sidebar -->
-		<div class="flex flex-col space-y-6">
-			<!-- Event Info Card -->
-			<EventDetailsPanel {event} />
-			{#if canManageEvents(data?.roles)}
-				<ActionToggle
-					action="?/togglePublish"
-					currentState={event.isPublished}
-					label={event.isPublished ? 'Published' : 'Draft'}
-					icon={event.isPublished ? IconPublish : IconDraft}
-					color="green"
-				/>
-			{/if}
-		</div>
+		{/if}
 	</div>
 {:else}
 	<!-- Event Not Found -->

@@ -1,10 +1,32 @@
 <script lang="ts">
 	import Badge from '$lib/components/Badge.svelte';
-	import IconGlobe from '~icons/mdi/earth';
+	import IconAccountGroup from '~icons/mdi/account-group';
+	import IconLifebuoy from '~icons/mdi/lifebuoy';
 
 	let { eventType, size = 'md' }: { eventType: string; size?: 'sm' | 'md' } = $props();
 
-	const label = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+	const config = $derived.by(() => {
+		switch (eventType) {
+			case 'community':
+				return {
+					label: 'Community',
+					icon: IconAccountGroup,
+					color: 'sky' as const
+				};
+			case 'support':
+				return {
+					label: 'Support',
+					icon: IconLifebuoy,
+					color: 'purple' as const
+				};
+			default:
+				return {
+					label: eventType.charAt(0).toUpperCase() + eventType.slice(1),
+					icon: IconAccountGroup,
+					color: 'sky' as const
+				};
+		}
+	});
 </script>
 
-<Badge icon={IconGlobe} {label} {size} color="sky" />
+<Badge icon={config.icon} label={config.label} {size} color={config.color} />

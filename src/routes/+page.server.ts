@@ -4,7 +4,7 @@ import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt } from 'drizzle-orm';
 
 const ARTCC_ID = 'ZID';
-const AIRPORTS = ['KSDF', 'KCVG', 'KIND', 'KCMH', 'KDAY'];
+const AIRPORTS = ['KCMH', 'KCRW', 'KCVG', 'KDAY', 'KEVV', 'KHTS', 'KHUF', 'KIND', 'KLEX', 'KPKB', 'KSDF'];
 
 export const load = async ({ locals }) => {
 	const metars = await fetchMetars(AIRPORTS);
