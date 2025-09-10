@@ -161,7 +161,7 @@
 	</div>
 
 	<!-- Desktop Navigation on the right -->
-	<nav class="hidden space-x-1 md:flex">
+	<nav class="hidden space-x-2 md:flex">
 		{#each links as link}
 			{@const Icon = link.icon}
 			<a

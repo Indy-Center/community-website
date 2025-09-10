@@ -1,5 +1,5 @@
 <script lang="ts">
-	import EventCard from '$lib/components/events/EventCard.svelte';
+	import EventCard from '$lib/components/events/EventListCard.svelte';
 	import WeatherPanel from '$lib/components/status/WeatherPanel.svelte';
 	import ControllersPanel from '$lib/components/status/ControllersPanel.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';

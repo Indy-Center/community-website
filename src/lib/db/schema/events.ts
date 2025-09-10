@@ -4,6 +4,8 @@ import { text } from 'drizzle-orm/sqlite-core';
 import { integer } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
 
+export type Event = typeof eventsTable.$inferSelect;
+
 export const eventsTable = sqliteTable('events', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),

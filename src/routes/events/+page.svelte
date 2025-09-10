@@ -6,6 +6,8 @@
 	import IconGlobe from '~icons/mdi/earth';
 	import IconCreate from '~icons/mdi/plus';
 	import VatsimEventDropdown from '$lib/components/events/VatsimEventDropdown.svelte';
+	import EventTypeBadge from '$lib/components/events/EventTypeBadge.svelte';
+	import RosterTypeBadge from '$lib/components/events/RosterTypeBadge.svelte';
 
 	let { data } = $props();
 	let { events, vatsimEvents } = data;
@@ -92,12 +94,8 @@
 
 							<!-- Event Metadata -->
 							<div class="mb-6 flex flex-wrap items-center gap-3">
-								<span
-									class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
-								>
-									<span class="h-2 w-2 rounded-full bg-sky-400"></span>
-									{nextEvent.type}
-								</span>
+								<EventTypeBadge eventType={nextEvent.type} />
+								<RosterTypeBadge rosterType={nextEvent.rosterType} />
 							</div>
 
 							{#if nextEvent.description}
@@ -214,11 +212,8 @@
 
 								<!-- Event Metadata -->
 								<div class="mb-3 flex flex-wrap gap-2">
-									<span
-										class="inline-flex items-center rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-300"
-									>
-										{event.type}
-									</span>
+									<EventTypeBadge eventType={event.type} />
+									<RosterTypeBadge rosterType={event.rosterType} />
 								</div>
 
 								<!-- Event Time -->

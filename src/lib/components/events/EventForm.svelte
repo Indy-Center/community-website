@@ -146,7 +146,7 @@
 				type="submit"
 				class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
 			>
-				Create Event
+				Save Event
 			</button>
 		</div>
 	</div>

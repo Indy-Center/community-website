@@ -2,12 +2,17 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import ControllerRow from './ControllerRow.svelte';
-	import type { VnasController } from '$lib/types';
+	import type { VnasController } from '$lib/types/vnas';
 
 	let { controllers }: { controllers: VnasController[] } = $props();
 </script>
 
-<Panel title="Controllers Online" icon={IconAccountGroup} overflow={controllers.length > 0}>
+<Panel
+	mode="light"
+	title="Controllers Online"
+	icon={IconAccountGroup}
+	overflow={controllers.length > 0}
+>
 	<div class="grid grid-cols-1 gap-1">
 		{#if controllers.length > 0}
 			{#each controllers as controller}

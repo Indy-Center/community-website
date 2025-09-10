@@ -7,7 +7,7 @@
 	let { metars }: { metars: VatsimMetarResponse } = $props();
 </script>
 
-<Panel title="Weather" icon={IconWeatherCloudy}>
+<Panel title="Weather" icon={IconWeatherCloudy} mode="light">
 	{#each metars as metar}
 		<WeatherRow id={metar.id} metar={metar.metar} />
 	{/each}
