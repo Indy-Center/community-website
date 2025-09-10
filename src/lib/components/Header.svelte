@@ -5,6 +5,7 @@
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import IconCog from '~icons/mdi/cog';
 	import IconCalendar from '~icons/mdi/calendar';
+	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
 	import IconLogout from '~icons/mdi/logout';
 	import IconAccount from '~icons/mdi/account-circle';
@@ -116,7 +117,7 @@
 									<div
 										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
 									>
-										<IconRating class="h-3 w-3" />
+										<IconAirplane class="h-3 w-3" />
 										{data.user.data.vatsim.pilotrating.short}
 									</div>
 								{/if}
@@ -254,7 +255,7 @@
 									<div
 										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
 									>
-										<IconRating class="h-3 w-3" />
+										<IconAirplane class="h-3 w-3" />
 										{data.user.data.vatsim.pilotrating.short}
 									</div>
 								{/if}
