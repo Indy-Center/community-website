@@ -18,6 +18,8 @@ async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 
 // Handle session authentication (no redirects)
 async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
+	event.locals.roles = [];
+
 	const token = event.cookies.get('session');
 	if (!token) {
 		return await resolve(event);

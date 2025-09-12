@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Logo from './Logo.svelte';
+	import UserProfileDropdown from './UserProfileDropdown.svelte';
 	import IconHome from '~icons/mdi/home';
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import IconCog from '~icons/mdi/cog';
@@ -9,9 +10,10 @@
 	import IconRating from '~icons/mdi/radar';
 	import IconLogout from '~icons/mdi/logout';
 	import IconAccount from '~icons/mdi/account-circle';
-	import IconChevronDown from '~icons/mdi/chevron-down';
 	import IconMenu from '~icons/mdi/menu';
 	import IconClose from '~icons/mdi/close';
+	import IconBook from '~icons/mdi/book-open-variant';
+	import IconTools from '~icons/mdi/tools';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from './MembershipBadge.svelte';
 
@@ -19,11 +21,10 @@
 
 	function getFullName(user: User): string {
 		return user.preferredName
-			? `${user.preferredName} ${user.lastName}`
+			? user.preferredName
 			: `${user.firstName} ${user.lastName}`;
 	}
 
-	let showDropdown = $state(false);
 	let showMobileMenu = $state(false);
 
 	const BASE_LINKS = [
@@ -61,11 +62,6 @@
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
 
-	function toggle(event: Event) {
-		event.stopPropagation();
-		showDropdown = !showDropdown;
-	}
-
 	function toggleMobile() {
 		showMobileMenu = !showMobileMenu;
 	}
@@ -74,8 +70,7 @@
 <svelte:document
 	onclick={(e: Event) => {
 		const target = e.target as HTMLElement;
-		if (!target.closest('.user-dropdown') && !target.closest('.mobile-menu-container')) {
-			showDropdown = false;
+		if (!target.closest('.mobile-menu-container')) {
 			showMobileMenu = false;
 		}
 	}}
@@ -88,78 +83,7 @@
 		<a href="/" class="cursor-pointer">
 			<Logo class="h-8 w-auto" />
 		</a>
-		<div class="hidden md:block">
-			{#if data.user}
-				<div class="relative">
-					<button
-						type="button"
-						onclick={toggle}
-						aria-expanded={showDropdown}
-						aria-haspopup="menu"
-						aria-label="User menu"
-						class="flex cursor-pointer items-center space-x-3 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ease-in-out {showDropdown
-							? 'rounded-t-lg rounded-b-none border border-b-0 border-slate-600/30 bg-sky-600/20 text-white'
-							: 'rounded-lg text-gray-300 hover:scale-105 hover:bg-white/10 hover:text-white'}"
-					>
-						<MembershipBadge size="sm" membership={data.user.membership} />
-						<div class="flex items-center space-x-2">
-							<span class="font-medium">{getFullName(data.user)}</span>
-							<div class="flex items-center space-x-1">
-								{#if data.user.data.vatsim.rating.short}
-									<div
-										class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
-									>
-										<IconRating class="h-3 w-3" />
-										{data.user.data.vatsim.rating.short}
-									</div>
-								{/if}
-								{#if data.user.data.vatsim.pilotrating.short}
-									<div
-										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
-									>
-										<IconAirplane class="h-3 w-3" />
-										{data.user.data.vatsim.pilotrating.short}
-									</div>
-								{/if}
-							</div>
-						</div>
-						<IconChevronDown
-							class="h-4 w-4 transition-transform duration-200 {showDropdown ? 'rotate-180' : ''}"
-						/>
-					</button>
-
-					{#if showDropdown}
-						<div
-							role="menu"
-							class="absolute top-full right-0 left-0 z-[9999] rounded-t-none rounded-b-lg border border-t-0 border-slate-600/30 bg-slate-800/95 shadow-xl backdrop-blur-lg"
-							onclick={(e) => e.stopPropagation()}
-							onkeydown={(e) => e.stopPropagation()}
-							tabindex="-1"
-						>
-							<div class="p-3">
-								<a
-									href="/logout"
-									role="menuitem"
-									class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-red-300 transition-colors duration-200 hover:bg-red-600/20 hover:text-red-200"
-								>
-									<IconLogout class="h-4 w-4" />
-									<span>Sign Out</span>
-								</a>
-							</div>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<!-- Login Button for non-authenticated users -->
-				<a
-					href="/login/connect"
-					class="flex cursor-pointer items-center space-x-1.5 rounded-md bg-sky-400/30 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-slate-600/50 hover:text-gray-200"
-				>
-					<IconAccount class="h-5 w-5" />
-					<span>Connect VATSIM Account</span>
-				</a>
-			{/if}
-		</div>
+		<UserProfileDropdown user={data.user} roles={data.roles} />
 	</div>
 
 	<!-- Desktop Navigation on the right -->
@@ -261,14 +185,44 @@
 								{/if}
 							</div>
 
-							<a
-								href="/logout"
-								class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-red-600/30 px-4 py-2 text-sm text-red-300 transition-colors duration-200 hover:border-red-500/50 hover:bg-red-600/20 hover:text-red-200"
-								onclick={() => (showMobileMenu = false)}
-							>
-								<IconLogout class="h-4 w-4" />
-								<span>Sign Out</span>
-							</a>
+							<div class="space-y-2">
+								<a
+									href="/settings"
+									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+									onclick={() => (showMobileMenu = false)}
+								>
+									<IconCog class="h-4 w-4" />
+									<span>Manage Settings</span>
+								</a>
+								<a
+									href="https://wiki.flyindycenter.com"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+									onclick={() => (showMobileMenu = false)}
+								>
+									<IconBook class="h-4 w-4" />
+									<span>Indy Library</span>
+								</a>
+								<a
+									href="https://tools.flyindycenter.com"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+									onclick={() => (showMobileMenu = false)}
+								>
+									<IconTools class="h-4 w-4" />
+									<span>Controller Tools</span>
+								</a>
+								<a
+									href="/logout"
+									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-red-600/30 px-4 py-2 text-sm text-red-300 transition-colors duration-200 hover:border-red-500/50 hover:bg-red-600/20 hover:text-red-200"
+									onclick={() => (showMobileMenu = false)}
+								>
+									<IconLogout class="h-4 w-4" />
+									<span>Sign Out</span>
+								</a>
+							</div>
 						</div>
 					</div>
 				{:else}

@@ -1,38 +1,16 @@
 <script lang="ts">
+	import { parseISO, formatDistanceToNow } from 'date-fns';
 	import IconArrowUp from '~icons/mdi/arrow-up';
 	import IconArrowDown from '~icons/mdi/arrow-down';
-	import IconUnfoldMoreHorizontal from '~icons/mdi/unfold-more-horizontal';
-	import IconChevronDown from '~icons/mdi/chevron-down';
-	import { parseISO } from 'date-fns';
+	import IconTransmissionTower from '~icons/mdi/transmission-tower';
 
 	let { data } = $props();
 
-	const { roster } = data;
+	const { roster, controllers } = data;
 
 	let searchTerm = $state('');
-	let selectedRating = $state('all');
-	let selectedMembership = $state('all');
-	let sortField = $state<string>('last_name');
+	let sortField = $state<string>('name');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
-
-	function formatMembership(membership: string): string {
-		return membership === 'home' ? 'Home' : membership === 'visit' ? 'Visitor' : membership;
-	}
-
-	function handleSort(field: string) {
-		if (sortField === field) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
-			sortField = field;
-			sortDirection = 'asc';
-		}
-	}
-
-	function getRatingOrder(rating: string): number {
-		const ratingOrder = ['OBS', 'S1', 'S2', 'S3', 'C1', 'C3', 'I1', 'I3', 'SUP'];
-		const index = ratingOrder.indexOf(rating);
-		return index === -1 ? 999 : index;
-	}
 
 	function getHighestCertification(certifications: { certification: string }[]) {
 		if (!certifications || certifications.length === 0) return null;
@@ -52,6 +30,12 @@
 		return highest;
 	}
 
+	function getRatingOrder(rating: string): number {
+		const ratingOrder = ['OBS', 'S1', 'S2', 'S3', 'C1', 'C3', 'I1', 'I3', 'SUP'];
+		const index = ratingOrder.indexOf(rating);
+		return index === -1 ? 999 : index;
+	}
+
 	function getCertificationOrder(certification: string | null): number {
 		if (!certification) return -1;
 		const certOrder = ['GND', 'S-TWR', 'TWR', 'APR', 'CTR'];
@@ -59,21 +43,54 @@
 		return index === -1 ? 999 : index;
 	}
 
+	function handleSort(field: string) {
+		if (sortField === field) {
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortField = field;
+			sortDirection = 'asc';
+		}
+	}
+
+	function formatSince(dateString: string): string {
+		const date = parseISO(dateString);
+		return formatDistanceToNow(date, { addSuffix: false });
+	}
+
+	function getOnlineStatus(cid: string) {
+		const onlineController = controllers.find(controller => controller.vatsimData.cid.toString() === cid.toString());
+		
+		if (onlineController) {
+			const primaryPosition = onlineController.positions?.find(pos => pos.isPrimary);
+			return {
+				isOnline: true,
+				callsign: primaryPosition?.defaultCallsign || onlineController.primaryPositionId,
+				frequency: primaryPosition?.frequency,
+				loginTime: parseISO(onlineController.loginTime)
+			};
+		}
+		
+		return { isOnline: false, callsign: null, frequency: null, loginTime: null };
+	}
+
 	let filteredAndSortedRoster = $derived(
 		(() => {
+			if (!data.roster || !Array.isArray(data.roster)) {
+				return [];
+			}
+			
 			// Filter first
 			const filtered = data.roster.filter((member) => {
+				const displayName = member.user?.preferredName 
+					? member.user.preferredName.toLowerCase()
+					: `${member.data.fname} ${member.data.lname}`.toLowerCase();
+				
 				const matchesSearch =
 					searchTerm === '' ||
-					member.data.fname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					member.data.lname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					displayName.includes(searchTerm.toLowerCase()) ||
 					member.data.cid.toString().includes(searchTerm);
 
-				const matchesRating = true;
-				// Remove membership filter since we removed that field
-				const matchesMembership = true;
-
-				return matchesSearch && matchesRating && matchesMembership;
+				return matchesSearch;
 			});
 
 			// Then sort
@@ -81,15 +98,15 @@
 				let aVal: any, bVal: any;
 
 				switch (sortField) {
-					case 'cid':
-						aVal = a.data.cid;
-						bVal = b.data.cid;
+					case 'name':
+						aVal = a.user?.preferredName 
+							? a.user.preferredName.toLowerCase()
+							: a.data.lname.toLowerCase();
+						bVal = b.user?.preferredName 
+							? b.user.preferredName.toLowerCase()
+							: b.data.lname.toLowerCase();
 						break;
-					case 'last_name':
-						aVal = a.data.lname.toLowerCase();
-						bVal = b.data.lname.toLowerCase();
-						break;
-					case 'rating_short':
+					case 'rating':
 						aVal = getRatingOrder(a.data.rating_short);
 						bVal = getRatingOrder(b.data.rating_short);
 						break;
@@ -99,13 +116,19 @@
 						aVal = getCertificationOrder(aHighest?.certification || null);
 						bVal = getCertificationOrder(bHighest?.certification || null);
 						break;
-					case 'facility_joined_at':
+					case 'initials':
+						aVal = (a.user?.operatingInitials || 'ZZZ').toLowerCase();
+						bVal = (b.user?.operatingInitials || 'ZZZ').toLowerCase();
+						break;
+					case 'online':
+						const aOnline = getOnlineStatus(a.data.cid);
+						const bOnline = getOnlineStatus(b.data.cid);
+						aVal = aOnline.isOnline ? 1 : 0;
+						bVal = bOnline.isOnline ? 1 : 0;
+						break;
+					case 'joined':
 						aVal = new Date(a.data.facility_join);
 						bVal = new Date(b.data.facility_join);
-						break;
-					case 'last_activity_at':
-						aVal = new Date(a.data.lastactivity);
-						bVal = new Date(b.data.lastactivity);
 						break;
 					default:
 						return 0;
@@ -128,220 +151,184 @@
 	<p class="mt-2 text-gray-400">The active home and visiting controllers of Indy Center.</p>
 </div>
 
-<!-- Search and Filter Controls -->
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-	<div class="flex max-w-md flex-1">
+
+<!-- Search and Sorting Controls -->
+<div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
+	<!-- Search -->
+	<div class="flex items-center gap-2">
 		<label for="search-input" class="sr-only">Search members by name or CID</label>
 		<input
 			id="search-input"
 			type="text"
 			bind:value={searchTerm}
 			placeholder="Search by name or CID..."
-			class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+			class="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 		/>
-	</div>
-	<div class="flex gap-3">
-		<div class="relative">
-			<div
-				class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400"
+		{#if searchTerm}
+			<button
+				type="button"
+				onclick={() => (searchTerm = '')}
+				class="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 			>
-				<IconChevronDown class="h-4 w-4" aria-hidden="true" />
+				Clear
+			</button>
+		{/if}
+	</div>
+
+	<!-- Sort Controls -->
+	<div class="flex flex-wrap items-center gap-2">
+		<span class="text-sm text-gray-400">Sort by:</span>
+	<button
+		onclick={() => handleSort('name')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'name' ? 'bg-sky-600 border-sky-500' : ''}"
+	>
+		Name
+		{#if sortField === 'name'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	<button
+		onclick={() => handleSort('rating')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'rating' ? 'bg-sky-600 border-sky-500' : ''}"
+	>
+		Rating
+		{#if sortField === 'rating'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	<button
+		onclick={() => handleSort('certification')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'certification' ? 'bg-sky-600 border-sky-500' : ''}"
+	>
+		Certification
+		{#if sortField === 'certification'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	<button
+		onclick={() => handleSort('initials')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'initials' ? 'bg-sky-600 border-sky-500' : ''}"
+	>
+		Initials
+		{#if sortField === 'initials'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	<button
+		onclick={() => handleSort('online')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'online' ? 'bg-green-600 border-green-500' : ''}"
+	>
+		Online
+		{#if sortField === 'online'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	<button
+		onclick={() => handleSort('joined')}
+		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'joined' ? 'bg-sky-600 border-sky-500' : ''}"
+	>
+		Joined
+		{#if sortField === 'joined'}
+			{#if sortDirection === 'asc'}
+				<IconArrowUp class="h-3 w-3" />
+			{:else}
+				<IconArrowDown class="h-3 w-3" />
+			{/if}
+		{/if}
+	</button>
+	</div>
+</div>
+
+<!-- Sleek Card Rows -->
+<div class="space-y-2">
+	{#each filteredAndSortedRoster as member}
+		{@const onlineStatus = getOnlineStatus(member.data.cid)}
+		<div class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline ? 'ring-1 ring-green-500/30 bg-green-950/20' : ''} h-[70px]">
+			<div class="flex items-center h-full px-4 gap-3">
+				<!-- Name (fixed width) -->
+				<div class="w-44 font-semibold text-white truncate">
+					{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+				</div>
+				
+				<!-- CID -->
+				<span class="w-16 text-xs text-gray-400 flex-shrink-0">#{member.data.cid}</span>
+				
+				<!-- Rating -->
+				<span class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
+					{member.data.rating_short}
+				</span>
+
+				<!-- Certification -->
+				<div class="w-12">
+					{#if member.user?.certifications}
+						{@const highestCert = getHighestCertification(member.user.certifications)}
+						{#if highestCert}
+							<span class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white">
+								{highestCert.certification}
+							</span>
+						{/if}
+					{/if}
+				</div>
+
+				<!-- Operating Initials -->
+				<div class="w-12">
+					{#if member.user?.operatingInitials}
+						<span class="inline-flex rounded bg-indigo-600/80 px-2 py-1 text-xs font-mono font-medium text-white">
+							{member.user.operatingInitials}
+						</span>
+					{/if}
+				</div>
+
+				<!-- Online Status -->
+				<div class="flex-1 min-w-0">
+					{#if onlineStatus.isOnline}
+						<div class="inline-flex items-center gap-2 rounded bg-green-600/20 px-3 py-1">
+							<IconTransmissionTower class="h-3 w-3 text-green-400 flex-shrink-0" />
+							<div class="text-xs text-green-400 font-medium min-w-0">
+								<div class="font-mono text-xs">{onlineStatus.callsign} • {onlineStatus.frequency?.toFixed(2)}</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Roles -->
+				<div class="flex gap-1 flex-shrink-0">
+					{#each member.data.roles.filter((role) => role.facility === 'ZID').slice(0, 2) as role}
+						<span class="inline-flex rounded bg-slate-600/60 px-2 py-1 text-xs text-gray-300">
+							{role.role}
+						</span>
+					{/each}
+				</div>
+
+				<!-- Join date -->
+				<div class="w-20 text-right text-xs text-gray-400 flex-shrink-0">
+					{formatSince(member.data.facility_join)}
+				</div>
 			</div>
 		</div>
-	</div>
-</div>
-
-<!-- Results count -->
-<div class="mb-4 text-sm text-gray-400">
-	Showing {filteredAndSortedRoster.length} members
-</div>
-
-<div class="overflow-x-auto rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
-	<table class="w-full text-white" role="table">
-		<caption class="sr-only">
-			Controller roster showing {filteredAndSortedRoster.length} members with their ratings, roles,
-			and activity information. Use the search and filter controls above to narrow the results.
-		</caption>
-		<thead class="bg-slate-700">
-			<tr>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('cid')}
-							>
-								<div class="flex items-center gap-1">
-									CID
-									{#if sortField === 'cid'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('last_name')}
-							>
-								<div class="flex items-center gap-1">
-									Name
-									{#if sortField === 'last_name'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('rating_short')}
-							>
-								<div class="flex items-center gap-1">
-									Rating
-									{#if sortField === 'rating_short'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('certification')}
-							>
-								<div class="flex items-center gap-1">
-									Certification
-									{#if sortField === 'certification'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-							<th
-								class="px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase"
-								>Roles</th
-							>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('facility_joined_at')}
-							>
-								<div class="flex items-center gap-1">
-									Joined
-									{#if sortField === 'facility_joined_at'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-							<th
-								class="cursor-pointer px-4 py-3 text-left text-xs font-semibold tracking-wider text-gray-300 uppercase hover:text-white"
-								onclick={() => handleSort('last_activity_at')}
-							>
-								<div class="flex items-center gap-1">
-									Last Activity
-									{#if sortField === 'last_activity_at'}
-										{#if sortDirection === 'asc'}
-											<IconArrowUp class="h-3 w-3" />
-										{:else}
-											<IconArrowDown class="h-3 w-3" />
-										{/if}
-									{:else}
-										<IconUnfoldMoreHorizontal class="h-3 w-3" />
-									{/if}
-								</div>
-							</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-600">
-						{#each filteredAndSortedRoster as member}
-							<tr class="border-b border-slate-600/50 transition-colors hover:bg-slate-700/30">
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">{member.data.cid}</td>
-								<td class="px-4 py-3 text-sm font-medium whitespace-nowrap text-white">
-									{member.user?.preferredName ? member.user.preferredName : member.data.fname}
-									{member.data.flag_nameprivacy ? member.data.cid : member.data.lname}
-								</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap">
-									<span
-										class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white shadow-sm"
-									>
-										{member.data.rating_short}
-									</span>
-								</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap">
-									{#if member.user?.certifications}
-										{@const highestCert = getHighestCertification(member.user.certifications)}
-										<div class="flex flex-wrap gap-1">
-											<!-- Highest certified certificate -->
-											{#if highestCert}
-												<span
-													class="inline-flex rounded-full bg-emerald-600/90 px-2 py-1 text-xs font-semibold text-white shadow-sm"
-												>
-													{highestCert.certification}
-												</span>
-											{/if}
-
-											<!-- No certificates case -->
-											{#if !highestCert}
-												<span
-													class="inline-flex rounded-full bg-gray-600/80 px-2 py-1 text-xs font-semibold text-gray-400 shadow-sm"
-												>
-													None
-												</span>
-											{/if}
-										</div>
-									{:else}
-										<span
-											class="inline-flex rounded-full bg-gray-600/80 px-2 py-1 text-xs font-semibold text-gray-400 shadow-sm"
-										>
-											None
-										</span>
-									{/if}
-								</td>
-								<td class="px-4 py-3 text-sm">
-									<div class="flex flex-wrap gap-1">
-										{#each member.data.roles.filter((role) => role.facility === 'ZID') as role}
-											<span
-												class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white"
-											>
-												{role.role}
-											</span>
-										{/each}
-									</div>
-								</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">
-									{parseISO(member.data.facility_join).toLocaleDateString()}
-								</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-400">
-									{parseISO(member.data.lastactivity).toLocaleDateString()}
-								</td>
-							</tr>
-						{:else}
-							<tr>
-								<td colspan="6" class="px-4 py-8 text-center text-gray-400">
-									No members found matching your criteria.
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-	</table>
+	{:else}
+		<div class="rounded-lg bg-slate-800/80 p-8 text-center text-gray-400">
+			No controllers found matching your search.
+		</div>
+	{/each}
 </div>

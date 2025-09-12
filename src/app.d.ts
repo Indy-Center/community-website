@@ -16,7 +16,7 @@ declare global {
 			db: Database;
 			user?: UserWithRelations;
 			session?: Session;
-			roles?: string[];
+			roles: string[];
 		}
 	}
 }

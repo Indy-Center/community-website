@@ -2,6 +2,9 @@ import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { usersTable } from '$lib/db/schema/users';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers.js';
+import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
+
+const ARTCC_ID = 'ZID';
 
 type PageData = {
 	roster: (typeof vatsimControllersTable.$inferSelect & {
@@ -12,6 +15,7 @@ type PageData = {
 			  })
 			| null;
 	})[];
+	controllers: any[];
 };
 
 export const load = async ({ locals }): Promise<PageData> => {
@@ -26,5 +30,10 @@ export const load = async ({ locals }): Promise<PageData> => {
 		}
 	});
 
-	return { roster: results };
+	const controllers = await fetchControllers(ARTCC_ID);
+
+	return { 
+		roster: results, 
+		controllers 
+	};
 };
