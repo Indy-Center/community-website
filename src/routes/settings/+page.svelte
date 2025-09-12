@@ -28,7 +28,9 @@
 							<!-- Preferred Name -->
 							<div>
 								<label for="preferredName" class="mb-2 block text-sm font-medium text-gray-300"
-									>Preferred Name {#if $errors.preferredName}<span class="text-red-400">- {$errors.preferredName}</span>{/if}</label
+									>Preferred Name {#if $errors.preferredName}<span class="text-red-400"
+											>- {$errors.preferredName}</span
+										>{/if}</label
 								>
 								<input
 									type="text"
@@ -40,14 +42,16 @@
 									{...$constraints.preferredName}
 								/>
 								<p class="mt-1 text-xs text-gray-500">
-									This will be displayed instead of your first name in most places
+									This will be displayed instead of your full name in most places
 								</p>
 							</div>
 
 							<!-- Pronouns -->
 							<div>
 								<label for="pronouns" class="mb-2 block text-sm font-medium text-gray-300"
-									>Pronouns <span class="text-gray-500">(optional)</span> {#if $errors.pronouns}<span class="text-red-400">- {$errors.pronouns}</span>{/if}</label
+									>Pronouns <span class="text-gray-500">(optional)</span>
+									{#if $errors.pronouns}<span class="text-red-400">- {$errors.pronouns}</span
+										>{/if}</label
 								>
 								<input
 									type="text"
