@@ -163,7 +163,7 @@
 
 
 <!-- Search and Sorting Controls -->
-<div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
+<div class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 	<!-- Search -->
 	<div class="flex items-center gap-2">
 		<label for="search-input" class="sr-only">Search members by name or CID</label>
@@ -172,13 +172,13 @@
 			type="text"
 			bind:value={searchTerm}
 			placeholder="Search by name or CID..."
-			class="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+			class="w-full md:w-64 rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 md:py-2 text-sm text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 		/>
 		{#if searchTerm}
 			<button
 				type="button"
 				onclick={() => (searchTerm = '')}
-				class="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+				class="rounded-lg border border-slate-600 bg-slate-700 px-3 py-3 md:py-2 text-sm text-white hover:bg-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 			>
 				Clear
 			</button>
@@ -186,86 +186,87 @@
 	</div>
 
 	<!-- Sort Controls -->
-	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-sm text-gray-400">Sort by:</span>
-	<button
-		onclick={() => handleSort('name')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'name' ? 'bg-sky-600 border-sky-500' : ''}"
-	>
-		Name
-		{#if sortField === 'name'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
-	<button
-		onclick={() => handleSort('rating')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'rating' ? 'bg-sky-600 border-sky-500' : ''}"
-	>
-		Rating
-		{#if sortField === 'rating'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
-	<button
-		onclick={() => handleSort('certification')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'certification' ? 'bg-sky-600 border-sky-500' : ''}"
-	>
-		Certification
-		{#if sortField === 'certification'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
-	<button
-		onclick={() => handleSort('initials')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'initials' ? 'bg-sky-600 border-sky-500' : ''}"
-	>
-		Initials
-		{#if sortField === 'initials'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
-	<button
-		onclick={() => handleSort('online')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'online' ? 'bg-green-600 border-green-500' : ''}"
-	>
-		Online
-		{#if sortField === 'online'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
-	<button
-		onclick={() => handleSort('joined')}
-		class="flex items-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 {sortField === 'joined' ? 'bg-sky-600 border-sky-500' : ''}"
-	>
-		Joined
-		{#if sortField === 'joined'}
-			{#if sortDirection === 'asc'}
-				<IconArrowUp class="h-3 w-3" />
-			{:else}
-				<IconArrowDown class="h-3 w-3" />
-			{/if}
-		{/if}
-	</button>
+	<div class="w-full md:w-auto">
+		<div class="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2">
+			<button
+				onclick={() => handleSort('name')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'name' ? 'bg-sky-600 border-sky-500' : ''}"
+			>
+				Name
+				{#if sortField === 'name'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+			<button
+				onclick={() => handleSort('rating')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'rating' ? 'bg-sky-600 border-sky-500' : ''}"
+			>
+				Rating
+				{#if sortField === 'rating'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+			<button
+				onclick={() => handleSort('certification')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'certification' ? 'bg-sky-600 border-sky-500' : ''}"
+			>
+				Certification
+				{#if sortField === 'certification'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+			<button
+				onclick={() => handleSort('initials')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'initials' ? 'bg-sky-600 border-sky-500' : ''}"
+			>
+				Initials
+				{#if sortField === 'initials'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+			<button
+				onclick={() => handleSort('online')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'online' ? 'bg-green-600 border-green-500' : ''}"
+			>
+				Online
+				{#if sortField === 'online'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+			<button
+				onclick={() => handleSort('joined')}
+				class="flex items-center justify-center md:justify-start gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 md:py-1 text-xs font-medium text-white transition-all hover:bg-slate-600 cursor-pointer {sortField === 'joined' ? 'bg-sky-600 border-sky-500' : ''}"
+			>
+				Joined
+				{#if sortField === 'joined'}
+					{#if sortDirection === 'asc'}
+						<IconArrowUp class="h-3 w-3" />
+					{:else}
+						<IconArrowDown class="h-3 w-3" />
+					{/if}
+				{/if}
+			</button>
+		</div>
 	</div>
 </div>
 
@@ -273,39 +274,43 @@
 <div class="space-y-2">
 	{#each filteredAndSortedRoster as member}
 		{@const onlineStatus = getOnlineStatus(member.data.cid)}
-		<div class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline ? 'ring-1 ring-green-500/30 bg-green-950/20' : ''} h-[70px]">
-			<div class="flex items-center justify-between h-full px-4">
-				<!-- Left Column: Profile Section -->
-				<div class="flex-1 min-w-0">
-					<!-- Single Row: Name + All Info -->
-					<div class="flex items-center gap-2">
-						<!-- Name with CID -->
-						<div class="font-semibold text-white truncate">
-							{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
-							<span class="font-normal text-gray-400 text-sm">({member.data.cid})</span>
-						</div>
-
-						<!-- Operating Initials -->
+		<div class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline ? 'ring-1 ring-green-500/30 bg-green-950/20' : ''} md:h-[70px] min-h-[70px]">
+			<div class="flex flex-col md:flex-row md:items-center md:justify-between h-full px-4 py-3 md:py-0">
+				<!-- Left Side: Name + All Badges -->
+				<div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+					<!-- OI Space (always reserved) -->
+					<div class="w-10 flex justify-start flex-shrink-0">
 						{#if member.user?.operatingInitials}
 							<Tooltip text="Operating Initials">
-								<span class="inline-flex items-center rounded bg-indigo-600/80 px-2 py-1 text-xs font-mono font-semibold text-white flex-shrink-0">
+								<span class="inline-flex items-center rounded bg-indigo-600/80 px-2 py-1 text-xs font-mono font-semibold text-white">
 									{member.user.operatingInitials}
 								</span>
 							</Tooltip>
 						{/if}
-						
+					</div>
+
+					<!-- Name + Badges Container -->
+					<div class="flex items-center gap-2 min-w-0 flex-wrap">
+						<!-- Name -->
+						<div class="font-semibold text-white min-w-0">
+							<span class="block md:inline">
+								{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+							</span>
+							<span class="font-normal text-gray-400 text-sm ml-1">({member.data.cid})</span>
+						</div>
+
 						<!-- Rating -->
 						<Tooltip text="VATSIM Rating">
-							<span class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
+							<span class="inline-flex items-center justify-center rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
 								{member.data.rating_short}
 							</span>
 						</Tooltip>
-						
-						<!-- Certification -->
+
+						<!-- Certifications -->
 						{#if member.user?.certifications}
 							{@const highestCert = getHighestCertification(member.user.certifications)}
 							{#if highestCert}
-								<span class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white flex-shrink-0">
+								<span class="inline-flex items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
 									{highestCert.certification}
 								</span>
 							{/if}
@@ -323,8 +328,8 @@
 					</div>
 				</div>
 
-				<!-- Right Column: Join Date -->
-				<div class="text-right text-xs text-gray-400 flex-shrink-0 ml-4">
+				<!-- Right Side: Join Date Only -->
+				<div class="text-right md:text-right text-left mt-2 md:mt-0 text-xs text-gray-400 flex-shrink-0 md:ml-4">
 					{formatSince(member.data.facility_join)}
 				</div>
 			</div>
