@@ -3,8 +3,18 @@
 	import IconArrowUp from '~icons/mdi/arrow-up';
 	import IconArrowDown from '~icons/mdi/arrow-down';
 	import IconTransmissionTower from '~icons/mdi/transmission-tower';
+	import Tooltip from '$lib/components/Tooltip.svelte';
 
 	let { data } = $props();
+
+	// Certification name mappings
+	const certificationNames: Record<string, string> = {
+		'GND': 'Ground Certified',
+		'S-TWR': 'Simple Tower Certified', 
+		'TWR': 'Tower Certified',
+		'APR': 'Approach Certified',
+		'CTR': 'Center Certified'
+	};
 
 	const { roster, controllers } = data;
 
@@ -264,64 +274,57 @@
 	{#each filteredAndSortedRoster as member}
 		{@const onlineStatus = getOnlineStatus(member.data.cid)}
 		<div class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline ? 'ring-1 ring-green-500/30 bg-green-950/20' : ''} h-[70px]">
-			<div class="flex items-center h-full px-4 gap-3">
-				<!-- Name (fixed width) -->
-				<div class="w-44 font-semibold text-white truncate">
-					{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}{#if member.user?.operatingInitials}<span class="font-normal text-gray-400"> ({member.user.operatingInitials})</span>{/if}
-				</div>
-				
-				<!-- CID -->
-				<span class="w-16 text-xs text-gray-400 flex-shrink-0">#{member.data.cid}</span>
-				
-				<!-- Rating -->
-				<span class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
-					{member.data.rating_short}
-				</span>
-
-				<!-- Certification -->
-				<div class="w-12">
-					{#if member.user?.certifications}
-						{@const highestCert = getHighestCertification(member.user.certifications)}
-						{#if highestCert}
-							<span class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white">
-								{highestCert.certification}
-							</span>
-						{/if}
-					{/if}
-				</div>
-
-				<!-- Operating Initials -->
-				<div class="w-12">
-					{#if member.user?.operatingInitials}
-						<span class="inline-flex rounded bg-indigo-600/80 px-2 py-1 text-xs font-mono font-medium text-white">
-							{member.user.operatingInitials}
-						</span>
-					{/if}
-				</div>
-
-				<!-- Online Status -->
+			<div class="flex items-center justify-between h-full px-4">
+				<!-- Left Column: Profile Section -->
 				<div class="flex-1 min-w-0">
-					{#if onlineStatus.isOnline}
-						<div class="inline-flex items-center gap-2 rounded bg-green-600/20 px-3 py-1">
-							<IconTransmissionTower class="h-3 w-3 text-green-400 flex-shrink-0" />
-							<div class="text-xs text-green-400 font-medium min-w-0">
-								<div class="font-mono text-xs">{onlineStatus.callsign} • {onlineStatus.frequency?.toFixed(2)}</div>
-							</div>
+					<!-- Single Row: Name + All Info -->
+					<div class="flex items-center gap-2">
+						<!-- Name with CID -->
+						<div class="font-semibold text-white truncate">
+							{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+							<span class="font-normal text-gray-400 text-sm">({member.data.cid})</span>
 						</div>
-					{/if}
+
+						<!-- Operating Initials -->
+						{#if member.user?.operatingInitials}
+							<Tooltip text="Operating Initials">
+								<span class="inline-flex items-center rounded bg-indigo-600/80 px-2 py-1 text-xs font-mono font-semibold text-white flex-shrink-0">
+									{member.user.operatingInitials}
+								</span>
+							</Tooltip>
+						{/if}
+						
+						<!-- Rating -->
+						<Tooltip text="VATSIM Rating">
+							<span class="inline-flex rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white flex-shrink-0">
+								{member.data.rating_short}
+							</span>
+						</Tooltip>
+						
+						<!-- Certification -->
+						{#if member.user?.certifications}
+							{@const highestCert = getHighestCertification(member.user.certifications)}
+							{#if highestCert}
+								<span class="inline-flex rounded bg-emerald-600/80 px-2 py-1 text-xs font-medium text-white flex-shrink-0">
+									{highestCert.certification}
+								</span>
+							{/if}
+						{/if}
+
+						<!-- Online Status -->
+						{#if onlineStatus.isOnline}
+							<div class="inline-flex items-center gap-1 rounded bg-green-600/20 px-2 py-1 flex-shrink-0">
+								<IconTransmissionTower class="h-3 w-3 text-green-400" />
+								<div class="text-xs text-green-400 font-medium font-mono">
+									{onlineStatus.callsign} • {onlineStatus.frequency?.toFixed(2)}
+								</div>
+							</div>
+						{/if}
+					</div>
 				</div>
 
-				<!-- Roles -->
-				<div class="flex gap-1 flex-shrink-0">
-					{#each member.data.roles.filter((role) => role.facility === 'ZID').slice(0, 2) as role}
-						<span class="inline-flex rounded bg-slate-600/60 px-2 py-1 text-xs text-gray-300">
-							{role.role}
-						</span>
-					{/each}
-				</div>
-
-				<!-- Join date -->
-				<div class="w-20 text-right text-xs text-gray-400 flex-shrink-0">
+				<!-- Right Column: Join Date -->
+				<div class="text-right text-xs text-gray-400 flex-shrink-0 ml-4">
 					{formatSince(member.data.facility_join)}
 				</div>
 			</div>
