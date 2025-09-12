@@ -66,6 +66,31 @@
 									Your pronouns will be displayed on your profile
 								</p>
 							</div>
+
+							{#if data.isController}
+								<!-- Operating Initials -->
+								<div>
+									<label for="operatingInitials" class="mb-2 block text-sm font-medium text-gray-300"
+										>Operating Initials
+										{#if $errors.operatingInitials}<span class="text-red-400">- {$errors.operatingInitials}</span
+											>{/if}</label
+									>
+									<input
+										type="text"
+										name="operatingInitials"
+										bind:value={$form.operatingInitials}
+										class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none font-mono"
+										placeholder="e.g., AB, XY"
+										aria-invalid={$errors.operatingInitials ? 'true' : undefined}
+										{...$constraints.operatingInitials}
+										maxlength="2"
+										style="text-transform: uppercase;"
+									/>
+									<p class="mt-1 text-xs text-gray-500">
+										Your 2-letter operating initials for ATC positions (required for controllers)
+									</p>
+								</div>
+							{/if}
 						</div>
 					</div>
 

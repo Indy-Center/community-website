@@ -267,7 +267,7 @@
 			<div class="flex items-center h-full px-4 gap-3">
 				<!-- Name (fixed width) -->
 				<div class="w-44 font-semibold text-white truncate">
-					{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+					{member.user?.preferredName ? member.user.preferredName : `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}{#if member.user?.operatingInitials}<span class="font-normal text-gray-400"> ({member.user.operatingInitials})</span>{/if}
 				</div>
 				
 				<!-- CID -->
