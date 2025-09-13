@@ -340,13 +340,26 @@
 						<!-- Certifications -->
 						{#if member.user?.certifications}
 							{@const highestCert = getHighestCertification(member.user.certifications)}
-							{#if highestCert}
+							{#if highestCert && !(highestCert.certification === 'CTR' && member.user?.endorsements && member.user.endorsements.length > 0)}
 								<div
 									class=" items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
 								>
 									{highestCert.certification}
 								</div>
 							{/if}
+						{/if}
+
+						<!-- Endorsements -->
+						{#if member.user?.endorsements && member.user.endorsements.length > 0}
+							{#each member.user.endorsements as endorsement}
+								<Tooltip text="Center Endorsement">
+									<div
+										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
+									>
+										{endorsement.endorsement}
+									</div>
+								</Tooltip>
+							{/each}
 						{/if}
 
 						<!-- Online Status -->

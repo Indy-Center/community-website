@@ -29,3 +29,6 @@ vite.config.ts.timestamp-*
 # Task runner temporary files
 task-runner/wrangler-*.jsonc
 task-runner/worker-configuration.d.ts
+
+# Scripts folder (temporary data generation)
+scripts/

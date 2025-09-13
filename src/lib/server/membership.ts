@@ -4,6 +4,7 @@ import type { Database } from './db';
 import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
 import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
+import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { addMonths } from 'date-fns';
 import { userRolesTable } from '$lib/db/schema/roles';
 import { Role } from '$lib/utils/permissions';
@@ -148,6 +149,14 @@ function determineCertificationsFromRating(rating: string) {
  * - and so on. If fail, set to null.
  */
 async function grantOperatingInitials(db: Database, user: User) {
+	// Check if user already has operating initials
+	if (user.operatingInitials) {
+		console.log(
+			`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials}`
+		);
+		return;
+	}
+
 	const existingInitials = (
 		await db.query.usersTable.findMany({
 			where: isNotNull(usersTable.operatingInitials),
@@ -231,9 +240,11 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 	);
 
 	// Apply the roles to the user
-	await db
-		.insert(userRolesTable)
-		.values(rolesToApply.map((role) => ({ userId: user.id, role: role })));
+	if (rolesToApply.length > 0) {
+		await db
+			.insert(userRolesTable)
+			.values(rolesToApply.map((role) => ({ userId: user.id, role: role })));
+	}
 }
 
 export async function syncMemberships(db: Database) {
