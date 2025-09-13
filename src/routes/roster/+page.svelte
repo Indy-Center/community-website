@@ -340,12 +340,14 @@
 						<!-- Certifications -->
 						{#if member.user?.certifications}
 							{@const highestCert = getHighestCertification(member.user.certifications)}
-							{#if highestCert && !(highestCert.certification === 'CTR' && member.user?.endorsements && member.user.endorsements.length > 0)}
-								<div
-									class=" items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
-								>
-									{highestCert.certification}
-								</div>
+							{#if highestCert}
+								<Tooltip text={certificationNames[highestCert.certification] || `${highestCert.certification} Certified`}>
+									<div
+										class=" items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
+									>
+										{highestCert.certification}
+									</div>
+								</Tooltip>
 							{/if}
 						{/if}
 
