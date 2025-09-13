@@ -341,7 +341,10 @@
 						{#if member.user?.certifications}
 							{@const highestCert = getHighestCertification(member.user.certifications)}
 							{#if highestCert}
-								<Tooltip text={certificationNames[highestCert.certification] || `${highestCert.certification} Certified`}>
+								<Tooltip
+									text={certificationNames[highestCert.certification] ||
+										`${highestCert.certification} Certified`}
+								>
 									<div
 										class=" items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>
@@ -354,7 +357,7 @@
 						<!-- Endorsements -->
 						{#if member.user?.endorsements && member.user.endorsements.length > 0}
 							{#each member.user.endorsements as endorsement}
-								<Tooltip text="Center Endorsement">
+								<Tooltip text="Tier 2 Center Endorsement">
 									<div
 										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>
