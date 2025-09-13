@@ -9,6 +9,8 @@
 
 	// Certification name mappings
 	const certificationNames: Record<string, string> = {
+		DEL: 'Clearance Delivery Certified',
+		'S-GND': 'Simple Ground Certified',
 		GND: 'Ground Certified',
 		'S-TWR': 'Simple Tower Certified',
 		TWR: 'Tower Certified',
@@ -338,20 +340,18 @@
 						</Tooltip>
 
 						<!-- Certifications -->
-						{#if member.user?.certifications}
-							{@const highestCert = getHighestCertification(member.user.certifications)}
-							{#if highestCert}
+						{#if member.user?.certifications && member.user.certifications.length > 0}
+							{#each member.user.certifications as cert}
 								<Tooltip
-									text={certificationNames[highestCert.certification] ||
-										`${highestCert.certification} Certified`}
+									text={certificationNames[cert.certification] || `${cert.certification} Certified`}
 								>
 									<div
-										class=" items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
+										class="items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>
-										{highestCert.certification}
+										{cert.certification}
 									</div>
 								</Tooltip>
-							{/if}
+							{/each}
 						{/if}
 
 						<!-- Endorsements -->
