@@ -5,26 +5,17 @@
 	import IconTransmissionTower from '~icons/mdi/transmission-tower';
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import type { VnasController } from '$lib/types/vnas.js';
+	import {
+		CERTIFICATIONS,
+		ENDORSEMENTS,
+		getCertificationDisplayName,
+		getEndorsementDisplayName,
+		getCertificationOrder
+	} from '$lib/config/certifications';
 
 	let { data } = $props();
 
-	// Certification name mappings
-	const certificationNames: Record<string, string> = {
-		DEL: 'Clearance Delivery Certified',
-		'S-GND': 'Simple Ground Certified',
-		GND: 'Ground Certified',
-		'S-TWR': 'Simple Tower Certified',
-		TWR: 'Tower Certified',
-		APR: 'Approach Certified',
-		CTR: 'Center Certified'
-	};
-
-	// Endorsement name mappings
-	const endorsementNames: Record<string, string> = {
-		'T2-CTR': 'Tier 2 Center Endorsement',
-		'APR-SOLO': 'Approach Solo Endorsement',
-		'TWR-SOLO': 'Tower Solo Endorsement'
-	};
+	// Display names now handled by centralized configuration
 
 	const { roster, controllers } = data;
 
@@ -59,7 +50,7 @@
 	function getHighestCertification(certifications: { certification: string }[]) {
 		if (!certifications || certifications.length === 0) return null;
 
-		const certOrder = ['GND', 'S-TWR', 'TWR', 'APR', 'CTR'];
+		const certOrder = ['GND', 'TWR', 'APP', 'CTR'];
 		let highest = null;
 		let highestIndex = -1;
 
@@ -80,12 +71,7 @@
 		return index === -1 ? 999 : index;
 	}
 
-	function getCertificationOrder(certification: string | null): number {
-		if (!certification) return -1;
-		const certOrder = ['GND', 'S-TWR', 'TWR', 'APR', 'CTR'];
-		const index = certOrder.indexOf(certification);
-		return index === -1 ? 999 : index;
-	}
+	// getCertificationOrder function imported from centralized config
 
 	function handleSort(field: string) {
 		if (sortField === field) {
@@ -223,7 +209,7 @@
 		<button
 			type="button"
 			onclick={() => (showOnlineOnly = !showOnlineOnly)}
-			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 md:py-2 {showOnlineOnly
+			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all focus:ring-2 focus:ring-sky-500 focus:outline-none md:py-2 {showOnlineOnly
 				? 'border-green-500 bg-green-600 text-white'
 				: 'border-slate-600 bg-slate-700 text-white hover:bg-slate-600'}"
 		>
@@ -309,7 +295,7 @@
 						{#if member.user?.certifications && member.user.certifications.length > 0}
 							{#each member.user.certifications as cert}
 								<Tooltip
-									text={certificationNames[cert.certification] || `${cert.certification} Certified`}
+									text={getCertificationDisplayName(cert.certification)}
 								>
 									<div
 										class="items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
@@ -323,7 +309,9 @@
 						<!-- Endorsements -->
 						{#if member.user?.endorsements && member.user.endorsements.length > 0}
 							{#each member.user.endorsements as endorsement}
-								<Tooltip text={endorsementNames[endorsement.endorsement] || endorsement.endorsement}>
+								<Tooltip
+									text={getEndorsementDisplayName(endorsement.endorsement)}
+								>
 									<div
 										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>

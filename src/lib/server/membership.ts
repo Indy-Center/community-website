@@ -4,10 +4,10 @@ import type { Database } from './db';
 import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
 import { usersTable } from '$lib/db/schema/users';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { addMonths } from 'date-fns';
 import { userRolesTable } from '$lib/db/schema/roles';
 import { Role } from '$lib/utils/permissions';
+import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
@@ -77,7 +77,7 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 	);
 
 	// Grant Certificates
-	await grantInitialCertifications(db, user);
+	await grantInitialCertificationsAndEndorsements(db, user);
 
 	await grantOperatingInitials(db, user);
 
@@ -88,12 +88,14 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 	);
 }
 
-async function grantInitialCertifications(db: Database, user: User) {
+async function grantInitialCertificationsAndEndorsements(db: Database, user: User) {
 	console.log(
 		`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
-	const certifications = determineCertificationsFromRating(user.data.vatsim.rating.short);
+	const { certifications, endorsements } = determineCertificationsAndEndorsementsFromRating(
+		user.data.vatsim.rating.short
+	);
 
 	if (certifications.length > 0) {
 		const result = await db
@@ -111,36 +113,50 @@ async function grantInitialCertifications(db: Database, user: User) {
 		console.log(
 			`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
-	} else {
+	}
+
+	if (endorsements.length > 0) {
+		const result = await db
+			.insert(userEndorsementsTable)
+			.values(
+				endorsements.map((endorsement) => ({
+					userId: user.id,
+					endorsement: endorsement,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					expiresAt: addMonths(new Date(), 6)
+				}))
+			)
+			.onConflictDoNothing()
+			.returning();
 		console.log(
-			`No initial certificates found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+			`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
 }
 
 /**
- * Initial certifications are determined based on your VATSIM Rating.
+ * Initial certifications and some endorsements are determined based on your VATSIM Rating.
  *
  * @param rating
  * @returns
  */
-function determineCertificationsFromRating(rating: string) {
+function determineCertificationsAndEndorsementsFromRating(rating: string) {
 	switch (rating) {
 		case 'S1':
-			return ['S-GND'];
+			return { certifications: ['DEL'], endorsements: ['S-GND'] };
 		case 'S2':
-			return ['TWR'];
+			return { certifications: ['TWR'], endorsements: [] };
 		case 'S3':
-			return ['APR'];
 		case 'C1':
 		case 'C2':
 		case 'C3':
 		case 'I1':
 		case 'I2':
 		case 'I3':
-			return ['CTR'];
+			return { certifications: ['APP'], endorsements: [] };
 		default:
-			return [];
+			return { certifications: [], endorsements: [] };
 	}
 }
 

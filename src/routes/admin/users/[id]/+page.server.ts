@@ -32,7 +32,7 @@ export const load = async ({ params, locals }) => {
 };
 
 export const actions = {
-	toggleCertification: async ({ request, locals, params }) => {
+	setCertification: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
 			return fail(403, { message: 'Unauthorized' });
 		}
@@ -41,40 +41,56 @@ export const actions = {
 		const formData = await request.formData();
 		const certification = formData.get('certification') as string;
 
-		if (!certification) {
-			return fail(400, { message: 'Certification is required' });
-		}
-
 		try {
-			// Check if the certification exists
-			const existingCert = await locals.db.query.userCertificationsTable.findFirst({
-				where: and(
-					eq(userCertificationsTable.userId, id),
-					eq(userCertificationsTable.certification, certification)
-				)
+			// Get current certification to check if we need to remove T2-CTR endorsement
+			const currentCert = await locals.db.query.userCertificationsTable.findFirst({
+				where: eq(userCertificationsTable.userId, id)
 			});
 
-			if (existingCert) {
-				// Remove certification
+			// Remove all existing certifications for this user
+			await locals.db.delete(userCertificationsTable).where(eq(userCertificationsTable.userId, id));
+
+			// Remove T2-CTR endorsement if user had CTR and is changing to something else
+			if (currentCert?.certification === 'CTR' && certification !== 'CTR') {
 				await locals.db
-					.delete(userCertificationsTable)
+					.delete(userEndorsementsTable)
 					.where(
 						and(
-							eq(userCertificationsTable.userId, id),
-							eq(userCertificationsTable.certification, certification)
+							eq(userEndorsementsTable.userId, id),
+							eq(userEndorsementsTable.endorsement, 'T2-CTR')
 						)
 					);
-			} else {
-				// Add certification
+			}
+
+			// Add new certification (if not empty string)
+			if (certification) {
 				await locals.db.insert(userCertificationsTable).values({
 					userId: id,
 					certification: certification
 				});
+
+				// If setting CTR certification, also add T2-CTR endorsement
+				if (certification === 'CTR') {
+					// Check if T2-CTR endorsement already exists to avoid duplicates
+					const existingEndorsement = await locals.db.query.userEndorsementsTable.findFirst({
+						where: and(
+							eq(userEndorsementsTable.userId, id),
+							eq(userEndorsementsTable.endorsement, 'T2-CTR')
+						)
+					});
+
+					if (!existingEndorsement) {
+						await locals.db.insert(userEndorsementsTable).values({
+							userId: id,
+							endorsement: 'T2-CTR'
+						});
+					}
+				}
 			}
 
 			return { success: true };
 		} catch (error) {
-			return fail(500, { message: 'Failed to toggle certification' });
+			return fail(500, { message: 'Failed to set certification' });
 		}
 	},
 
