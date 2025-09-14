@@ -1,4 +1,5 @@
 import { feedbackTable } from '$lib/db/schema/feedback';
+import { notifyDiscordOfFeedbackStatusChange } from '$lib/server/discord';
 import { isAdmin } from '$lib/utils/permissions';
 import { redirect, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -36,14 +37,16 @@ export const actions = {
 		}
 
 		try {
-			await locals.db
+			const [feedback] = await locals.db
 				.update(feedbackTable)
 				.set({
 					status: 'approved',
 					updatedAt: new Date()
 				})
-				.where(eq(feedbackTable.id, feedbackId));
+				.where(eq(feedbackTable.id, feedbackId))
+				.returning();
 
+			await notifyDiscordOfFeedbackStatusChange(locals.db, feedback, locals.user);
 			return { success: true };
 		} catch (error) {
 			return fail(500, { message: 'Failed to approve feedback' });
@@ -63,14 +66,16 @@ export const actions = {
 		}
 
 		try {
-			await locals.db
+			const [feedback] = await locals.db
 				.update(feedbackTable)
 				.set({
 					status: 'rejected',
 					updatedAt: new Date()
 				})
-				.where(eq(feedbackTable.id, feedbackId));
+				.where(eq(feedbackTable.id, feedbackId))
+				.returning();
 
+			await notifyDiscordOfFeedbackStatusChange(locals.db, feedback, locals.user);
 			return { success: true };
 		} catch (error) {
 			return fail(500, { message: 'Failed to reject feedback' });
