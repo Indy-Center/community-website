@@ -69,6 +69,11 @@
 		return formatDistanceToNow(date, { addSuffix: false });
 	}
 
+	function formatFrequency(frequency: number): string {
+		// Convert frequency from format like 132300000 to 132.300
+		return (frequency / 1000000).toFixed(3);
+	}
+
 	function getOnlineStatus(cid: string) {
 		const onlineController = controllers.find(
 			(controller) => controller.vatsimData.cid.toString() === cid.toString()
@@ -372,7 +377,9 @@
 							<div class="flex items-center justify-center gap-1 rounded bg-green-600/20 px-2 py-1">
 								<IconTransmissionTower class="h-3 w-3 text-green-400" />
 								<div class="font-mono text-xs font-medium text-green-400">
-									{onlineStatus.callsign} • {onlineStatus.frequency?.toFixed(2)}
+									{onlineStatus.callsign} • {onlineStatus.frequency
+										? formatFrequency(onlineStatus.frequency)
+										: 'N/A'}
 								</div>
 							</div>
 						{/if}
