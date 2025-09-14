@@ -6,19 +6,7 @@ import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 
 const ARTCC_ID = 'ZID';
 
-type PageData = {
-	roster: (typeof vatsimControllersTable.$inferSelect & {
-		user:
-			| (typeof usersTable.$inferSelect & {
-					certifications: (typeof userCertificationsTable.$inferSelect)[];
-					endorsements: (typeof userEndorsementsTable.$inferSelect)[];
-			  })
-			| null;
-	})[];
-	controllers: any[];
-};
-
-export const load = async ({ locals }): Promise<PageData> => {
+export const load = async ({ locals }) => {
 	const results = await locals.db.query.vatsimControllersTable.findMany({
 		with: {
 			user: {
@@ -32,8 +20,8 @@ export const load = async ({ locals }): Promise<PageData> => {
 
 	const controllers = await fetchControllers(ARTCC_ID);
 
-	return { 
-		roster: results, 
-		controllers 
+	return {
+		roster: results,
+		controllers
 	};
 };

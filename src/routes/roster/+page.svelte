@@ -4,6 +4,7 @@
 	import IconArrowDown from '~icons/mdi/arrow-down';
 	import IconTransmissionTower from '~icons/mdi/transmission-tower';
 	import Tooltip from '$lib/components/Tooltip.svelte';
+	import type { VnasController } from '$lib/types/vnas.js';
 
 	let { data } = $props();
 
@@ -75,7 +76,7 @@
 	}
 
 	function getOnlineStatus(cid: string) {
-		const onlineController = controllers.find(
+		const onlineController: VnasController | undefined = controllers.find(
 			(controller) => controller.vatsimData.cid.toString() === cid.toString()
 		);
 
@@ -140,8 +141,8 @@
 						bVal = (b.user?.operatingInitials || 'ZZZ').toLowerCase();
 						break;
 					case 'online':
-						const aOnline = getOnlineStatus(a.data.cid);
-						const bOnline = getOnlineStatus(b.data.cid);
+						const aOnline = getOnlineStatus(a.data.cid.toString());
+						const bOnline = getOnlineStatus(b.data.cid.toString());
 						aVal = aOnline.isOnline ? 1 : 0;
 						bVal = bOnline.isOnline ? 1 : 0;
 						break;
@@ -299,7 +300,7 @@
 <!-- Sleek Card Rows -->
 <div class="space-y-2">
 	{#each filteredAndSortedRoster as member}
-		{@const onlineStatus = getOnlineStatus(member.data.cid)}
+		{@const onlineStatus = getOnlineStatus(member.data.cid.toString())}
 		<div
 			class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline
 				? 'bg-green-950/20 ring-1 ring-green-500/30'

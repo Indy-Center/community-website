@@ -15,6 +15,7 @@ export type VnasVatsimData = {
 	realName: string;
 	controllerInfo: string;
 	userRating: string;
+	callsign: string;
 	loginTime: string;
 };
 
