@@ -5,7 +5,7 @@
 		color = 'sky',
 		size = 'md'
 	}: {
-		icon: any;
+		icon?: any;
 		label?: string;
 		color?: 'sky' | 'purple' | 'green' | 'red' | 'orange' | 'yellow' | 'blue' | 'gray';
 		size?: 'sm' | 'md';
@@ -33,7 +33,9 @@
 		color
 	]} font-medium backdrop-blur-sm"
 >
-	<Icon class="h-4 w-4" />
+	{#if Icon}
+		<Icon class="h-4 w-4" />
+	{/if}
 	{#if label}
 		{label}
 	{/if}

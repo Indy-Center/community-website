@@ -1,12 +1,12 @@
 <script lang="ts">
 	import '../app.css';
 	import Header from '$lib/components/Header.svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	let { children, data } = $props();
 
 	// Check if current page is home
-	let isHomePage = $derived($page.url.pathname === '/');
+	let isHomePage = $derived(page.url.pathname === '/');
 </script>
 
 <svelte:head>

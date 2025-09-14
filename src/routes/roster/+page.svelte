@@ -19,6 +19,13 @@
 		CTR: 'Center Certified'
 	};
 
+	// Endorsement name mappings
+	const endorsementNames: Record<string, string> = {
+		'T2-CTR': 'Tier 2 Center Endorsement',
+		'APR-SOLO': 'Approach Solo Endorsement',
+		'TWR-SOLO': 'Tower Solo Endorsement'
+	};
+
 	const { roster, controllers } = data;
 
 	let searchTerm = $state('');
@@ -316,7 +323,7 @@
 						<!-- Endorsements -->
 						{#if member.user?.endorsements && member.user.endorsements.length > 0}
 							{#each member.user.endorsements as endorsement}
-								<Tooltip text="Tier 2 Center Endorsement">
+								<Tooltip text={endorsementNames[endorsement.endorsement] || endorsement.endorsement}>
 									<div
 										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>

@@ -5,6 +5,7 @@ import * as events from '$lib/db/schema/events';
 import * as endorsements from '$lib/db/schema/endorsements';
 import * as vatsimControllers from '$lib/db/schema/vatsimControllers';
 import * as roles from '$lib/db/schema/roles';
+import * as feedback from '$lib/db/schema/feedback';
 
 // Properly typed schema object
 const schema = {
@@ -13,7 +14,8 @@ const schema = {
 	...events,
 	...endorsements,
 	...vatsimControllers,
-	...roles
+	...roles,
+	...feedback
 };
 
 // Export the properly typed database instance
