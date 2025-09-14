@@ -53,6 +53,9 @@ export async function syncUserMembership(db: Database, user: User) {
 		console.log(`User ${user.id} is no longer a controller.`);
 		// Do leaving controller processing
 		await processLeavingController(db, user);
+	} else if (controller && user.membership === 'controller') {
+		console.log(`User ${user.id} is already a controller. Processing role updates.`);
+		await grantRoles(db, user, controller);
 	}
 
 	console.log(`Membership sync for user ${user.id} complete.`);
@@ -124,7 +127,7 @@ async function grantInitialCertifications(db: Database, user: User) {
 function determineCertificationsFromRating(rating: string) {
 	switch (rating) {
 		case 'S1':
-			return ['GND'];
+			return ['S-GND'];
 		case 'S2':
 			return ['TWR'];
 		case 'S3':
@@ -298,6 +301,15 @@ export async function syncMemberships(db: Database) {
 	}
 
 	console.log(`Promoted ${usersToPromote.length} users from community to controller`);
+
+	// Now do role sync for all controllers
+	const usersToSync = await db.query.usersTable.findMany({
+		where: eq(usersTable.membership, 'controller')
+	});
+
+	for (const user of usersToSync) {
+		await syncUserMembership(db, user);
+	}
 	console.log('Bulk membership sync complete');
 }
 
