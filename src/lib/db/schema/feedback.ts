@@ -2,6 +2,8 @@ import { relations, sql } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
 
+export type Feedback = typeof feedbackTable.$inferSelect;
+
 export const feedbackTable = sqliteTable('feedback', {
 	id: text('id').primaryKey(),
 	submitterId: text('submitter_id').notNull(),

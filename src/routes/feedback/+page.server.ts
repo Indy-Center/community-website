@@ -6,6 +6,7 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { eq } from 'drizzle-orm';
 import { usersTable } from '$lib/db/schema/users.js';
+import { notifyDiscordOfFeedback } from '$lib/server/discord';
 
 export const load = async ({ locals, params, url }) => {
 	const form = await superValidate(zod4(feedbackSchema));
@@ -42,16 +43,21 @@ export const actions = {
 		}
 
 		console.log(`Saving new feedback for controller "${form.data.controllerId}"`);
-		await locals.db.insert(feedbackTable).values({
-			id: crypto.randomUUID(),
-			submitterId: locals.user.id,
-			controllerId: form.data.controllerId,
-			rating: form.data.rating,
-			status: form.data.status,
-			position: form.data.position,
-			callsign: form.data.callsign,
-			feedback: form.data.feedback
-		});
+		const [feedback] = await locals.db
+			.insert(feedbackTable)
+			.values({
+				id: crypto.randomUUID(),
+				submitterId: locals.user.id,
+				controllerId: form.data.controllerId,
+				rating: form.data.rating,
+				status: form.data.status,
+				position: form.data.position,
+				callsign: form.data.callsign,
+				feedback: form.data.feedback
+			})
+			.returning();
+
+		await notifyDiscordOfFeedback(locals.db, feedback);
 
 		return redirect(302, `/feedback`);
 	}
