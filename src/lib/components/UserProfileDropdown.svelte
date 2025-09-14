@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import IconCog from '~icons/mdi/cog';
 	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
@@ -148,7 +149,7 @@
 	{:else}
 		<!-- Login Button for non-authenticated users -->
 		<a
-			href="/login/connect"
+			href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
 			class="flex cursor-pointer items-center space-x-1.5 rounded-md bg-sky-400/30 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-sky-500/40 hover:text-gray-100"
 		>
 			<IconAccount class="h-5 w-5" />

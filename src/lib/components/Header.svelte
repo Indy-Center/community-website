@@ -14,15 +14,14 @@
 	import IconClose from '~icons/mdi/close';
 	import IconBook from '~icons/mdi/book-open-variant';
 	import IconTools from '~icons/mdi/tools';
+	import IconMessage from '~icons/mdi/message';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from './MembershipBadge.svelte';
 
 	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
 
 	function getFullName(user: User): string {
-		return user.preferredName
-			? user.preferredName
-			: `${user.firstName} ${user.lastName}`;
+		return user.preferredName ? user.preferredName : `${user.firstName} ${user.lastName}`;
 	}
 
 	let showMobileMenu = $state(false);
@@ -34,6 +33,11 @@
 			icon: IconHome
 		},
 		{
+			label: 'Feedback',
+			href: '/feedback',
+			icon: IconMessage
+		},
+		{
 			label: 'Events',
 			href: '/events',
 			icon: IconCalendar
@@ -42,6 +46,19 @@
 			label: 'Roster',
 			href: '/roster',
 			icon: IconAccountGroup
+		}
+	];
+
+	const EXTERNAL_LINKS = [
+		{
+			label: 'Tools',
+			href: 'https://tools.flyindycenter.com',
+			icon: IconTools
+		},
+		{
+			label: 'Library',
+			href: 'https://wiki.flyindycenter.com',
+			icon: IconBook
 		}
 	];
 
@@ -87,22 +104,42 @@
 	</div>
 
 	<!-- Desktop Navigation on the right -->
-	<nav class="hidden space-x-2 md:flex">
-		{#each links as link}
-			{@const Icon = link.icon}
-			<a
-				href={link.href}
-				class="relative flex cursor-pointer items-center space-x-2 rounded-lg border-b-2 border-transparent px-4 py-2 text-sm font-medium transition-all duration-200 ease-in-out
-				{isActive(link.href)
-					? 'border-sky-400 bg-sky-600/20 text-white shadow-lg'
-					: 'text-gray-300 hover:scale-105 hover:bg-white/10 hover:text-white'}"
-				aria-current={isActive(link.href) ? 'page' : undefined}
-			>
-				<Icon class="h-4 w-4" aria-hidden="true" />
-				<span>{link.label}</span>
-			</a>
-		{/each}
-	</nav>
+	<div class="hidden md:flex items-center space-x-6">
+		<!-- Main Navigation -->
+		<nav class="flex space-x-2">
+			{#each links as link}
+				{@const Icon = link.icon}
+				<a
+					href={link.href}
+					class="relative flex cursor-pointer items-center space-x-2 rounded-lg border-b-2 border-transparent px-4 py-2 text-sm font-medium transition-all duration-200 ease-in-out
+					{isActive(link.href)
+						? 'border-sky-400 bg-sky-600/20 text-white shadow-lg'
+						: 'text-gray-300 hover:scale-105 hover:bg-white/10 hover:text-white'}"
+					aria-current={isActive(link.href) ? 'page' : undefined}
+				>
+					<Icon class="h-4 w-4" aria-hidden="true" />
+					<span>{link.label}</span>
+				</a>
+			{/each}
+		</nav>
+
+		<!-- Quick Links -->
+		<div class="flex items-center space-x-1 border-l border-slate-600/30 pl-4">
+			{#each EXTERNAL_LINKS as link}
+				{@const Icon = link.icon}
+				<a
+					href={link.href}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="flex cursor-pointer items-center space-x-1 rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors duration-200 hover:text-white hover:bg-slate-700/50"
+					title={link.label}
+				>
+					<Icon class="h-4 w-4" aria-hidden="true" />
+					<span class="hidden lg:inline">{link.label}</span>
+				</a>
+			{/each}
+		</div>
+	</div>
 
 	<!-- Mobile Menu Button -->
 	<button
@@ -152,6 +189,24 @@
 					</a>
 				{/each}
 
+				<!-- Quick Links Section -->
+				<div class="mt-3 border-t border-slate-600/30 pt-3">
+					<div class="mb-2 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Quick Links</div>
+					{#each EXTERNAL_LINKS as link}
+						{@const Icon = link.icon}
+						<a
+							href={link.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="flex cursor-pointer items-center space-x-3 rounded-lg px-4 py-2 text-sm font-medium text-gray-400 transition-colors duration-200 hover:bg-slate-700/30 hover:text-white"
+							onclick={() => (showMobileMenu = false)}
+						>
+							<Icon class="h-4 w-4" />
+							<span>{link.label}</span>
+						</a>
+					{/each}
+				</div>
+
 				<!-- User Info Section -->
 				{#if data.user}
 					<div class="mt-3 border-t border-slate-600/30 pt-3">
@@ -195,26 +250,6 @@
 									<span>Manage Settings</span>
 								</a>
 								<a
-									href="https://wiki.flyindycenter.com"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
-									onclick={() => (showMobileMenu = false)}
-								>
-									<IconBook class="h-4 w-4" />
-									<span>Indy Library</span>
-								</a>
-								<a
-									href="https://tools.flyindycenter.com"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
-									onclick={() => (showMobileMenu = false)}
-								>
-									<IconTools class="h-4 w-4" />
-									<span>Controller Tools</span>
-								</a>
-								<a
 									href="/logout"
 									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-red-600/30 px-4 py-2 text-sm text-red-300 transition-colors duration-200 hover:border-red-500/50 hover:bg-red-600/20 hover:text-red-200"
 									onclick={() => (showMobileMenu = false)}
@@ -229,7 +264,7 @@
 					<!-- Connect VATSIM Account for non-authenticated users -->
 					<div class="mt-3 border-t border-slate-600/30 pt-3">
 						<a
-							href="/login/connect"
+							href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
 							class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-sky-500/30 bg-sky-600/40 px-4 py-3 text-sm font-medium text-white transition-colors duration-200 hover:border-sky-400/50 hover:bg-sky-500/50"
 							onclick={() => (showMobileMenu = false)}
 						>

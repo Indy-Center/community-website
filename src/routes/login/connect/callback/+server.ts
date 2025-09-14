@@ -115,10 +115,16 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 	const session = await createSession(sessionToken, user.id, locals.db);
 	setSessionTokenCookie(cookies, sessionToken, session.expiresAt);
 
+	// Get return URL from cookie, default to '/'
+	const returnUrl = cookies.get('connect_return_url') || '/';
+
+	// Clear the return URL cookie
+	cookies.delete('connect_return_url', { path: '/' });
+
 	return new Response(null, {
 		status: 302,
 		headers: {
-			Location: '/'
+			Location: returnUrl
 		}
 	});
 }

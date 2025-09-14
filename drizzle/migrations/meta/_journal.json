@@ -15,6 +15,13 @@
       "when": 1757461406212,
       "tag": "0001_colossal_agent_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1757824093422,
+      "tag": "0002_lively_gambit",
+      "breakpoints": true
     }
   ]
 }
