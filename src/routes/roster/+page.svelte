@@ -50,7 +50,7 @@
 	function getHighestCertification(certifications: { certification: string }[]) {
 		if (!certifications || certifications.length === 0) return null;
 
-		const certOrder = ['GND', 'TWR', 'APP', 'CTR'];
+		const certOrder = CERTIFICATIONS.map(cert => cert.key);
 		let highest = null;
 		let highestIndex = -1;
 
