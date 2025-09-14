@@ -22,8 +22,32 @@
 	const { roster, controllers } = data;
 
 	let searchTerm = $state('');
-	let sortField = $state<string>('name');
+	let sortField = $state<string>('initials');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
+	let showOnlineOnly = $state(false);
+
+	const SORT_OPTIONS = [
+		{
+			key: 'initials',
+			label: 'Initials'
+		},
+		{
+			key: 'name',
+			label: 'Name'
+		},
+		{
+			key: 'rating',
+			label: 'Rating'
+		},
+		{
+			key: 'certification',
+			label: 'Certification'
+		},
+		{
+			key: 'joined',
+			label: 'Joined'
+		}
+	];
 
 	function getHighestCertification(certifications: { certification: string }[]) {
 		if (!certifications || certifications.length === 0) return null;
@@ -110,7 +134,10 @@
 					displayName.includes(searchTerm.toLowerCase()) ||
 					member.data.cid.toString().includes(searchTerm);
 
-				return matchesSearch;
+				const onlineStatus = getOnlineStatus(member.data.cid.toString());
+				const matchesOnlineFilter = !showOnlineOnly || onlineStatus.isOnline;
+
+				return matchesSearch && matchesOnlineFilter;
 			});
 
 			// Then sort
@@ -121,10 +148,10 @@
 					case 'name':
 						aVal = a.user?.preferredName
 							? a.user.preferredName.toLowerCase()
-							: a.data.lname.toLowerCase();
+							: a.data.fname.toLowerCase();
 						bVal = b.user?.preferredName
 							? b.user.preferredName.toLowerCase()
-							: b.data.lname.toLowerCase();
+							: b.data.fname.toLowerCase();
 						break;
 					case 'rating':
 						aVal = getRatingOrder(a.data.rating_short);
@@ -139,12 +166,6 @@
 					case 'initials':
 						aVal = (a.user?.operatingInitials || 'ZZZ').toLowerCase();
 						bVal = (b.user?.operatingInitials || 'ZZZ').toLowerCase();
-						break;
-					case 'online':
-						const aOnline = getOnlineStatus(a.data.cid.toString());
-						const bOnline = getOnlineStatus(b.data.cid.toString());
-						aVal = aOnline.isOnline ? 1 : 0;
-						bVal = bOnline.isOnline ? 1 : 0;
 						break;
 					case 'joined':
 						aVal = new Date(a.data.facility_join);
@@ -171,9 +192,9 @@
 	<p class="mt-2 text-gray-400">The active home and visiting controllers of Indy Center.</p>
 </div>
 
-<!-- Search and Sorting Controls -->
+<!-- Search, Filter and Sorting Controls -->
 <div class="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-	<!-- Search -->
+	<!-- Search and Online Filter -->
 	<div class="flex items-center gap-2">
 		<label for="search-input" class="sr-only">Search members by name or CID</label>
 		<input
@@ -192,107 +213,39 @@
 				Clear
 			</button>
 		{/if}
+		<button
+			type="button"
+			onclick={() => (showOnlineOnly = !showOnlineOnly)}
+			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-sky-500 md:py-2 {showOnlineOnly
+				? 'border-green-500 bg-green-600 text-white'
+				: 'border-slate-600 bg-slate-700 text-white hover:bg-slate-600'}"
+		>
+			<IconTransmissionTower class="h-4 w-4" />
+			{showOnlineOnly ? 'Online Only' : 'All'}
+		</button>
 	</div>
 
 	<!-- Sort Controls -->
 	<div class="w-full md:w-auto">
 		<div class="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2">
-			<button
-				onclick={() => handleSort('name')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'name'
-					? 'border-sky-500 bg-sky-600'
-					: ''}"
-			>
-				Name
-				{#if sortField === 'name'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
+			{#each SORT_OPTIONS as option}
+				<button
+					onclick={() => handleSort(option.key)}
+					class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
+					option.key
+						? 'border-sky-500 bg-sky-600'
+						: ''}"
+				>
+					{option.label}
+					{#if sortField === option.key}
+						{#if sortDirection === 'asc'}
+							<IconArrowUp class="h-3 w-3" />
+						{:else}
+							<IconArrowDown class="h-3 w-3" />
+						{/if}
 					{/if}
-				{/if}
-			</button>
-			<button
-				onclick={() => handleSort('rating')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'rating'
-					? 'border-sky-500 bg-sky-600'
-					: ''}"
-			>
-				Rating
-				{#if sortField === 'rating'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
-					{/if}
-				{/if}
-			</button>
-			<button
-				onclick={() => handleSort('certification')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'certification'
-					? 'border-sky-500 bg-sky-600'
-					: ''}"
-			>
-				Certification
-				{#if sortField === 'certification'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
-					{/if}
-				{/if}
-			</button>
-			<button
-				onclick={() => handleSort('initials')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'initials'
-					? 'border-sky-500 bg-sky-600'
-					: ''}"
-			>
-				Initials
-				{#if sortField === 'initials'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
-					{/if}
-				{/if}
-			</button>
-			<button
-				onclick={() => handleSort('online')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'online'
-					? 'border-green-500 bg-green-600'
-					: ''}"
-			>
-				Online
-				{#if sortField === 'online'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
-					{/if}
-				{/if}
-			</button>
-			<button
-				onclick={() => handleSort('joined')}
-				class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-				'joined'
-					? 'border-sky-500 bg-sky-600'
-					: ''}"
-			>
-				Joined
-				{#if sortField === 'joined'}
-					{#if sortDirection === 'asc'}
-						<IconArrowUp class="h-3 w-3" />
-					{:else}
-						<IconArrowDown class="h-3 w-3" />
-					{/if}
-				{/if}
-			</button>
+				</button>
+			{/each}
 		</div>
 	</div>
 </div>
