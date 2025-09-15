@@ -35,8 +35,8 @@
 	}
 
 	// Use centralized configuration
-	const availableCertifications = CERTIFICATIONS.map(cert => cert.key);
-	const availableEndorsements = ENDORSEMENTS.map(endorsement => endorsement.key);
+	const availableCertifications = CERTIFICATIONS.map((cert) => cert.key);
+	const availableEndorsements = ENDORSEMENTS.map((endorsement) => endorsement.key);
 
 	function hasCertification(cert: string): boolean {
 		return user.certifications.some((c) => c.certification === cert);
@@ -65,9 +65,20 @@
 
 <div class="space-y-6">
 	<!-- Header -->
-	<div>
-		<h1 class="text-2xl font-semibold text-white">{getDisplayName(user)}</h1>
-		<p class="text-sm text-gray-400">Manage user certifications and endorsements</p>
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-2xl font-semibold text-white">{getDisplayName(user)}</h1>
+			<p class="text-sm text-gray-400">Manage user certifications and endorsements</p>
+		</div>
+		<div>
+			<a
+				href={`https://www.vatusa.net/mgt/controller/${user.cid}`}
+				target="_blank"
+				class="rounded-lg bg-sky-600/20 px-4 py-2 text-sm text-sky-300 hover:bg-sky-600/30"
+			>
+				Manage in VATUSA
+			</a>
+		</div>
 	</div>
 
 	<!-- User Information Card -->
@@ -128,7 +139,9 @@
 	<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-6">
 		<div class="mb-4">
 			<h2 class="text-lg font-semibold text-white">Certification Level</h2>
-			<p class="text-sm text-gray-400">Select the user's current certification level (only one allowed)</p>
+			<p class="text-sm text-gray-400">
+				Select the user's current certification level (only one allowed)
+			</p>
 		</div>
 
 		<form
@@ -155,7 +168,8 @@
 						onchange={handleCertificationChange}
 					/>
 					<div
-						class="w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all duration-200 {getCurrentCertification() === null
+						class="w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all duration-200 {getCurrentCertification() ===
+						null
 							? 'border-red-500 bg-red-600/20 text-red-300'
 							: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
 					>
@@ -182,7 +196,9 @@
 								: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
 						>
 							<div class="font-semibold">{cert}</div>
-							<div class="text-xs text-gray-400">{CERTIFICATIONS.find(c => c.key === cert)?.displayName}</div>
+							<div class="text-xs text-gray-400">
+								{CERTIFICATIONS.find((c) => c.key === cert)?.displayName}
+							</div>
 						</div>
 					</label>
 				{/each}
@@ -220,7 +236,9 @@
 							: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
 					>
 						<div class="font-semibold">{endorsement}</div>
-						<div class="text-xs text-gray-400">{ENDORSEMENTS.find(e => e.key === endorsement)?.displayName}</div>
+						<div class="text-xs text-gray-400">
+							{ENDORSEMENTS.find((e) => e.key === endorsement)?.displayName}
+						</div>
 					</button>
 				</form>
 			{/each}
