@@ -73,21 +73,27 @@
 
 		// For main facility, just return its own positions (filtered)
 		if (selectedFacility.isMainFacility) {
-			const filteredPositions = getFacilityOwnPositions(selectedFacility)
-				.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+			const filteredPositions = getFacilityOwnPositions(selectedFacility).filter(
+				(pos) => !isPositionAlreadyAdded(getPositionId(pos))
+			);
 
-			return filteredPositions.length > 0 ? [{
-				facility: selectedFacility,
-				positions: filteredPositions
-			}] : [];
+			return filteredPositions.length > 0
+				? [
+						{
+							facility: selectedFacility,
+							positions: filteredPositions
+						}
+					]
+				: [];
 		}
 
 		// For child facilities, group positions by their source facility
 		const groups = [];
 
 		// Add the main facility's positions (filtered)
-		const mainPositions = getFacilityOwnPositions(selectedFacility)
-			.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+		const mainPositions = getFacilityOwnPositions(selectedFacility).filter(
+			(pos) => !isPositionAlreadyAdded(getPositionId(pos))
+		);
 		if (mainPositions.length > 0) {
 			groups.push({
 				facility: selectedFacility,
@@ -99,8 +105,9 @@
 		const addChildPositions = (facility: any) => {
 			if (facility.childFacilities) {
 				facility.childFacilities.forEach((child: any) => {
-					const childPositions = getFacilityOwnPositions(child)
-						.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+					const childPositions = getFacilityOwnPositions(child).filter(
+						(pos) => !isPositionAlreadyAdded(getPositionId(pos))
+					);
 					if (childPositions.length > 0) {
 						groups.push({
 							facility: child,
@@ -117,7 +124,9 @@
 	};
 
 	const getStarredPositions = (facility: any, isMainFacility: boolean = false): any[] => {
-		const positions = isMainFacility ? getFacilityOwnPositions(facility) : getAllPositions(facility);
+		const positions = isMainFacility
+			? getFacilityOwnPositions(facility)
+			: getAllPositions(facility);
 		return positions.filter((pos) => pos.starred && !isPositionAlreadyAdded(getPositionId(pos)));
 	};
 
@@ -131,8 +140,9 @@
 	};
 
 	const addStarredPositionsForFacility = (facility: any) => {
-		const starredPositions = getFacilityOwnPositions(facility)
-			.filter((pos) => pos.starred && !isPositionAlreadyAdded(getPositionId(pos)));
+		const starredPositions = getFacilityOwnPositions(facility).filter(
+			(pos) => pos.starred && !isPositionAlreadyAdded(getPositionId(pos))
+		);
 		starredPositions.forEach((pos) => {
 			const positionId = getPositionId(pos);
 			selectedPositions.add(positionId);
@@ -174,7 +184,7 @@
 	};
 
 	const isPositionAlreadyAdded = (positionId: string): boolean => {
-		return eventPositions.some(eventPos => eventPos.position === positionId);
+		return eventPositions.some((eventPos) => eventPos.position === positionId);
 	};
 
 	const getUserDisplayName = (user: any) => {
@@ -214,8 +224,8 @@
 	const getPositionCallsign = (positionId: string) => {
 		const posInfo = getPositionInfo(positionId);
 		// If we have position info, return the callsign
-		if (posInfo?.callsign) {
-			return posInfo.callsign;
+		if (posInfo?.radioName) {
+			return posInfo.radioName;
 		}
 		// Fallback for main facility positions that might use defaultCallsign
 		if (posInfo?.defaultCallsign) {
@@ -334,10 +344,10 @@
 										<div class="flex items-center gap-3">
 											<div>
 												<div class="text-lg font-semibold text-white">
-													{posInfo?.radioName || posInfo?.name || getPositionCallsign(position.position)}
+													{posInfo?.radioName}
 												</div>
 												<div class="text-sm text-slate-400">
-													{getPositionCallsign(position.position)}
+													{posInfo?.name}
 												</div>
 											</div>
 											{#if isPositionPrimary(position.position)}
@@ -417,9 +427,11 @@
 											const positionToRemove = formData.get('position') as string;
 
 											return async ({ result, update }) => {
-													if (result.type === 'success') {
+												if (result.type === 'success') {
 													// Manually remove from local state
-													eventPositions = eventPositions.filter(p => p.position !== positionToRemove);
+													eventPositions = eventPositions.filter(
+														(p) => p.position !== positionToRemove
+													);
 													await update();
 												}
 											};
@@ -468,7 +480,11 @@
 <Modal title="Add Positions" bind:this={modal}>
 	<div class="flex h-[70vh] max-h-[600px] w-[90vw] max-w-[1000px]">
 		<!-- Facility Sidebar -->
-		<div class="flex w-1/2 flex-col {selectedFacility ? 'border-r border-slate-600' : ''} bg-slate-800/60">
+		<div
+			class="flex w-1/2 flex-col {selectedFacility
+				? 'border-r border-slate-600'
+				: ''} bg-slate-800/60"
+		>
 			<div class="flex-1 overflow-y-auto p-6">
 				<h3 class="mb-6 text-sm font-semibold tracking-wider text-slate-300 uppercase">
 					Facilities
@@ -485,7 +501,9 @@
 								onclick={() =>
 									(selectedFacility = selectedFacility === facility.id ? null : facility.id)}
 							>
-								<span class="break-words text-white {facility.isMainFacility ? 'font-medium' : ''}">{facility.name}</span>
+								<span class="break-words text-white {facility.isMainFacility ? 'font-medium' : ''}"
+									>{facility.name}</span
+								>
 								<div class="text-xs text-slate-400">
 									{getStarredPositions(facility, facility.isMainFacility).length} starred positions
 								</div>
@@ -530,11 +548,13 @@
 							{#each getPositionsGroupedByFacility(facility) as group}
 								{#if !facility.isMainFacility}
 									<div class="mb-4">
-										<div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-600">
-											<h4 class="text-sm font-medium text-slate-300 uppercase tracking-wider">
+										<div
+											class="mb-3 flex items-center justify-between border-b border-slate-600 pb-2"
+										>
+											<h4 class="text-sm font-medium tracking-wider text-slate-300 uppercase">
 												{group.facility.name}
 											</h4>
-											{#if group.positions.some(pos => pos.starred)}
+											{#if group.positions.some((pos) => pos.starred)}
 												<button
 													type="button"
 													class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
@@ -558,20 +578,22 @@
 														? 'border-sky-500 bg-sky-500/10'
 														: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
 												>
-													<div class="flex items-center gap-3 min-w-0 flex-1">
+													<div class="flex min-w-0 flex-1 items-center gap-3">
 														<div class="min-w-0">
 															<div class="flex items-center gap-1.5">
-																<span class="font-mono font-semibold text-white text-sm">{position.callsign || position.defaultCallsign || positionId}</span>
+																<span class="font-mono text-sm font-semibold text-white"
+																	>{position.radioName}</span
+																>
 																{#if position.starred}
-																	<IconStar class="h-3 w-3 text-yellow-400 flex-shrink-0" />
+																	<IconStar class="h-3 w-3 flex-shrink-0 text-yellow-400" />
 																{/if}
 															</div>
-															<div class="text-xs text-slate-400 truncate">{position.name}</div>
+															<div class="truncate text-xs text-slate-400">{position.name}</div>
 														</div>
 													</div>
 													<button
 														type="button"
-														class="rounded px-2 py-1 text-xs font-medium transition-colors flex-shrink-0 {selectedPositions.has(
+														class="flex-shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors {selectedPositions.has(
 															positionId
 														)
 															? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
@@ -595,20 +617,22 @@
 													? 'border-sky-500 bg-sky-500/10'
 													: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
 											>
-												<div class="flex items-center gap-3 min-w-0 flex-1">
+												<div class="flex min-w-0 flex-1 items-center gap-3">
 													<div class="min-w-0">
 														<div class="flex items-center gap-1.5">
-															<span class="font-mono font-semibold text-white text-sm">{position.callsign || position.defaultCallsign || positionId}</span>
+															<span class="font-mono text-sm font-semibold text-white"
+																>{position.radioName}</span
+															>
 															{#if position.starred}
-																<IconStar class="h-3 w-3 text-yellow-400 flex-shrink-0" />
+																<IconStar class="h-3 w-3 flex-shrink-0 text-yellow-400" />
 															{/if}
 														</div>
-														<div class="text-xs text-slate-400 truncate">{position.name}</div>
+														<div class="truncate text-xs text-slate-400">{position.name}</div>
 													</div>
 												</div>
 												<button
 													type="button"
-													class="rounded px-2 py-1 text-xs font-medium transition-colors flex-shrink-0 {selectedPositions.has(
+													class="flex-shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors {selectedPositions.has(
 														positionId
 													)
 														? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
@@ -659,7 +683,7 @@
 			return async ({ result, update }) => {
 				if (result.type === 'success') {
 					// Manually add new positions to local state
-					const positionsToAdd = newPositions.map(position => ({
+					const positionsToAdd = newPositions.map((position) => ({
 						position,
 						eventId: event.id,
 						userId: null,

@@ -55,25 +55,6 @@
 		return allPositions.find((pos: any) => pos.id === positionId) || null;
 	};
 
-	const getPositionDisplayName = (positionId: string) => {
-		const posInfo = getPositionInfo(positionId);
-		return posInfo?.radioName || posInfo?.positionName || positionId;
-	};
-
-	const getPositionCallsign = (positionId: string) => {
-		const posInfo = getPositionInfo(positionId);
-		// If we have position info, return the callsign
-		if (posInfo?.callsign) {
-			return posInfo.callsign;
-		}
-		// Fallback for main facility positions that might use defaultCallsign
-		if (posInfo?.defaultCallsign) {
-			return posInfo.defaultCallsign;
-		}
-		// Final fallback to position ID
-		return positionId;
-	};
-
 	const getUserDisplayName = (user: any) => {
 		return user.preferredName || `${user.firstName} ${user.lastName}`;
 	};
@@ -224,10 +205,10 @@
 											<div class="flex items-center justify-between rounded-lg bg-slate-700/30 p-4">
 												<div class="flex-1">
 													<div class="font-semibold text-white">
-														{getPositionDisplayName(position.position)}
+														{getPositionInfo(position.position).radioName}
 													</div>
 													<div class="text-sm text-slate-400">
-														{getPositionCallsign(position.position)}
+														{getPositionInfo(position.position).name}
 													</div>
 												</div>
 
@@ -361,14 +342,18 @@
 <!-- Position Request Modal -->
 <Modal title="Request Position" bind:this={positionRequestModal}>
 	<div class="w-[500px] max-w-[90vw]">
-		<form method="POST" action="?/requestPosition" use:enhance={() => {
-			return async ({ result }) => {
-				if (result.type === 'success') {
-					positionRequestModal?.close();
-					window.location.reload();
-				}
-			};
-		}}>
+		<form
+			method="POST"
+			action="?/requestPosition"
+			use:enhance={() => {
+				return async ({ result }) => {
+					if (result.type === 'success') {
+						positionRequestModal?.close();
+						window.location.reload();
+					}
+				};
+			}}
+		>
 			<div class="px-6 py-4">
 				<div>
 					<label for="comments" class="mb-3 block text-sm font-semibold text-white">
@@ -388,13 +373,13 @@
 				<button
 					type="button"
 					onclick={() => positionRequestModal?.close()}
-					class="rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700 cursor-pointer"
+					class="cursor-pointer rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700"
 				>
 					Cancel
 				</button>
 				<button
 					type="submit"
-					class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sky-700 cursor-pointer"
+					class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sky-700"
 				>
 					<IconPlus class="h-4 w-4" />
 					Submit Request

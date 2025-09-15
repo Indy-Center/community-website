@@ -1,4 +1,8 @@
-import { eventsTable, eventPositionsTable, eventPositionRequestsTable } from '$lib/db/schema/events';
+import {
+	eventsTable,
+	eventPositionsTable,
+	eventPositionRequestsTable
+} from '$lib/db/schema/events';
 import { eq, not } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import { canManage, canManageEvents, Role } from '$lib/utils/permissions';

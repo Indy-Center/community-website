@@ -76,11 +76,6 @@
 		<div class="flex flex-shrink-0 items-center gap-2">
 			{#if primaryPosition}
 				<div
-					class="rounded-sm border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 font-mono text-xs text-blue-300"
-				>
-					{controller.vatsimData.callsign || '--'}
-				</div>
-				<div
 					class="rounded-sm border border-slate-500/30 bg-slate-500/20 px-1.5 py-0.5 font-mono text-xs text-slate-300"
 				>
 					{formatFrequency(primaryPosition.frequency)}

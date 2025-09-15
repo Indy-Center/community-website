@@ -50,7 +50,7 @@
 	function getHighestCertification(certifications: { certification: string }[]) {
 		if (!certifications || certifications.length === 0) return null;
 
-		const certOrder = CERTIFICATIONS.map(cert => cert.key);
+		const certOrder = CERTIFICATIONS.map((cert) => cert.key);
 		let highest = null;
 		let highestIndex = -1;
 
@@ -101,7 +101,7 @@
 			const primaryPosition = onlineController.positions?.find((pos) => pos.isPrimary);
 			return {
 				isOnline: true,
-				callsign: primaryPosition?.defaultCallsign || onlineController.primaryPositionId,
+				callsign: primaryPosition?.radioName,
 				frequency: primaryPosition?.frequency,
 				loginTime: parseISO(onlineController.loginTime)
 			};
@@ -294,9 +294,7 @@
 						<!-- Certifications -->
 						{#if member.user?.certifications && member.user.certifications.length > 0}
 							{#each member.user.certifications as cert}
-								<Tooltip
-									text={getCertificationDisplayName(cert.certification)}
-								>
+								<Tooltip text={getCertificationDisplayName(cert.certification)}>
 									<div
 										class="items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>
@@ -309,9 +307,7 @@
 						<!-- Endorsements -->
 						{#if member.user?.endorsements && member.user.endorsements.length > 0}
 							{#each member.user.endorsements as endorsement}
-								<Tooltip
-									text={getEndorsementDisplayName(endorsement.endorsement)}
-								>
+								<Tooltip text={getEndorsementDisplayName(endorsement.endorsement)}>
 									<div
 										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
 									>
