@@ -43,7 +43,9 @@
 		<a href="/" class="cursor-pointer">
 			<Logo class="h-8 w-auto" />
 		</a>
-		<NavigationLinks user={data.user} roles={data.roles} />
+		<div class="hidden md:block">
+			<NavigationLinks user={data.user} roles={data.roles} />
+		</div>
 	</div>
 
 	<!-- Desktop Navigation on the right -->
