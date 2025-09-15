@@ -41,15 +41,100 @@
 		return [...(facility.positions || [])];
 	};
 
+	const getMajorFacilities = () => {
+		if (!artccInformation) return [];
+
+		const facilities = [];
+
+		// Add main facility
+		const mainFacility = {
+			...artccInformation.facility,
+			isMainFacility: true
+		};
+		facilities.push(mainFacility);
+
+		// Add only immediate child facilities (no recursion) and sort alphabetically
+		if (artccInformation.facility.childFacilities) {
+			const childFacilities = artccInformation.facility.childFacilities
+				.map((child: any) => ({
+					...child,
+					isMainFacility: false
+				}))
+				.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+			facilities.push(...childFacilities);
+		}
+
+		return facilities;
+	};
+
+	const getPositionsGroupedByFacility = (selectedFacility: any) => {
+		if (!selectedFacility) return [];
+
+		// For main facility, just return its own positions (filtered)
+		if (selectedFacility.isMainFacility) {
+			const filteredPositions = getFacilityOwnPositions(selectedFacility)
+				.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+
+			return filteredPositions.length > 0 ? [{
+				facility: selectedFacility,
+				positions: filteredPositions
+			}] : [];
+		}
+
+		// For child facilities, group positions by their source facility
+		const groups = [];
+
+		// Add the main facility's positions (filtered)
+		const mainPositions = getFacilityOwnPositions(selectedFacility)
+			.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+		if (mainPositions.length > 0) {
+			groups.push({
+				facility: selectedFacility,
+				positions: mainPositions
+			});
+		}
+
+		// Recursively add positions from child facilities (filtered)
+		const addChildPositions = (facility: any) => {
+			if (facility.childFacilities) {
+				facility.childFacilities.forEach((child: any) => {
+					const childPositions = getFacilityOwnPositions(child)
+						.filter(pos => !isPositionAlreadyAdded(getPositionId(pos)));
+					if (childPositions.length > 0) {
+						groups.push({
+							facility: child,
+							positions: childPositions
+						});
+					}
+					addChildPositions(child);
+				});
+			}
+		};
+
+		addChildPositions(selectedFacility);
+		return groups;
+	};
+
 	const getStarredPositions = (facility: any, isMainFacility: boolean = false): any[] => {
 		const positions = isMainFacility ? getFacilityOwnPositions(facility) : getAllPositions(facility);
-		return positions.filter((pos) => pos.starred);
+		return positions.filter((pos) => pos.starred && !isPositionAlreadyAdded(getPositionId(pos)));
 	};
 
 	const addAllStarredPositions = (facility: any, isMainFacility: boolean = false) => {
 		const starredPositions = getStarredPositions(facility, isMainFacility);
 		starredPositions.forEach((pos) => {
 			const positionId = pos.defaultCallsign || pos.id;
+			selectedPositions.add(positionId);
+		});
+		selectedPositions = new Set(selectedPositions);
+	};
+
+	const addStarredPositionsForFacility = (facility: any) => {
+		const starredPositions = getFacilityOwnPositions(facility)
+			.filter((pos) => pos.starred && !isPositionAlreadyAdded(getPositionId(pos)));
+		starredPositions.forEach((pos) => {
+			const positionId = getPositionId(pos);
 			selectedPositions.add(positionId);
 		});
 		selectedPositions = new Set(selectedPositions);
@@ -86,6 +171,10 @@
 
 	const getPositionId = (position: any): string => {
 		return position.defaultCallsign || position.id;
+	};
+
+	const isPositionAlreadyAdded = (positionId: string): boolean => {
+		return eventPositions.some(eventPos => eventPos.position === positionId);
 	};
 
 	const getUserDisplayName = (user: any) => {
@@ -385,41 +474,8 @@
 					Facilities
 				</h3>
 
-				<!-- Main Facility -->
-				<div class="mb-2">
-					<div
-						class="group flex items-start gap-2 rounded-lg p-3 transition-colors hover:bg-slate-600/50"
-					>
-						<button
-							class="min-w-0 flex-1 text-left"
-							onclick={() =>
-								(selectedFacility =
-									selectedFacility === artccInformation.facility.id
-										? null
-										: artccInformation.facility.id)}
-						>
-							<span class="font-medium break-words text-white"
-								>{artccInformation.facility.name}</span
-							>
-							<div class="text-xs text-slate-400">
-								{getStarredPositions(artccInformation.facility, true).length} starred positions
-							</div>
-						</button>
-						<button
-							type="button"
-							class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
-							onclick={(e) => {
-								e.stopPropagation();
-								addAllStarredPositions(artccInformation.facility, true);
-							}}
-						>
-							<IconPlus class="h-4 w-4" />
-						</button>
-					</div>
-				</div>
-
-				<!-- Child Facilities -->
-				{#each artccInformation.facility.childFacilities as facility}
+				<!-- Major Facilities Only -->
+				{#each getMajorFacilities() as facility}
 					<div class="mb-2">
 						<div
 							class="group flex items-start gap-2 rounded-lg p-3 transition-colors hover:bg-slate-600/50"
@@ -429,9 +485,9 @@
 								onclick={() =>
 									(selectedFacility = selectedFacility === facility.id ? null : facility.id)}
 							>
-								<span class="break-words text-white">{facility.name}</span>
+								<span class="break-words text-white {facility.isMainFacility ? 'font-medium' : ''}">{facility.name}</span>
 								<div class="text-xs text-slate-400">
-									{getStarredPositions(facility).length} starred positions
+									{getStarredPositions(facility, facility.isMainFacility).length} starred positions
 								</div>
 							</button>
 							<button
@@ -439,7 +495,7 @@
 								class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
 								onclick={(e) => {
 									e.stopPropagation();
-									addAllStarredPositions(facility);
+									addAllStarredPositions(facility, facility.isMainFacility);
 								}}
 							>
 								<IconPlus class="h-4 w-4" />
@@ -466,49 +522,106 @@
 			<div class="flex w-1/2 flex-col bg-slate-700/50">
 				<div class="flex-1 overflow-y-auto p-6">
 					{#if true}
-						{@const facility =
-							selectedFacility === artccInformation.facility.id
-								? artccInformation.facility
-								: artccInformation.facility.childFacilities.find((f) => f.id === selectedFacility)}
+						{@const facility = getMajorFacilities().find((f) => f.id === selectedFacility)}
 
 						{#if facility}
 							<h3 class="mb-4 text-lg font-semibold text-white">{facility.name}</h3>
-							<div class="grid gap-3">
-								{#each getFacilityOwnPositions(facility) as position}
-									{@const positionId = getPositionId(position)}
-									<div
-										class="flex items-center justify-between rounded-lg border p-4 transition-all {selectedPositions.has(
-											positionId
-										)
-											? 'border-sky-500 bg-sky-500/10'
-											: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<span class="font-mono font-semibold text-white">{position.callsign || position.defaultCallsign || positionId}</span>
-												{#if position.starred}
-													<IconStar class="h-4 w-4 text-yellow-400" />
-												{/if}
-											</div>
-											<div class="text-sm text-slate-400">{position.name}</div>
-											{#if position.radioName}
-												<div class="text-xs text-slate-500">{position.radioName}</div>
+
+							{#each getPositionsGroupedByFacility(facility) as group}
+								{#if !facility.isMainFacility}
+									<div class="mb-4">
+										<div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-600">
+											<h4 class="text-sm font-medium text-slate-300 uppercase tracking-wider">
+												{group.facility.name}
+											</h4>
+											{#if group.positions.some(pos => pos.starred)}
+												<button
+													type="button"
+													class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
+													onclick={(e) => {
+														e.stopPropagation();
+														addStarredPositionsForFacility(group.facility);
+													}}
+													title="Add all starred positions from {group.facility.name}"
+												>
+													<IconPlus class="h-4 w-4" />
+												</button>
 											{/if}
 										</div>
-										<button
-											type="button"
-											class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.has(
-												positionId
-											)
-												? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
-												: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
-											onclick={() => togglePosition(positionId)}
-										>
-											{selectedPositions.has(positionId) ? 'Remove' : 'Add'}
-										</button>
+										<div class="grid gap-3">
+											{#each group.positions as position}
+												{@const positionId = getPositionId(position)}
+												<div
+													class="flex items-center justify-between rounded-lg border p-2.5 transition-all {selectedPositions.has(
+														positionId
+													)
+														? 'border-sky-500 bg-sky-500/10'
+														: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
+												>
+													<div class="flex items-center gap-3 min-w-0 flex-1">
+														<div class="min-w-0">
+															<div class="flex items-center gap-1.5">
+																<span class="font-mono font-semibold text-white text-sm">{position.callsign || position.defaultCallsign || positionId}</span>
+																{#if position.starred}
+																	<IconStar class="h-3 w-3 text-yellow-400 flex-shrink-0" />
+																{/if}
+															</div>
+															<div class="text-xs text-slate-400 truncate">{position.name}</div>
+														</div>
+													</div>
+													<button
+														type="button"
+														class="rounded px-2 py-1 text-xs font-medium transition-colors flex-shrink-0 {selectedPositions.has(
+															positionId
+														)
+															? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
+															: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
+														onclick={() => togglePosition(positionId)}
+													>
+														{selectedPositions.has(positionId) ? '−' : '+'}
+													</button>
+												</div>
+											{/each}
+										</div>
 									</div>
-								{/each}
-							</div>
+								{:else}
+									<div class="grid gap-3">
+										{#each group.positions as position}
+											{@const positionId = getPositionId(position)}
+											<div
+												class="flex items-center justify-between rounded-lg border p-2.5 transition-all {selectedPositions.has(
+													positionId
+												)
+													? 'border-sky-500 bg-sky-500/10'
+													: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
+											>
+												<div class="flex items-center gap-3 min-w-0 flex-1">
+													<div class="min-w-0">
+														<div class="flex items-center gap-1.5">
+															<span class="font-mono font-semibold text-white text-sm">{position.callsign || position.defaultCallsign || positionId}</span>
+															{#if position.starred}
+																<IconStar class="h-3 w-3 text-yellow-400 flex-shrink-0" />
+															{/if}
+														</div>
+														<div class="text-xs text-slate-400 truncate">{position.name}</div>
+													</div>
+												</div>
+												<button
+													type="button"
+													class="rounded px-2 py-1 text-xs font-medium transition-colors flex-shrink-0 {selectedPositions.has(
+														positionId
+													)
+														? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
+														: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
+													onclick={() => togglePosition(positionId)}
+												>
+													{selectedPositions.has(positionId) ? '−' : '+'}
+												</button>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							{/each}
 						{/if}
 					{/if}
 				</div>
