@@ -12,12 +12,14 @@
 		getEndorsementDisplayName,
 		getCertificationOrder
 	} from '$lib/config/certifications';
+	import { userCertificationsTable } from '$lib/db/schema/certifications';
+	import { isAdmin } from '$lib/utils/permissions';
 
 	let { data } = $props();
 
 	// Display names now handled by centralized configuration
 
-	const { roster, controllers } = data;
+	const { roster, controllers, roles } = data;
 
 	let searchTerm = $state('');
 	let sortField = $state<string>('initials');
@@ -274,11 +276,22 @@
 					<div class="flex min-w-0 flex-wrap items-center justify-center gap-2">
 						<!-- Name -->
 						<div class="min-w-0 font-semibold text-white">
-							<span class="block md:inline">
-								{member.user?.preferredName
-									? member.user.preferredName
-									: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
-							</span>
+							{#if isAdmin(roles)}
+								<a
+									href={`/admin/users/${member.user?.id}`}
+									class="block hover:text-sky-500 md:inline"
+								>
+									{member.user?.preferredName
+										? member.user.preferredName
+										: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+								</a>
+							{:else}
+								<span class="block md:inline">
+									{member.user?.preferredName
+										? member.user.preferredName
+										: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+								</span>
+							{/if}
 							<span class="ml-1 text-sm font-normal text-gray-400">({member.data.cid})</span>
 						</div>
 

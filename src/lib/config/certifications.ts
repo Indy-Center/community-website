@@ -16,9 +16,8 @@ export interface EndorsementConfig {
 // Available certifications in order of progression
 export const CERTIFICATIONS: CertificationConfig[] = [
 	{
-		key: 'DEL',
-		displayName: 'Clearance Delivery Certified',
-		description: 'Certified to provide clearance delivery services'
+		key: 'S-GND',
+		displayName: 'Simple Ground Certified'
 	},
 	{
 		key: 'GND',
@@ -45,13 +44,8 @@ export const CERTIFICATIONS: CertificationConfig[] = [
 // Available endorsements
 export const ENDORSEMENTS: EndorsementConfig[] = [
 	{
-		key: 'S-GND',
-		displayName: 'Simple Ground Endorsement',
-		description: 'Simple ground control endorsement'
-	},
-	{
 		key: 'S-TWR',
-		displayName: 'Simple Tower Endorsement',
+		displayName: 'Simple Tower Certified',
 		description: 'Simple tower control endorsement'
 	},
 	{
@@ -73,11 +67,11 @@ export const ENDORSEMENTS: EndorsementConfig[] = [
 
 // Helper functions to get configuration by key
 export function getCertificationConfig(key: string): CertificationConfig | undefined {
-	return CERTIFICATIONS.find(cert => cert.key === key);
+	return CERTIFICATIONS.find((cert) => cert.key === key);
 }
 
 export function getEndorsementConfig(key: string): EndorsementConfig | undefined {
-	return ENDORSEMENTS.find(endorsement => endorsement.key === key);
+	return ENDORSEMENTS.find((endorsement) => endorsement.key === key);
 }
 
 // Helper functions to get display names
@@ -94,6 +88,6 @@ export function getEndorsementDisplayName(key: string): string {
 // Get certification order for sorting
 export function getCertificationOrder(certification: string | null): number {
 	if (!certification) return -1;
-	const index = CERTIFICATIONS.findIndex(cert => cert.key === certification);
+	const index = CERTIFICATIONS.findIndex((cert) => cert.key === certification);
 	return index === -1 ? 999 : index;
 }
