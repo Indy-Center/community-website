@@ -15,14 +15,14 @@
 
 	let { data } = $props();
 
+	const { event, users, artccInformation } = data;
+
 	let modal: Modal | null = $state(null);
-	let selectedFacility: string | null = $state(null);
+	let selectedFacility: string | null = $state(artccInformation?.facility?.id || null);
 	let selectedPositions: Set<string> = $state(new Set());
 
 	// Create local reactive state for positions
 	let eventPositions = $state([...data.event.positions]);
-
-	const { event, users, artccInformation } = data;
 
 	// Update local positions when data changes
 	$effect(() => {
@@ -37,12 +37,17 @@
 		return positions;
 	};
 
-	const getStarredPositions = (facility: any): any[] => {
-		return getAllPositions(facility).filter((pos) => pos.starred);
+	const getFacilityOwnPositions = (facility: any): any[] => {
+		return [...(facility.positions || [])];
 	};
 
-	const addAllStarredPositions = (facility: any) => {
-		const starredPositions = getStarredPositions(facility);
+	const getStarredPositions = (facility: any, isMainFacility: boolean = false): any[] => {
+		const positions = isMainFacility ? getFacilityOwnPositions(facility) : getAllPositions(facility);
+		return positions.filter((pos) => pos.starred);
+	};
+
+	const addAllStarredPositions = (facility: any, isMainFacility: boolean = false) => {
+		const starredPositions = getStarredPositions(facility, isMainFacility);
 		starredPositions.forEach((pos) => {
 			const positionId = pos.defaultCallsign || pos.id;
 			selectedPositions.add(positionId);
@@ -76,6 +81,7 @@
 		form.requestSubmit();
 		selectedPositions.clear();
 		selectedPositions = new Set(selectedPositions);
+		modal?.close();
 	};
 
 	const getPositionId = (position: any): string => {
@@ -86,37 +92,47 @@
 		return user.preferredName || `${user.firstName} ${user.lastName}`;
 	};
 
-	const getPositionInfo = (positionId: string) => {
-		const findPositionInFacility = (facility: any): any => {
-			// Check main facility positions (have defaultCallsign)
-			const mainPos = facility.positions?.find(
-				(pos: any) => pos.defaultCallsign === positionId || pos.id === positionId
-			);
-			if (mainPos) return mainPos;
+	// Get all positions from ARTCC data merged together
+	const getAllPositionsFlat = () => {
+		if (!artccInformation) return [];
 
-			// Recursively check child facilities
-			for (const child of facility.childFacilities || []) {
-				const found = findPositionInFacility(child);
-				if (found) return found;
+		const allPositions: any[] = [];
+
+		// Add main facility positions
+		if (artccInformation.facility.positions) {
+			allPositions.push(...artccInformation.facility.positions);
+		}
+
+		// Recursively add child facility positions
+		const addChildPositions = (facility: any) => {
+			if (facility.positions) {
+				allPositions.push(...facility.positions);
 			}
-			return null;
+			if (facility.childFacilities) {
+				facility.childFacilities.forEach(addChildPositions);
+			}
 		};
 
-		return findPositionInFacility(artccInformation.facility);
+		artccInformation.facility.childFacilities?.forEach(addChildPositions);
+		return allPositions;
+	};
+
+	const getPositionInfo = (positionId: string) => {
+		const allPositions = getAllPositionsFlat();
+		return allPositions.find((pos: any) => pos.id === positionId) || null;
 	};
 
 	const getPositionCallsign = (positionId: string) => {
 		const posInfo = getPositionInfo(positionId);
-		// If we have position info, return the callsign or readable ID
-		if (posInfo) {
-			return posInfo.defaultCallsign || posInfo.id || positionId;
+		// If we have position info, return the callsign
+		if (posInfo?.callsign) {
+			return posInfo.callsign;
 		}
-		// If no position info found, try to make the ID more readable
-		// Remove the prefix and show the actual callsign part if it exists
-		if (positionId.includes('_')) {
-			const parts = positionId.split('_');
-			return parts[parts.length - 1]; // Return the last part after underscore
+		// Fallback for main facility positions that might use defaultCallsign
+		if (posInfo?.defaultCallsign) {
+			return posInfo.defaultCallsign;
 		}
+		// Final fallback to position ID
 		return positionId;
 	};
 
@@ -228,23 +244,11 @@
 										{@const posInfo = getPositionInfo(position.position)}
 										<div class="flex items-center gap-3">
 											<div>
-												{#if posInfo?.radioName}
-													<div class="text-lg font-semibold text-white">{posInfo.radioName}</div>
-												{:else}
-													<div class="text-lg font-semibold text-white">
-														{getPositionCallsign(position.position)}
-													</div>
-												{/if}
+												<div class="text-lg font-semibold text-white">
+													{posInfo?.radioName || posInfo?.name || getPositionCallsign(position.position)}
+												</div>
 												<div class="text-sm text-slate-400">
-													{#if posInfo?.name && posInfo?.defaultCallsign}
-														{posInfo.name} • {posInfo.defaultCallsign}
-													{:else if posInfo?.name}
-														{posInfo.name}
-													{:else if posInfo?.defaultCallsign}
-														{posInfo.defaultCallsign}
-													{:else}
-														{getPositionCallsign(position.position)}
-													{/if}
+													{getPositionCallsign(position.position)}
 												</div>
 											</div>
 											{#if isPositionPrimary(position.position)}
@@ -375,9 +379,9 @@
 <Modal title="Add Positions" bind:this={modal}>
 	<div class="flex h-[70vh] max-h-[600px] w-[90vw] max-w-[1000px]">
 		<!-- Facility Sidebar -->
-		<div class="flex w-72 flex-col border-r border-slate-600 bg-slate-700/30">
-			<div class="flex-1 overflow-y-auto p-4">
-				<h3 class="mb-4 text-sm font-semibold tracking-wider text-slate-400 uppercase">
+		<div class="flex w-1/2 flex-col {selectedFacility ? 'border-r border-slate-600' : ''} bg-slate-800/60">
+			<div class="flex-1 overflow-y-auto p-6">
+				<h3 class="mb-6 text-sm font-semibold tracking-wider text-slate-300 uppercase">
 					Facilities
 				</h3>
 
@@ -398,7 +402,7 @@
 								>{artccInformation.facility.name}</span
 							>
 							<div class="text-xs text-slate-400">
-								{getStarredPositions(artccInformation.facility).length} starred positions
+								{getStarredPositions(artccInformation.facility, true).length} starred positions
 							</div>
 						</button>
 						<button
@@ -406,7 +410,7 @@
 							class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
 							onclick={(e) => {
 								e.stopPropagation();
-								addAllStarredPositions(artccInformation.facility);
+								addAllStarredPositions(artccInformation.facility, true);
 							}}
 						>
 							<IconPlus class="h-4 w-4" />
@@ -443,100 +447,93 @@
 						</div>
 					</div>
 				{/each}
-			</div>
-		</div>
 
-		<!-- Position Grid -->
-		<div class="flex flex-1 flex-col bg-slate-800/50">
-			<div class="flex-1 overflow-y-auto p-6">
-				{#if selectedFacility}
-					{@const facility =
-						selectedFacility === artccInformation.facility.id
-							? artccInformation.facility
-							: artccInformation.facility.childFacilities.find((f) => f.id === selectedFacility)}
-
-					{#if facility}
-						<h3 class="mb-4 text-lg font-semibold text-white">{facility.name}</h3>
-						<div class="grid gap-3">
-							{#each getAllPositions(facility) as position}
-								{@const positionId = getPositionId(position)}
-								<div
-									class="flex items-center justify-between rounded-lg border p-4 transition-all {selectedPositions.has(
-										positionId
-									)
-										? 'border-sky-500 bg-sky-500/10'
-										: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
-								>
-									<div>
-										<div class="flex items-center gap-2">
-											<span class="font-mono font-semibold text-white">{positionId}</span>
-											{#if position.starred}
-												<IconStar class="h-4 w-4 text-yellow-400" />
-											{/if}
-										</div>
-										<div class="text-sm text-slate-400">{position.name}</div>
-										{#if position.radioName}
-											<div class="text-xs text-slate-500">{position.radioName}</div>
-										{/if}
-									</div>
-									<button
-										type="button"
-										class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.has(
-											positionId
-										)
-											? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
-											: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
-										onclick={() => togglePosition(positionId)}
-									>
-										{selectedPositions.has(positionId) ? 'Remove' : 'Add'}
-									</button>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				{:else}
-					<div class="flex h-full items-center justify-center text-center">
-						<div>
-							<div class="mb-4 flex justify-center">
-								<div class="rounded-full bg-slate-700/50 p-4">
-									<IconAccountGroup class="h-8 w-8 text-slate-400" />
-								</div>
+				{#if !selectedFacility}
+					<div class="mt-8 text-center">
+						<div class="mb-4 flex justify-center">
+							<div class="rounded-full bg-slate-700/50 p-4">
+								<IconAccountGroup class="h-8 w-8 text-slate-400" />
 							</div>
-							<p class="text-slate-400">Select a facility to view positions</p>
 						</div>
+						<p class="text-slate-400">Select a facility to view positions</p>
 					</div>
 				{/if}
 			</div>
 		</div>
+
+		<!-- Position Grid -->
+		{#if selectedFacility}
+			<div class="flex w-1/2 flex-col bg-slate-700/50">
+				<div class="flex-1 overflow-y-auto p-6">
+					{#if true}
+						{@const facility =
+							selectedFacility === artccInformation.facility.id
+								? artccInformation.facility
+								: artccInformation.facility.childFacilities.find((f) => f.id === selectedFacility)}
+
+						{#if facility}
+							<h3 class="mb-4 text-lg font-semibold text-white">{facility.name}</h3>
+							<div class="grid gap-3">
+								{#each getFacilityOwnPositions(facility) as position}
+									{@const positionId = getPositionId(position)}
+									<div
+										class="flex items-center justify-between rounded-lg border p-4 transition-all {selectedPositions.has(
+											positionId
+										)
+											? 'border-sky-500 bg-sky-500/10'
+											: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<span class="font-mono font-semibold text-white">{position.callsign || position.defaultCallsign || positionId}</span>
+												{#if position.starred}
+													<IconStar class="h-4 w-4 text-yellow-400" />
+												{/if}
+											</div>
+											<div class="text-sm text-slate-400">{position.name}</div>
+											{#if position.radioName}
+												<div class="text-xs text-slate-500">{position.radioName}</div>
+											{/if}
+										</div>
+										<button
+											type="button"
+											class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.has(
+												positionId
+											)
+												? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
+												: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
+											onclick={() => togglePosition(positionId)}
+										>
+											{selectedPositions.has(positionId) ? 'Remove' : 'Add'}
+										</button>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					{/if}
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Modal Footer -->
 	<div
-		class="flex items-center justify-between border-t border-slate-600 bg-slate-700/50 px-6 py-4"
+		class="flex items-center justify-between border-t border-slate-600 bg-slate-800/80 px-6 py-4"
 	>
 		<div class="text-sm text-slate-400">
 			{selectedPositions.size} position{selectedPositions.size !== 1 ? 's' : ''} selected
 		</div>
-		<div class="flex gap-3">
-			<button
-				type="button"
-				onclick={addSelectedPositions}
-				class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.size ===
-				0
-					? 'cursor-not-allowed bg-slate-600 text-slate-400'
-					: 'bg-sky-600 text-white hover:bg-sky-700'}"
-				disabled={selectedPositions.size === 0}
-			>
-				Add {selectedPositions.size} Position{selectedPositions.size !== 1 ? 's' : ''}
-			</button>
-			<button
-				type="button"
-				onclick={() => modal?.close()}
-				class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700"
-			>
-				Done
-			</button>
-		</div>
+		<button
+			type="button"
+			onclick={addSelectedPositions}
+			class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.size ===
+			0
+				? 'cursor-not-allowed bg-slate-600 text-slate-400'
+				: 'bg-sky-600 text-white hover:bg-sky-700'}"
+			disabled={selectedPositions.size === 0}
+		>
+			Add {selectedPositions.size} Position{selectedPositions.size !== 1 ? 's' : ''}
+		</button>
 	</div>
 
 	<form
