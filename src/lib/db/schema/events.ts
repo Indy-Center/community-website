@@ -18,6 +18,7 @@ export const eventsTable = sqliteTable('events', {
 	startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
 	endTime: integer('end_time', { mode: 'timestamp' }).notNull(),
 	isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(false),
+	isRosterPublished: integer('is_roster_published', { mode: 'boolean' }).notNull().default(false),
 	createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 });
@@ -34,15 +35,22 @@ export const eventPositionsTable = sqliteTable('event_positions', {
 		.notNull()
 		.default(sql`'[]'`)
 		.$type<string[]>(),
-	opensAt: integer('opens_at', { mode: 'timestamp' }).notNull(),
-	closesAt: integer('closes_at', { mode: 'timestamp' }).notNull(),
 	createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 });
 
 export const eventRelations = relations(eventsTable, ({ many }) => ({
-	positions: many(eventPositionsTable)
+	positions: many(eventPositionsTable),
+	positionRequests: many(eventPositionRequestsTable)
 }));
+
+export const eventPositionRequestsTable = sqliteTable('event_position_requests', {
+	id: text('id').primaryKey(),
+	eventId: text('event_id').notNull(),
+	userId: text('user_id').notNull(),
+	comments: text('comments'),
+	createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+});
 
 export const eventPositionRelations = relations(eventPositionsTable, ({ one }) => ({
 	event: one(eventsTable, {
@@ -51,6 +59,17 @@ export const eventPositionRelations = relations(eventPositionsTable, ({ one }) =
 	}),
 	user: one(usersTable, {
 		fields: [eventPositionsTable.userId],
+		references: [usersTable.id]
+	})
+}));
+
+export const eventPositionRequestRelations = relations(eventPositionRequestsTable, ({ one }) => ({
+	event: one(eventsTable, {
+		fields: [eventPositionRequestsTable.eventId],
+		references: [eventsTable.id]
+	}),
+	user: one(usersTable, {
+		fields: [eventPositionRequestsTable.userId],
 		references: [usersTable.id]
 	})
 }));

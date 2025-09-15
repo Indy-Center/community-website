@@ -35,3 +35,30 @@ export type VnasPosition = {
 export type VnasControllerResponse = {
 	controllers: VnasController[];
 };
+
+export type VnasArtccResponse = {
+	id: string;
+	facility: VnasFacility;
+};
+
+export type VnasFacility = {
+	id: string;
+	type: string;
+	name: string;
+	childFacilities: VnasChildFacility[];
+	positions: VnasPosition[];
+};
+
+type VnasChildFacility = {
+	id: string;
+	type: string;
+	name: string;
+	childFacilities: VnasChildFacility[];
+	positions: {
+		id: string;
+		name: string;
+		starred: boolean;
+		radioName: string;
+		callsign: string;
+	}[];
+};
