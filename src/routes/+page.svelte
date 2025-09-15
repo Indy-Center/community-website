@@ -4,6 +4,7 @@
 	import ControllersPanel from '$lib/components/status/ControllersPanel.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';
 	import IconDiscord from '~icons/mdi/discord';
+	import IconVisit from '~icons/mdi/sign-direction-plus';
 
 	let { data } = $props();
 </script>
@@ -27,11 +28,21 @@
 			<a
 				href="https://discord.indy.center"
 				target="_blank"
-				class="flex items-center justify-center space-x-2 rounded bg-indigo-600 px-4 py-2 font-bold text-white shadow-lg hover:bg-indigo-700 transition-colors duration-200"
+				class="flex items-center justify-center space-x-2 rounded bg-indigo-600 px-4 py-2 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
 			>
 				<IconDiscord class="h-4 w-4" />
 				<span>Get Connected on Discord</span>
 			</a>
+			{#if data.user?.membership !== 'controller'}
+				<a
+					href="/visit"
+					target="_blank"
+					class="flex items-center justify-center space-x-2 rounded bg-sky-600 px-4 py-2 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-sky-700"
+				>
+					<IconVisit class="h-4 w-4" />
+					<span>Become a Controller</span>
+				</a>
+			{/if}
 		</div>
 	</PageHero>
 	<!-- Events Section -->

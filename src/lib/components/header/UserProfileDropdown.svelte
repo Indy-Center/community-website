@@ -9,7 +9,7 @@
 	import IconBook from '~icons/mdi/book-open-variant';
 	import IconTools from '~icons/mdi/tools';
 	import type { User } from '$lib/db/schema/users';
-	import MembershipBadge from './MembershipBadge.svelte';
+	import MembershipBadge from '../MembershipBadge.svelte';
 
 	let { user, roles }: { user: User | undefined; roles: string[] | undefined } = $props();
 
