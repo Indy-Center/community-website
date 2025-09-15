@@ -7,6 +7,8 @@ import { eq, not } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import { canManage, canManageEvents, Role } from '$lib/utils/permissions';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
+import { isBefore, subHours } from 'date-fns';
+import { isSignUpClosed } from '$lib/utils/events';
 
 export const load = async ({ locals, params }) => {
 	const event = await locals.db.query.eventsTable.findFirst({
@@ -67,6 +69,19 @@ export const actions = {
 			.set({ isPublished: not(eventsTable.isPublished) })
 			.where(eq(eventsTable.id, params.id));
 
+		const event = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
+
+		// Publishing the event sets its roster to released if it's an open roster
+		// We could probably do this in the update above but it was hurting my brain
+		if (event && event.rosterType === 'open' && event.isPublished) {
+			await locals.db
+				.update(eventsTable)
+				.set({ isRosterPublished: true })
+				.where(eq(eventsTable.id, params.id));
+		}
+
 		return redirect(302, `/events/${params.id}`);
 	},
 
@@ -87,7 +102,7 @@ export const actions = {
 			where: eq(eventsTable.id, params.id)
 		});
 
-		if (!event || !event.isRosterPublished || event.rosterType !== 'open') {
+		if (isSignUpClosed(event)) {
 			return { error: 'Event roster is not available for sign-up' };
 		}
 

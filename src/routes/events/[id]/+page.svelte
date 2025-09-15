@@ -15,6 +15,7 @@
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
 	import { canManageEvents } from '$lib/utils/permissions.js';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
+	import { isSignUpClosed } from '$lib/utils/events.js';
 
 	const { data } = $props();
 	const { event, artccInformation, user, userId } = data;
@@ -186,6 +187,7 @@
 		<!-- Event Positions -->
 		{#if event.rosterType !== 'none'}
 			<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
+				<!-- Roster is Released! or the event is still in draft -->
 				{#if event.isRosterPublished}
 					<!-- Published Roster -->
 					{#if event.positions && event.positions.length > 0}
@@ -220,7 +222,7 @@
 																{getUserDisplayName(position.user)}
 															</div>
 														</div>
-														{#if hasControllerAccess && event.rosterType === 'open' && position.userId === userId}
+														{#if !isSignUpClosed(event) && hasControllerAccess && event.rosterType === 'open' && position.userId === userId}
 															<!-- User can unassign themselves -->
 															<form
 																method="POST"
@@ -242,7 +244,7 @@
 																</button>
 															</form>
 														{/if}
-													{:else if hasControllerAccess && event.rosterType === 'open'}
+													{:else if hasControllerAccess && event.rosterType === 'open' && !isSignUpClosed(event)}
 														<!-- Open position for sign-up -->
 														<form
 															method="POST"
@@ -280,8 +282,8 @@
 							<div class="text-slate-400">No positions configured for this event.</div>
 						</div>
 					{/if}
+					<!-- Assigned Roster (not released yet) -->
 				{:else if event.rosterType === 'assigned'}
-					<!-- Assigned Roster (not published) -->
 					{#if hasControllerAccess}
 						<!-- Show Position Request Option for Controllers -->
 						<div class="p-8 text-center">
@@ -318,9 +320,8 @@
 						</div>
 					{/if}
 				{:else}
-					<!-- Other cases (open roster not published, etc.) -->
 					<div class="p-8 text-center">
-						<div class="text-slate-400">Position roster will be available when published.</div>
+						<div class="text-slate-400">The roster is not yet released.</div>
 					</div>
 				{/if}
 			</Panel>

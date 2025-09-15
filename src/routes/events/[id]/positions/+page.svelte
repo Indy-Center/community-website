@@ -260,13 +260,17 @@
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="flex-1">
 			<h1 class="mb-2 text-3xl font-bold text-white">{event?.name || 'Event'}</h1>
-			<p class="text-slate-400">Manage event positions and assignments</p>
+			<p class="text-slate-400">
+				Manage event positions and assignments. <a href="/events/{event?.id}" class="text-sky-500"
+					>Return to Event</a
+				>
+			</p>
 		</div>
 		<div class="flex flex-shrink-0 gap-3">
 			<ActionToggle
 				action="?/toggleRosterPublished"
 				currentState={event.isRosterPublished}
-				label={event.isRosterPublished ? 'Roster Published' : 'Roster Draft'}
+				label={event.isRosterPublished ? 'Roster: Released' : 'Roster: Draft'}
 				icon={event.isRosterPublished ? IconPublish : IconDraft}
 				color={event.isRosterPublished ? 'green' : 'sky'}
 			/>
