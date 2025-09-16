@@ -30,6 +30,7 @@ export type VnasPosition = {
 	frequency: number;
 	isPrimary: boolean;
 	isActive: boolean;
+	callsign: string;
 };
 
 export type VnasControllerResponse = {

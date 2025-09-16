@@ -16,6 +16,7 @@
 	import { canManageEvents } from '$lib/utils/permissions.js';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 	import { isSignUpClosed } from '$lib/utils/events.js';
+	import type { VnasFacility, VnasPosition } from '$lib/types/vnas.js';
 
 	const { data } = $props();
 	const { event, artccInformation, user, userId } = data;
@@ -25,6 +26,29 @@
 	// Check if user has controller membership (for position sign-ups)
 	const hasControllerAccess = $derived(user?.membership === 'controller');
 
+	/**
+	 * Position sorting puts the positions in order of Approach > Tower > Ground > Delivery > Ramp/Other
+	 * @param positions
+	 */
+	function sortPositions(positions: VnasPosition[] = []) {
+		console.log('sorting positions', positions);
+		// We have to do a partial callsign match because VnasPosition doesn't tell us.
+		// These are the suffixes to look for
+		const SORT_ORDER = ['APP', 'TWR', 'GND', 'DEL', 'RMP'];
+
+		return positions.sort((a, b) => {
+			const aIndex = SORT_ORDER.indexOf(a.callsign.slice(-3).toUpperCase());
+			const bIndex = SORT_ORDER.indexOf(b.callsign.slice(-3).toUpperCase());
+
+			// Sort them alphabetically if they are the same type of position
+			if (aIndex === bIndex) {
+				return a.callsign.localeCompare(b.callsign);
+			}
+
+			return aIndex - bIndex;
+		});
+	}
+
 	// Get all positions from ARTCC data merged together
 	const getAllPositionsFlat = () => {
 		if (!artccInformation) return [];
@@ -33,13 +57,13 @@
 
 		// Add main facility positions
 		if (artccInformation.facility.positions) {
-			allPositions.push(...artccInformation.facility.positions);
+			allPositions.push(...sortPositions(artccInformation.facility.positions));
 		}
 
 		// Recursively add child facility positions
 		const addChildPositions = (facility: any) => {
 			if (facility.positions) {
-				allPositions.push(...facility.positions);
+				allPositions.push(...sortPositions(facility.positions));
 			}
 			if (facility.childFacilities) {
 				facility.childFacilities.forEach(addChildPositions);
@@ -47,7 +71,8 @@
 		};
 
 		artccInformation.facility.childFacilities?.forEach(addChildPositions);
-		return allPositions;
+
+		return sortPositions(allPositions);
 	};
 
 	// Get position info from ARTCC data by searching the database ID
@@ -102,7 +127,43 @@
 			groups[facilityName].positions.push(position);
 		});
 
-		return Object.values(groups);
+		// Sort positions within each facility group using the actual VnasPosition data
+		const sortedGroups = Object.values(groups).map(group => ({
+			...group,
+			positions: group.positions.sort((a, b) => {
+				const aVnasPos = getPositionInfo(a.position);
+				const bVnasPos = getPositionInfo(b.position);
+
+				if (!aVnasPos || !bVnasPos) {
+					return 0; // Keep original order if position data not found
+				}
+
+				// First, sort by position type
+				const SORT_ORDER = ['APP', 'TWR', 'GND', 'DEL', 'RMP'];
+				const aCallsign = aVnasPos.defaultCallsign || aVnasPos.callsign || '';
+				const bCallsign = bVnasPos.defaultCallsign || bVnasPos.callsign || '';
+				const aType = aCallsign.slice(-3).toUpperCase();
+				const bType = bCallsign.slice(-3).toUpperCase();
+				const aIndex = SORT_ORDER.indexOf(aType);
+				const bIndex = SORT_ORDER.indexOf(bType);
+
+				if (aIndex !== bIndex) {
+					return aIndex - bIndex;
+				}
+
+				// Then sort by starred status (starred positions first within same type)
+				const aStarred = (aVnasPos as any).starred || false;
+				const bStarred = (bVnasPos as any).starred || false;
+				if (aStarred !== bStarred) {
+					return bStarred ? 1 : -1; // starred positions come first
+				}
+
+				// Finally, sort alphabetically
+				return aCallsign.localeCompare(bCallsign);
+			})
+		}));
+
+		return sortedGroups;
 	};
 </script>
 
