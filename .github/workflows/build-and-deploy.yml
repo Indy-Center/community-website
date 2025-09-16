@@ -28,4 +28,3 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_KEY }}
-          preCommands: npx wrangler d1 migrations apply website-db --remote
