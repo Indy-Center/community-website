@@ -1,6 +1,5 @@
 import { feedbackSchema } from '$lib/forms/feedback';
 
-import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { feedbackTable } from '$lib/db/schema/feedback';
@@ -59,6 +58,7 @@ export const actions = {
 
 		await notifyDiscordOfFeedback(locals.db, feedback);
 
-		return redirect(302, `/feedback`);
+		form.message = 'Feedback submitted successfully!';
+		return { form };
 	}
 };
