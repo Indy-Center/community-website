@@ -50,8 +50,8 @@ export const actions = {
 			// Remove all existing certifications for this user
 			await locals.db.delete(userCertificationsTable).where(eq(userCertificationsTable.userId, id));
 
-			// Remove T2-CTR endorsement if user had CTR and is changing to something else
-			if (currentCert?.certification === 'CTR' && certification !== 'CTR') {
+			// Remove T2-CTR endorsement if user had E-RC and is changing to something else
+			if (currentCert?.certification === 'E-RC' && certification !== 'E-RC') {
 				await locals.db
 					.delete(userEndorsementsTable)
 					.where(
@@ -69,8 +69,8 @@ export const actions = {
 					certification: certification
 				});
 
-				// If setting CTR certification, also add T2-CTR endorsement
-				if (certification === 'CTR') {
+				// If setting E-RC certification, also add T2-CTR endorsement
+				if (certification === 'E-RC') {
 					// Check if T2-CTR endorsement already exists to avoid duplicates
 					const existingEndorsement = await locals.db.query.userEndorsementsTable.findFirst({
 						where: and(

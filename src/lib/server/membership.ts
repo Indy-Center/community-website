@@ -144,9 +144,9 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 function determineCertificationsAndEndorsementsFromRating(rating: string) {
 	switch (rating) {
 		case 'S1':
-			return { certifications: ['S-GND'] };
+			return { certifications: ['S-GC'] };
 		case 'S2':
-			return { certifications: ['TWR'], endorsements: [] };
+			return { certifications: ['A-LC'], endorsements: [] };
 		case 'S3':
 		case 'C1':
 		case 'C2':
@@ -154,7 +154,7 @@ function determineCertificationsAndEndorsementsFromRating(rating: string) {
 		case 'I1':
 		case 'I2':
 		case 'I3':
-			return { certifications: ['APP'], endorsements: [] };
+			return { certifications: ['T-RC'], endorsements: [] };
 		default:
 			return { certifications: [], endorsements: [] };
 	}

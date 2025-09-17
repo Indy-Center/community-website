@@ -16,27 +16,27 @@ export interface EndorsementConfig {
 // Available certifications in order of progression
 export const CERTIFICATIONS: CertificationConfig[] = [
 	{
-		key: 'S-GND',
+		key: 'S-GC',
 		displayName: 'Simple Ground Certified'
 	},
 	{
-		key: 'GND',
-		displayName: 'Ground Certified',
+		key: 'A-GC',
+		displayName: 'Advanced Ground Certified',
 		description: 'Certified to provide ground control services'
 	},
 	{
-		key: 'TWR',
-		displayName: 'Tower Certified',
+		key: 'A-LC',
+		displayName: 'Advanced Local Certified',
 		description: 'Certified to provide tower control services'
 	},
 	{
-		key: 'APP',
-		displayName: 'Approach Certified',
+		key: 'T-RC',
+		displayName: 'Terminal Radar Control Certified',
 		description: 'Certified to provide approach/departure control services'
 	},
 	{
-		key: 'CTR',
-		displayName: 'Center Certified',
+		key: 'E-RC',
+		displayName: 'Enroute Radar Control Certified',
 		description: 'Certified to provide center control services'
 	}
 ];
@@ -44,9 +44,9 @@ export const CERTIFICATIONS: CertificationConfig[] = [
 // Available endorsements
 export const ENDORSEMENTS: EndorsementConfig[] = [
 	{
-		key: 'S-TWR',
-		displayName: 'Simple Tower Certified',
-		description: 'Simple tower control endorsement'
+		key: 'S-LC',
+		displayName: 'Simple Local Certified',
+		description: 'Simple local control endorsement'
 	},
 	{
 		key: 'T2-CTR',
