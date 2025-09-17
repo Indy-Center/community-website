@@ -8,6 +8,7 @@
 	import VatsimEventDropdown from '$lib/components/events/VatsimEventDropdown.svelte';
 	import EventTypeBadge from '$lib/components/events/EventTypeBadge.svelte';
 	import RosterTypeBadge from '$lib/components/events/RosterTypeBadge.svelte';
+	import { supportsRosters } from '$lib/config/events';
 	import { canManageEvents } from '$lib/utils/permissions.js';
 	import type { Event } from '$lib/db/schema/events';
 
@@ -31,6 +32,10 @@
 
 	const isEventPublished = (event: Event) => {
 		return event.isPublished;
+	};
+
+	const shouldShowRosterBadge = (eventType: string) => {
+		return supportsRosters(eventType);
 	};
 </script>
 
@@ -100,7 +105,7 @@
 							<!-- Event Metadata -->
 							<div class="mb-4 flex flex-wrap items-center gap-2">
 								<EventTypeBadge eventType={nextEvent.type} />
-								{#if nextEvent.rosterType !== 'none'}
+								{#if shouldShowRosterBadge(nextEvent.type)}
 									<RosterTypeBadge rosterType={nextEvent.rosterType} />
 								{/if}
 							</div>
@@ -291,7 +296,7 @@
 								<!-- Event Metadata -->
 								<div class="mb-2 flex flex-wrap gap-1">
 									<EventTypeBadge eventType={event.type} size="sm" />
-									{#if event.rosterType !== 'none'}
+									{#if shouldShowRosterBadge(event.type)}
 										<RosterTypeBadge rosterType={event.rosterType} size="sm" />
 									{/if}
 								</div>

@@ -8,6 +8,7 @@
 	import type { Event } from '$lib/db/schema/events';
 	import RosterTypeBadge from './RosterTypeBadge.svelte';
 	import EventTypeBadge from './EventTypeBadge.svelte';
+	import { supportsRosters } from '$lib/config/events';
 
 	let { event }: { event: Event } = $props();
 </script>
@@ -18,7 +19,7 @@
 			<!-- Badges -->
 			<div class="flex items-center gap-2">
 				<EventTypeBadge eventType={event.type} />
-				{#if event.rosterType !== 'none'}
+				{#if supportsRosters(event.type)}
 					<RosterTypeBadge rosterType={event.rosterType} />
 				{/if}
 			</div>

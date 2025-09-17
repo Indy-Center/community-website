@@ -3,6 +3,7 @@
 
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { EventSchema } from '$lib/forms/events';
+	import { EVENT_ROSTER_TYPES, EVENT_TYPES, getEventTypeConfig, isRosterTypeAllowed } from '$lib/config/events';
 
 	const { data }: { data: SuperValidated<Infer<EventSchema>> } = $props();
 
@@ -10,8 +11,20 @@
 
 	const startTimeProxy = dateProxy(form, 'startTime', { format: 'datetime' });
 	const endTimeProxy = dateProxy(form, 'endTime', { format: 'datetime' });
-</script>
 
+	const eventTypeConfig = $derived.by(
+		() =>
+			getEventTypeConfig($form.type) ?? {
+				allowedRosterTypes: EVENT_ROSTER_TYPES.map((type) => type.key)
+			}
+	);
+
+	$effect(() => {
+		if ($form.rosterType && !isRosterTypeAllowed($form.type, $form.rosterType)) {
+			$form.rosterType = 'none';
+		}
+	});
+</script>
 
 <form method="POST" use:enhance>
 	<div class="space-y-6">
@@ -23,7 +36,8 @@
 				<!-- Event Name -->
 				<div>
 					<label for="name" class="mb-2 block text-sm font-medium text-gray-300"
-						>Event Name {#if $errors.name}<span class="text-red-400">- {$errors.name}</span>{/if}</label
+						>Event Name {#if $errors.name}<span class="text-red-400">- {$errors.name}</span
+							>{/if}</label
 					>
 					<input
 						type="text"
@@ -40,7 +54,9 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<label for="startTime" class="mb-2 block text-sm font-medium text-gray-300"
-							>Start Time (Zulu) {#if $errors.startTime}<span class="text-red-400">- {$errors.startTime}</span>{/if}</label
+							>Start Time (Zulu) {#if $errors.startTime}<span class="text-red-400"
+									>- {$errors.startTime}</span
+								>{/if}</label
 						>
 						<input
 							type="datetime-local"
@@ -54,7 +70,9 @@
 					</div>
 					<div>
 						<label for="endTime" class="mb-2 block text-sm font-medium text-gray-300"
-							>End Time (Zulu) {#if $errors.endTime}<span class="text-red-400">- {$errors.endTime}</span>{/if}</label
+							>End Time (Zulu) {#if $errors.endTime}<span class="text-red-400"
+									>- {$errors.endTime}</span
+								>{/if}</label
 						>
 						<input
 							type="datetime-local"
@@ -72,7 +90,8 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<label for="type" class="mb-2 block text-sm font-medium text-gray-300"
-							>Event Type {#if $errors.type}<span class="text-red-400">- {$errors.type}</span>{/if}</label
+							>Event Type {#if $errors.type}<span class="text-red-400">- {$errors.type}</span
+								>{/if}</label
 						>
 						<select
 							name="type"
@@ -81,15 +100,17 @@
 							aria-invalid={$errors.type ? 'true' : undefined}
 							{...$constraints.type}
 						>
-							<option value="">Select Type</option>
-							<option value="community">Community</option>
-							<option value="support">Support</option>
+							{#each EVENT_TYPES as type}
+								<option value={type.key}>{type.label}</option>
+							{/each}
 						</select>
 					</div>
 
 					<div>
 						<label for="rosterType" class="mb-2 block text-sm font-medium text-gray-300"
-							>Roster Type {#if $errors.rosterType}<span class="text-red-400">- {$errors.rosterType}</span>{/if}</label
+							>Roster Type {#if $errors.rosterType}<span class="text-red-400"
+									>- {$errors.rosterType}</span
+								>{/if}</label
 						>
 						<select
 							name="rosterType"
@@ -98,10 +119,12 @@
 							aria-invalid={$errors.rosterType ? 'true' : undefined}
 							{...$constraints.rosterType}
 						>
-							<option value="">Select Roster Type</option>
-							<option value="none">None</option>
-							<option value="open">Open</option>
-							<option value="assigned">Assigned</option>
+							{#each eventTypeConfig?.allowedRosterTypes as rosterType}
+								{@const rosterTypeConfig = EVENT_ROSTER_TYPES.find(
+									(type) => type.key === rosterType
+								)}
+								<option value={rosterTypeConfig?.key}>{rosterTypeConfig?.label}</option>
+							{/each}
 						</select>
 					</div>
 				</div>
@@ -109,7 +132,9 @@
 				<!-- Description -->
 				<div>
 					<label for="description" class="mb-2 block text-sm font-medium text-gray-300"
-						>Description {#if $errors.description}<span class="text-red-400">- {$errors.description}</span>{/if}</label
+						>Description {#if $errors.description}<span class="text-red-400"
+								>- {$errors.description}</span
+							>{/if}</label
 					>
 					<textarea
 						name="description"
@@ -125,7 +150,9 @@
 				<!-- Banner URL -->
 				<div>
 					<label for="bannerUrl" class="mb-2 block text-sm font-medium text-gray-300"
-						>Banner URL <span class="text-gray-500">(optional)</span> {#if $errors.bannerUrl}<span class="text-red-400">- {$errors.bannerUrl}</span>{/if}</label
+						>Banner URL <span class="text-gray-500">(optional)</span>
+						{#if $errors.bannerUrl}<span class="text-red-400">- {$errors.bannerUrl}</span
+							>{/if}</label
 					>
 					<input
 						type="url"
