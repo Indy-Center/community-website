@@ -11,6 +11,7 @@
 	import IconStar from '~icons/mdi/star';
 	import IconPublish from '~icons/mdi/publish';
 	import IconDraft from '~icons/mdi/publish-off';
+	import IconArrowLeft from '~icons/mdi/arrow-left';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 
 	let { data } = $props();
@@ -261,12 +262,17 @@
 		<div class="flex-1">
 			<h1 class="mb-2 text-3xl font-bold text-white">{event?.name || 'Event'}</h1>
 			<p class="text-slate-400">
-				Manage event positions and assignments. <a href="/events/{event?.id}" class="text-sky-500"
-					>Return to Event</a
-				>
+				Manage event positions and assignments.
 			</p>
 		</div>
 		<div class="flex flex-shrink-0 gap-3">
+			<a
+				href="/events/{event?.id}"
+				class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
+			>
+				<IconArrowLeft class="h-4 w-4" />
+				Return to Event
+			</a>
 			<ActionToggle
 				action="?/toggleRosterPublished"
 				currentState={event.isRosterPublished}

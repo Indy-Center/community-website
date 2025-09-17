@@ -346,13 +346,8 @@
 					<!-- Assigned Roster (not released yet) -->
 				{:else if event.rosterType === 'assigned'}
 					{#if hasControllerAccess}
-						<!-- Show Position Request Option for Controllers -->
+						<!-- Request submission section for controllers -->
 						<div class="p-8 text-center">
-							<div class="mb-4">
-								<h3 class="text-lg font-medium text-white">Position Requests</h3>
-								<p class="text-slate-400">Request to be assigned a position for this event.</p>
-							</div>
-
 							{#if event.positionRequests && event.positionRequests.some((req) => req.userId === userId)}
 								<!-- User already has a request -->
 								<div class="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
@@ -363,6 +358,10 @@
 								</div>
 							{:else}
 								<!-- User can submit a request -->
+								<div class="mb-4">
+									<h3 class="text-lg font-medium text-white">Position Requests</h3>
+									<p class="text-slate-400">Request to be assigned a position for this event.</p>
+								</div>
 								<button
 									onclick={() => positionRequestModal?.open()}
 									class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
@@ -372,6 +371,34 @@
 								</button>
 							{/if}
 						</div>
+
+						{#if event.positionRequests && event.positionRequests.length > 0}
+							<!-- Show existing position requests below submission section -->
+							<div class="border-t border-slate-700/60">
+								<div class="px-6 pt-3 pb-1">
+									<h4 class="text-xs font-semibold tracking-wider text-slate-400 uppercase">Current Requests</h4>
+								</div>
+								<div class="divide-y divide-slate-700/60">
+									{#each event.positionRequests as request}
+										<div class="px-6 py-4 transition-colors hover:bg-slate-700/30">
+											<div class="flex items-start justify-between">
+												<div>
+													<div class="font-medium text-white">
+														{getUserDisplayName(request.user)} ({request.user.operatingInitials})
+													</div>
+													<div class="mt-1 text-sm text-slate-400">
+														{request.comments || 'No comments provided'}
+													</div>
+												</div>
+												<div class="text-xs text-slate-500">
+													{new Date(request.createdAt).toLocaleDateString()}
+												</div>
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					{:else}
 						<!-- No controller access -->
 						<div class="p-8 text-center">
