@@ -100,7 +100,9 @@
 							<!-- Event Metadata -->
 							<div class="mb-4 flex flex-wrap items-center gap-2">
 								<EventTypeBadge eventType={nextEvent.type} />
-								<RosterTypeBadge rosterType={nextEvent.rosterType} />
+								{#if nextEvent.rosterType !== 'none'}
+									<RosterTypeBadge rosterType={nextEvent.rosterType} />
+								{/if}
 							</div>
 
 							{#if nextEvent.description}
@@ -121,7 +123,8 @@
 										class="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm font-medium text-sky-300 backdrop-blur-sm"
 									>
 										<IconClock class="h-4 w-4" />
-										{format(nextEvent.startTime, "MMM d, yyyy 'at' HH:mm")} {format(nextEvent.startTime, 'zzz')}
+										{format(nextEvent.startTime, "MMM d, yyyy 'at' HH:mm")}
+										{format(nextEvent.startTime, 'zzz')}
 									</time>
 								</div>
 							{/if}
@@ -288,7 +291,9 @@
 								<!-- Event Metadata -->
 								<div class="mb-2 flex flex-wrap gap-1">
 									<EventTypeBadge eventType={event.type} size="sm" />
-									<RosterTypeBadge rosterType={event.rosterType} size="sm" />
+									{#if event.rosterType !== 'none'}
+										<RosterTypeBadge rosterType={event.rosterType} size="sm" />
+									{/if}
 								</div>
 
 								<!-- Event Time - Push to bottom -->
@@ -301,7 +306,8 @@
 											</time>
 											<time class="inline-flex items-center gap-1 text-sky-300">
 												<IconClock class="h-3 w-3" />
-												{format(event.startTime, "MMM d 'at' HH:mm")} {format(event.startTime, 'zzz')}
+												{format(event.startTime, "MMM d 'at' HH:mm")}
+												{format(event.startTime, 'zzz')}
 											</time>
 										</div>
 									{/if}

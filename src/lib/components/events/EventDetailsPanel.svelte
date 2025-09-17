@@ -18,9 +18,11 @@
 			<!-- Badges -->
 			<div class="flex items-center gap-2">
 				<EventTypeBadge eventType={event.type} />
-				<RosterTypeBadge rosterType={event.rosterType} />
+				{#if event.rosterType !== 'none'}
+					<RosterTypeBadge rosterType={event.rosterType} />
+				{/if}
 			</div>
-			
+
 			<!-- Event Times -->
 			{#if event.startTime && event.endTime}
 				<div class="space-y-3">
