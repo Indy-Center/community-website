@@ -191,7 +191,7 @@
 						color="green"
 					/>
 
-					{#if supportsRosters(event.type)}
+					{#if supportsRosters(event.type) && event.rosterType !== 'none'}
 						<a
 							href="/events/{event.id}/positions"
 							class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
@@ -236,7 +236,7 @@
 	</div>
 
 	<!-- Description and Positions -->
-	<div class="grid grid-cols-1 gap-8 {supportsRosters(event.type) ? 'lg:grid-cols-2' : ''}">
+	<div class="grid grid-cols-1 gap-8 {supportsRosters(event.type) && event.rosterType !== 'none' ? 'lg:grid-cols-2' : ''}">
 		<!-- Event Description -->
 		<Panel title="Event Details" icon={IconTextLong} mode="dark">
 			<div class="p-8">
@@ -247,7 +247,7 @@
 		</Panel>
 
 		<!-- Event Positions -->
-		{#if supportsRosters(event.type)}
+		{#if supportsRosters(event.type) && event.rosterType !== 'none'}
 			<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
 				<!-- Roster is Released! or the event is still in draft -->
 				{#if event.isRosterPublished}
