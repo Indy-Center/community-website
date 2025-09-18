@@ -33,9 +33,9 @@
 				if (user.data?.vatsim?.division?.id !== 'USA') {
 					return {
 						text: 'Join VATUSA',
-						href: 'https://www.vatusa.net/info/join',
+						href: '/visit/become-a-controller',
 						icon: IconSchool,
-						external: true
+						external: false
 					};
 				}
 				// If they're in USA division, show become controller
@@ -58,9 +58,9 @@
 				// User has VATSIM account but no membership - need to join VATUSA first
 				return {
 					text: 'Join VATUSA',
-					href: 'https://www.vatusa.net/info/join',
+					href: '/visit/become-a-controller',
 					icon: IconSchool,
-					external: true
+					external: false
 				};
 		}
 	};
