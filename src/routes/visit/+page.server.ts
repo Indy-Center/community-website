@@ -12,7 +12,7 @@ export const load = async ({ locals }) => {
 	switch (user.membership) {
 		case 'controller':
 			// Controllers are at the top - no next step needed, redirect to get-connected
-			return redirect(302, '/visit/get-connected');
+			return redirect(302, '/visit/become-a-controller');
 
 		case 'community':
 			// Community members can become controllers (regardless of division)
