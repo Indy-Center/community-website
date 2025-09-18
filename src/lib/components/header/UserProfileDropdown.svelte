@@ -14,9 +14,7 @@
 	let { user, roles }: { user: User | undefined; roles: string[] | undefined } = $props();
 
 	function getFullName(user: User): string {
-		return user.preferredName
-			? user.preferredName
-			: `${user.firstName} ${user.lastName}`;
+		return user.preferredName ? user.preferredName : `${user.firstName} ${user.lastName}`;
 	}
 
 	let showDropdown = $state(false);
@@ -88,7 +86,7 @@
 					onkeydown={(e) => e.stopPropagation()}
 					tabindex="-1"
 				>
-					<div class="p-3 space-y-1">
+					<div class="space-y-1 p-3">
 						<!-- Settings -->
 						<a
 							href="/settings"
@@ -101,36 +99,7 @@
 						</a>
 
 						<!-- Divider -->
-						<div class="border-t border-slate-600/30 my-2"></div>
-
-						<!-- Indy Library -->
-						<a
-							href="https://wiki.flyindycenter.com"
-							target="_blank"
-							rel="noopener noreferrer"
-							role="menuitem"
-							onclick={closeDropdown}
-							class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-slate-600/30 hover:text-white"
-						>
-							<IconBook class="h-4 w-4" />
-							<span>Indy Library</span>
-						</a>
-
-						<!-- Controller Tools -->
-						<a
-							href="https://tools.flyindycenter.com"
-							target="_blank"
-							rel="noopener noreferrer"
-							role="menuitem"
-							onclick={closeDropdown}
-							class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-slate-600/30 hover:text-white"
-						>
-							<IconTools class="h-4 w-4" />
-							<span>Controller Tools</span>
-						</a>
-
-						<!-- Divider -->
-						<div class="border-t border-slate-600/30 my-2"></div>
+						<div class="my-2 border-t border-white/50"></div>
 
 						<!-- Sign Out -->
 						<a

@@ -11,6 +11,7 @@
 	import { supportsRosters } from '$lib/config/events';
 	import { canManageEvents } from '$lib/utils/permissions.js';
 	import type { Event } from '$lib/db/schema/events';
+	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
 
 	let { data } = $props();
 	let { events, vatsimEvents } = data;
@@ -136,83 +137,42 @@
 						</div>
 
 						<!-- Event Banner -->
-						{#if nextEvent.bannerUrl}
-							<div class="relative lg:w-72 lg:flex-shrink-0">
-								<div
-									class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r"
-								></div>
-								<img
-									src={nextEvent.bannerUrl}
-									alt="{nextEvent.name} banner"
-									class="h-40 w-full object-cover lg:h-full lg:rounded-r-xl"
-									loading="lazy"
-								/>
-								<!-- Dynamic Badge -->
-								<div class="absolute top-3 right-3">
-									<div class="flex items-center gap-2">
-										{#if !isEventPublished(nextEvent)}
-											<div
-												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-3 py-1.5 text-sm font-medium text-yellow-300 backdrop-blur-sm"
-											>
-												Draft Event
-											</div>
-										{/if}
-										{#if isEventInProgress(nextEvent)}
-											<div
-												class="rounded-full border border-green-500/50 bg-green-500/20 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm"
-											>
-												In Progress
-											</div>
-										{:else}
-											<div
-												class="rounded-full border border-sky-500/50 bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
-											>
-												Next Event
-											</div>
-										{/if}
-									</div>
+						<div class="relative lg:w-72 lg:flex-shrink-0">
+							<div
+								class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r z-10"
+							></div>
+							<ImageWithFallback
+								src={nextEvent.bannerUrl}
+								alt="{nextEvent.name} banner"
+								class="h-40 w-full object-cover lg:h-full lg:rounded-r-xl"
+								fallbackClass="h-40 w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 lg:h-full lg:rounded-r-xl"
+							/>
+							<!-- Dynamic Badge -->
+							<div class="absolute top-3 right-3 z-20">
+								<div class="flex items-center gap-2">
+									{#if !isEventPublished(nextEvent)}
+										<div
+											class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-3 py-1.5 text-sm font-medium text-yellow-300 backdrop-blur-sm"
+										>
+											Draft Event
+										</div>
+									{/if}
+									{#if isEventInProgress(nextEvent)}
+										<div
+											class="rounded-full border border-green-500/50 bg-green-500/20 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm"
+										>
+											In Progress
+										</div>
+									{:else}
+										<div
+											class="rounded-full border border-sky-500/50 bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
+										>
+											Next Event
+										</div>
+									{/if}
 								</div>
 							</div>
-						{:else}
-							<!-- Fallback banner for featured event -->
-							<div class="relative lg:w-72 lg:flex-shrink-0">
-								<div
-									class="h-40 w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 lg:h-full lg:rounded-r-xl"
-								>
-									<div class="absolute inset-0 flex items-center justify-center">
-										<IconGlobe class="h-10 w-10 text-slate-600" />
-									</div>
-									<div
-										class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:rounded-r-xl lg:bg-gradient-to-r"
-									></div>
-								</div>
-								<!-- Dynamic Badge -->
-								<div class="absolute top-3 left-3">
-									<div class="flex items-center gap-2">
-										{#if !isEventPublished(nextEvent)}
-											<div
-												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-3 py-1.5 text-sm font-medium text-yellow-300 backdrop-blur-sm"
-											>
-												Draft Event
-											</div>
-										{/if}
-										{#if isEventInProgress(nextEvent)}
-											<div
-												class="rounded-full border border-green-500/50 bg-green-500/20 px-3 py-1.5 text-sm font-medium text-green-300 backdrop-blur-sm"
-											>
-												In Progress
-											</div>
-										{:else}
-											<div
-												class="rounded-full border border-sky-500/50 bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm"
-											>
-												Next Event
-											</div>
-										{/if}
-									</div>
-								</div>
-							</div>
-						{/if}
+						</div>
 					</div>
 
 					<!-- Subtle glow effect on hover -->
@@ -234,50 +194,27 @@
 							class="relative flex h-full flex-col overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-lg hover:shadow-sky-500/5"
 						>
 							<!-- Event Banner -->
-							{#if event.bannerUrl}
-								<div class="relative h-24 flex-shrink-0 overflow-hidden">
-									<img
-										src={event.bannerUrl}
-										alt="{event.name} banner"
-										class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-										loading="lazy"
-									/>
-									<div
-										class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
-									></div>
-									<!-- Dynamic Badge for Grid Events -->
-									<div class="absolute top-2 left-2">
-										{#if !isEventPublished(event)}
-											<div
-												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
-											>
-												Draft
-											</div>
-										{/if}
-									</div>
-								</div>
-							{:else}
-								<!-- Fallback banner with gradient -->
+							<div class="relative h-24 flex-shrink-0 overflow-hidden">
+								<ImageWithFallback
+									src={event.bannerUrl}
+									alt="{event.name} banner"
+									class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+									fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
+								/>
 								<div
-									class="relative h-24 flex-shrink-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
-								>
-									<div class="absolute inset-0 flex items-center justify-center">
-										<IconGlobe class="h-6 w-6 text-slate-500" />
-									</div>
-									<div
-										class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
-									></div>
-									<div class="absolute top-2 left-2">
-										{#if !isEventPublished(event)}
-											<div
-												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
-											>
-												Draft
-											</div>
-										{/if}
-									</div>
+									class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
+								></div>
+								<!-- Dynamic Badge for Grid Events -->
+								<div class="absolute top-2 left-2 z-10">
+									{#if !isEventPublished(event)}
+										<div
+											class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
+										>
+											Draft
+										</div>
+									{/if}
 								</div>
-							{/if}
+							</div>
 
 							<!-- Event Content -->
 							<div class="flex flex-1 flex-col p-3">

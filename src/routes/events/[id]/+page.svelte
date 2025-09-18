@@ -8,6 +8,7 @@
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import IconPlus from '~icons/mdi/plus';
 	import IconCheck from '~icons/mdi/check';
+	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
 	import IconClose from '~icons/mdi/close';
 	import Panel from '$lib/components/Panel.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -218,18 +219,16 @@
 	<!-- Banner and Event Information -->
 	<div class="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
 		<!-- Event Banner -->
-		{#if event.bannerUrl}
-			<div
-				class="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm"
-			>
-				<img
-					src={event.bannerUrl}
-					alt="{event.name} banner"
-					class="h-64 w-full object-cover sm:h-80 lg:h-full"
-					loading="lazy"
-				/>
-			</div>
-		{/if}
+		<div
+			class="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm"
+		>
+			<ImageWithFallback
+				src={event.bannerUrl}
+				alt="{event.name} banner"
+				class="h-64 w-full object-cover sm:h-80 lg:h-full"
+				fallbackClass="h-64 w-full sm:h-80 lg:h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
+			/>
+		</div>
 
 		<!-- Event Information -->
 		<EventDetailsPanel {event} />

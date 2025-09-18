@@ -4,6 +4,7 @@
 	import IconClock from '~icons/mdi/clock-outline';
 	import IconGlobe from '~icons/mdi/earth';
 	import type { Event } from '$lib/db/schema/events';
+	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
 
 	let { event }: { event: Event } = $props();
 
@@ -22,39 +23,22 @@
 		class="relative flex h-40 flex-col overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-lg hover:shadow-sky-500/5"
 	>
 		<!-- Event Banner -->
-		{#if event.bannerUrl}
-			<div class="relative h-20 flex-shrink-0 overflow-hidden">
-				<img
-					src={event.bannerUrl}
-					alt="{event.name} banner"
-					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-					loading="lazy"
-				/>
-				<div class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"></div>
-				<!-- Date and time overlay -->
-				<div class="absolute bottom-2 right-2">
-					<div class="rounded-lg bg-slate-800/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
-						<div>{eventDate}</div>
-						<div class="text-sky-300">{startLocal} {localTimezone}</div>
-					</div>
+		<div class="relative h-20 flex-shrink-0 overflow-hidden">
+			<ImageWithFallback
+				src={event.bannerUrl}
+				alt="{event.name} banner"
+				class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+				fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
+			/>
+			<div class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"></div>
+			<!-- Date and time overlay -->
+			<div class="absolute bottom-2 right-2">
+				<div class="rounded-lg bg-slate-800/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+					<div>{eventDate}</div>
+					<div class="text-sky-300">{startLocal} {localTimezone}</div>
 				</div>
 			</div>
-		{:else}
-			<!-- Fallback banner with gradient -->
-			<div class="relative h-20 flex-shrink-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900">
-				<div class="absolute inset-0 flex items-center justify-center">
-					<IconGlobe class="h-5 w-5 text-slate-500" />
-				</div>
-				<div class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"></div>
-				<!-- Date and time overlay -->
-				<div class="absolute bottom-2 right-2">
-					<div class="rounded-lg bg-slate-800/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
-						<div>{eventDate}</div>
-						<div class="text-sky-300">{startLocal} {localTimezone}</div>
-					</div>
-				</div>
-			</div>
-		{/if}
+		</div>
 
 		<!-- Event Content -->
 		<div class="flex flex-1 flex-col p-3">
