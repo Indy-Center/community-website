@@ -4,10 +4,49 @@ import { usersTable, type User } from '$lib/db/schema/users';
 import { eq } from 'drizzle-orm';
 import type { Database } from '$lib/server/db';
 
+export enum DiscordChannel {
+	TECH_TEAM_ALERTS,
+	SENIOR_STAFF_ALERTS
+}
+
+const DISCORD_CHANNELS = {
+	[DiscordChannel.TECH_TEAM_ALERTS]: env.DISCORD_WEBHOOK_TECH_TEAM_ALERTS,
+	[DiscordChannel.SENIOR_STAFF_ALERTS]: env.DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS
+};
+
+export type DiscordEmbed = {
+	title: string | null;
+	description: string | null;
+	color: number | null;
+	fields: {
+		name: string | null;
+		value: string | null;
+		inline: boolean;
+	}[];
+	footer: {
+		text: string | null;
+	};
+	timestamp: string;
+};
+
 function getDisplayName(user: User) {
 	if (!user) return 'Unknown User';
 	const name = user.preferredName || `${user.firstName} ${user.lastName}`;
 	return `${name} (${user.cid})`;
+}
+
+export async function sendDiscordEmbed(channel: DiscordChannel, embed: DiscordEmbed) {
+	const webhookUrl = DISCORD_CHANNELS[channel];
+
+	await fetch(webhookUrl, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			embeds: [embed]
+		})
+	});
 }
 
 export async function notifyDiscordOfFeedbackStatusChange(
@@ -58,16 +97,7 @@ export async function notifyDiscordOfFeedbackStatusChange(
 			timestamp: feedback.createdAt!.toISOString()
 		};
 
-		await fetch(env.DISCORD_WEBHOOK_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				username: 'Controller Feedback Bot',
-				embeds: [embed]
-			})
-		});
+		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, embed);
 	}
 }
 
@@ -107,15 +137,6 @@ export async function notifyDiscordOfFeedback(db: Database, feedback: Feedback) 
 			timestamp: feedback.createdAt!.toISOString()
 		};
 
-		await fetch(env.DISCORD_WEBHOOK_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				username: 'Controller Feedback Bot',
-				embeds: [embed]
-			})
-		});
+		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, embed);
 	}
 }

@@ -9,6 +9,7 @@ import { fetchUserData } from '$lib/server/vatsim/vatsimConnectClient';
 
 import type { User } from '$lib/db/schema/users';
 import { syncUserMembership } from '$lib/server/membership';
+import { DiscordChannel, sendDiscordEmbed } from '$lib/server/discord';
 
 export async function GET({ locals, url, cookies }: RequestEvent): Promise<Response> {
 	// Extract query parameters
@@ -105,6 +106,14 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			.returning();
 
 		user = newUser;
+		await sendDiscordEmbed(DiscordChannel.TECH_TEAM_ALERTS, {
+			title: 'New User Registered',
+			description: `User ${user.firstName} ${user.lastName} (${user.cid}) has registered`,
+			color: 0x5865f2,
+			fields: [],
+			footer: { text: null },
+			timestamp: new Date().toISOString()
+		});
 	}
 
 	// Sync controller membership and certifications

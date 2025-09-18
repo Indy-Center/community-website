@@ -1,4 +1,7 @@
+import type { User } from '$lib/db/schema/users';
+import { DiscordChannel, sendDiscordEmbed } from '$lib/server/discord';
 import { addVisitor, checkTransferChecklist } from '$lib/server/vatsim/vatusaDataClient';
+import type { Actions, RequestEvent } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
 	const { user } = locals;
@@ -13,8 +16,8 @@ export const load = async ({ locals }) => {
 };
 
 export const actions = {
-	addVisitor: async ({ locals, request }) => {
-		const { user } = locals;
+	addVisitor: async ({ locals }: RequestEvent) => {
+		const user = locals.user as User;
 
 		const { canVisit } = await checkTransferChecklist(user.cid);
 
@@ -24,6 +27,16 @@ export const actions = {
 
 		await addVisitor(user.cid);
 
+		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, {
+			title: 'Incoming New Visitor',
+			description: `User ${user.firstName} ${user.lastName} (${user.cid}) has submitted a visiting request. 
+			They will be automatically promoted during the next roster update.`,
+			color: 0x00ff00,
+			fields: [],
+			footer: { text: null },
+			timestamp: new Date().toISOString()
+		});
+
 		return { success: true };
 	}
-};
+} satisfies Actions;

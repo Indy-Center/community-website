@@ -8,6 +8,7 @@ import { addMonths } from 'date-fns';
 import { userRolesTable } from '$lib/db/schema/roles';
 import { Role } from '$lib/utils/permissions';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
+import { DiscordChannel, sendDiscordEmbed } from './discord';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
@@ -68,6 +69,15 @@ async function processLeavingController(db: Database, user: User) {
 
 	await grantRoles(db, user, null);
 
+	await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, {
+		title: 'Controller Membership',
+		description: `User ${user.firstName} ${user.lastName} (${user.cid}) is no longer a controller`,
+		color: 0xff0000,
+		fields: [],
+		footer: { text: null },
+		timestamp: new Date().toISOString()
+	});
+
 	await db.update(usersTable).set({ membership: 'community' }).where(eq(usersTable.id, user.id));
 }
 
@@ -77,11 +87,45 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 	);
 
 	// Grant Certificates
-	await grantInitialCertificationsAndEndorsements(db, user);
+	const { certifications, endorsements } = await grantInitialCertificationsAndEndorsements(
+		db,
+		user
+	);
 
-	await grantOperatingInitials(db, user);
+	const operatingInitials = await grantOperatingInitials(db, user);
 
 	await grantRoles(db, user, controller);
+
+	await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, {
+		title: 'Controller Membership',
+		description: `User ${user.firstName} ${user.lastName} (${user.cid}) is now a controller`,
+		color: 0x00ff00,
+		fields: [
+			certifications.length > 0
+				? {
+						name: 'Certifications',
+						value: certifications.join(', '),
+						inline: true
+					}
+				: null,
+			endorsements.length > 0
+				? {
+						name: 'Endorsements and Additional Certifications',
+						value: endorsements.join(', '),
+						inline: true
+					}
+				: null,
+			operatingInitials
+				? {
+						name: 'Operating Initials',
+						value: operatingInitials,
+						inline: true
+					}
+				: null
+		].filter((field) => field !== null),
+		footer: { text: null },
+		timestamp: new Date().toISOString()
+	});
 
 	console.log(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
@@ -133,6 +177,8 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 			`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
 	}
+
+	return { certifications, endorsements };
 }
 
 /**
@@ -144,7 +190,7 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 function determineCertificationsAndEndorsementsFromRating(rating: string) {
 	switch (rating) {
 		case 'S1':
-			return { certifications: ['S-GC'] };
+			return { certifications: ['S-GC'], endorsements: [] };
 		case 'S2':
 			return { certifications: ['A-LC'], endorsements: [] };
 		case 'S3':
@@ -173,7 +219,7 @@ async function grantOperatingInitials(db: Database, user: User) {
 		console.log(
 			`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials}`
 		);
-		return;
+		return user.operatingInitials;
 	}
 
 	const existingInitials = (
@@ -198,15 +244,14 @@ async function grantOperatingInitials(db: Database, user: User) {
 		console.log(
 			`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 		);
-	} else {
-		await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
-		console.log(
-			`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
+		return initials;
 	}
+
+	await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
 	console.log(
-		`Granting operating initials for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
+	return null;
 }
 
 async function grantRoles(db: Database, user: User, controller: VatsimController | null) {
@@ -264,6 +309,8 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 			.insert(userRolesTable)
 			.values(rolesToApply.map((role) => ({ userId: user.id, role: role })));
 	}
+
+	return rolesToApply;
 }
 
 export async function syncMemberships(db: Database) {
