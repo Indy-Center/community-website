@@ -62,7 +62,7 @@
 					title: 'Why Control at Indy Center?',
 					subtitle: 'Already a controller',
 					description:
-						'Getting into controlling on VATSIM is one of the best ways to learn more about flying. Learning to control at Indy Center means you get to invest time in yourself as well as your community.'
+						'Becoming a controller at Indy Center is easy. We enjoy being able to offer a very nearly completely unrestricted controlling facility. Controllers on roster can control any non-center position immediately.'
 				};
 			default:
 				return {
@@ -264,7 +264,12 @@
 
 					<!-- Eligibility Checklist -->
 					<div>
-						<EligibilityChecklist checklist={data.checklist} canVisit={data.canVisit} canTransfer={data.canTransfer} user={data.user} />
+						<EligibilityChecklist
+							checklist={data.checklist}
+							canVisit={data.canVisit}
+							canTransfer={data.canTransfer}
+							user={data.user}
+						/>
 					</div>
 				</div>
 			{:else}
