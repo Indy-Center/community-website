@@ -1,16 +1,14 @@
 <script lang="ts">
-	import { superForm, dateProxy } from 'sveltekit-superforms';
+	import { superForm } from 'sveltekit-superforms';
 
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { EventSchema } from '$lib/forms/events';
 	import { EVENT_ROSTER_TYPES, EVENT_TYPES, getEventTypeConfig, isRosterTypeAllowed } from '$lib/config/events';
+	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
 
 	const { data }: { data: SuperValidated<Infer<EventSchema>> } = $props();
 
 	const { form, errors, enhance, constraints } = superForm(data);
-
-	const startTimeProxy = dateProxy(form, 'startTime', { format: 'datetime' });
-	const endTimeProxy = dateProxy(form, 'endTime', { format: 'datetime' });
 
 	const eventTypeConfig = $derived.by(
 		() =>
@@ -51,39 +49,21 @@
 				</div>
 
 				<!-- Event Times -->
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<div>
-						<label for="startTime" class="mb-2 block text-sm font-medium text-gray-300"
-							>Start Time (Zulu) {#if $errors.startTime}<span class="text-red-400"
-									>- {$errors.startTime}</span
-								>{/if}</label
-						>
-						<input
-							type="datetime-local"
-							name="startTime"
-							bind:value={$startTimeProxy}
-							step="60"
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-							aria-invalid={$errors.startTime ? 'true' : undefined}
-							{...$constraints.startTime}
-						/>
-					</div>
-					<div>
-						<label for="endTime" class="mb-2 block text-sm font-medium text-gray-300"
-							>End Time (Zulu) {#if $errors.endTime}<span class="text-red-400"
-									>- {$errors.endTime}</span
-								>{/if}</label
-						>
-						<input
-							type="datetime-local"
-							name="endTime"
-							bind:value={$endTimeProxy}
-							step="60"
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-							aria-invalid={$errors.endTime ? 'true' : undefined}
-							{...$constraints.endTime}
-						/>
-					</div>
+				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+					<DateTimeInput
+						{form}
+						{errors}
+						{constraints}
+						fieldName="startTime"
+						label="Start Time"
+					/>
+					<DateTimeInput
+						{form}
+						{errors}
+						{constraints}
+						fieldName="endTime"
+						label="End Time"
+					/>
 				</div>
 
 				<!-- Event Classification -->

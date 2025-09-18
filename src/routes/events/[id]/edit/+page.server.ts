@@ -32,8 +32,8 @@ export const load = async ({ locals, params }) => {
 			bannerUrl: event.bannerUrl,
 			type: event.type as 'community' | 'support',
 			rosterType: event.rosterType as 'open' | 'assigned' | 'none',
-			startTime: event.startTime.toISOString().slice(0, 16),
-			endTime: event.endTime.toISOString().slice(0, 16)
+			startTime: event.startTime,
+			endTime: event.endTime
 		},
 		zod4(eventSchema)
 	);

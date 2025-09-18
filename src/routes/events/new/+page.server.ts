@@ -25,8 +25,8 @@ export const load = async ({ locals, params, url }) => {
 				type: 'support',
 				description: vatsimEvent.description,
 				bannerUrl: vatsimEvent.banner || '',
-				startTime: new Date(vatsimEvent.start_time).toISOString().slice(0, 16),
-				endTime: new Date(vatsimEvent.end_time).toISOString().slice(0, 16)
+				startTime: new Date(vatsimEvent.start_time),
+				endTime: new Date(vatsimEvent.end_time)
 			};
 		}
 	}

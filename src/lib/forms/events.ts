@@ -16,17 +16,16 @@ export const eventSchema = z.object({
 	bannerUrl: z.url({ message: 'Event banner URL is invalid' }).optional().nullable(),
 	type: z.enum(['support', 'staffing', 'home', 'community', 'group_flight', 'other']),
 	rosterType: z.enum(['none', 'open', 'assigned']),
-	// This is a string that starts in UTC time from VATSIM's API,
-	// But the datetime-local HTML component only gives you back date and time (no tz)
-	// So we need to add the Z to the end of the string to make it UTC
+	// These are UTC ISO strings from our DateTimeInput component
+	// No transformation needed - they're already in proper UTC format
 	startTime: z
 		.string()
 		.min(1, { message: 'Event start time is required' })
-		.transform((str) => new Date(str + 'Z')),
+		.transform((str) => new Date(str)),
 	endTime: z
 		.string()
 		.min(1, { message: 'Event end time is required' })
-		.transform((str) => new Date(str + 'Z'))
+		.transform((str) => new Date(str))
 });
 
 export type EventSchema = typeof eventSchema;
