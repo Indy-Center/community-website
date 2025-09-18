@@ -3,6 +3,7 @@
 	import WeatherPanel from '$lib/components/status/WeatherPanel.svelte';
 	import ControllersPanel from '$lib/components/status/ControllersPanel.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';
+	import DynamicMembershipButton from '$lib/components/DynamicMembershipButton.svelte';
 	import IconDiscord from '~icons/mdi/discord';
 	import IconVisit from '~icons/mdi/sign-direction-plus';
 
@@ -33,16 +34,7 @@
 				<IconDiscord class="h-4 w-4" />
 				<span>Get Connected on Discord</span>
 			</a>
-			{#if data.user?.membership !== 'controller'}
-				<a
-					href="/visit"
-					target="_blank"
-					class="flex items-center justify-center space-x-2 rounded bg-sky-600 px-4 py-2 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-sky-700"
-				>
-					<IconVisit class="h-4 w-4" />
-					<span>Become a Controller</span>
-				</a>
-			{/if}
+			<DynamicMembershipButton user={data.user} class="shadow-lg" />
 		</div>
 	</PageHero>
 	<!-- Events Section -->

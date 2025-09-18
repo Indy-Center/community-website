@@ -39,3 +39,27 @@ export type VatusaRosterMember = {
 	last_promotion: string | null;
 	membership: string;
 };
+
+export type VatusaTransferChecklistResponse = {
+	data: VatusaTransferChecklist;
+};
+
+export type VatusaTransferChecklist = {
+	homecontroller: boolean;
+	needbasic: boolean;
+	pending: boolean;
+	initial: boolean;
+	'90days': boolean;
+	promo: boolean;
+	'50hrs': boolean;
+	override: boolean;
+	is_first: boolean;
+	days: number;
+	'60days': boolean;
+	hasHome: boolean;
+	hasRating: boolean;
+	instructor: boolean;
+	staff: boolean;
+	visiting: boolean;
+	overall: boolean;
+};
