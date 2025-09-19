@@ -8,7 +8,7 @@ export default defineConfig({
 	plugins: [
 		sentrySvelteKit({
 			org: 'indy-center',
-			project: 'javascript-sveltekit',
+			project: 'community-website',
 			autoUploadSourceMaps: true
 		}),
 		tailwindcss(),
