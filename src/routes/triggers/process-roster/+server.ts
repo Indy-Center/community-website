@@ -11,10 +11,8 @@ import { usersTable } from '$lib/db/schema/users';
 import { addMonths } from 'date-fns';
 import { logger } from '$lib/server/logger';
 
-const ARTCC_ID = 'ZID';
-
 export const GET: RequestHandler = async ({ locals }) => {
-	const roster = await fetchRoster(ARTCC_ID);
+	const roster = await fetchRoster();
 
 	await processRoster(locals.db, roster);
 

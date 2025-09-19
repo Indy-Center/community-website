@@ -4,12 +4,14 @@ import type {
 	VatusaTransferChecklistResponse
 } from '$lib/types/vatusa';
 import { env } from '$env/dynamic/private';
+import { FACILITY_ID } from '$lib/config';
 
 const VATUSA_API_BASE_URL = 'https://api.vatusa.net';
 
-const ARTCC = 'ZID';
-
-export async function fetchRoster(artcc: string, membership: 'home' | 'visit' | 'both' = 'both') {
+export async function fetchRoster(
+	membership: 'home' | 'visit' | 'both' = 'both',
+	artcc: string = FACILITY_ID
+) {
 	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}/roster/${membership}`;
 	const response = await fetch(url).then((res) => res.json());
 	const { data } = response as VatusaRosterResponse;
@@ -17,7 +19,7 @@ export async function fetchRoster(artcc: string, membership: 'home' | 'visit' | 
 	return data;
 }
 
-export async function checkTransferChecklist(cid: string) {
+export async function checkTransferChecklist(cid: string, artcc: string = FACILITY_ID) {
 	const url = `${VATUSA_API_BASE_URL}/user/${cid}/transfer/checklist?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url).then((res) => res.json());
 	const { data } = response as VatusaTransferChecklistResponse;
@@ -32,8 +34,8 @@ export async function checkTransferChecklist(cid: string) {
 	};
 }
 
-export async function addVisitor(cid: string) {
-	const url = `${VATUSA_API_BASE_URL}/facility/${ARTCC}/roster/manageVisitor/${cid}?apikey=${env.VATUSA_API_KEY}`;
+export async function addVisitor(cid: string, artcc: string = FACILITY_ID) {
+	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}/roster/manageVisitor/${cid}?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url, {
 		method: 'POST'
 	}).then((res) => res.json());

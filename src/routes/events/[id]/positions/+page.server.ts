@@ -29,12 +29,11 @@ export const load = async ({ locals, params, depends }) => {
 		return redirect(302, '/events');
 	}
 
-
 	const users = await locals.db.query.usersTable.findMany({
 		orderBy: (users, { asc }) => [asc(users.preferredName), asc(users.firstName)]
 	});
 
-	const artccInformation = await fetchArtccInformation('ZID');
+	const artccInformation = await fetchArtccInformation();
 
 	return {
 		event,
@@ -114,7 +113,6 @@ export const actions = {
 		if (!position) {
 			return { error: 'Position is required' };
 		}
-
 
 		await locals.db
 			.delete(eventPositionsTable)

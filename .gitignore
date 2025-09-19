@@ -14,7 +14,6 @@ Thumbs.db
 
 # Env
 .env
-.env.*
 !.env.example
 !.env.test
 
@@ -24,7 +23,7 @@ vite.config.ts.timestamp-*
 
 .dev.vars*
 !.dev.vars.example
-.env*
+.env*.local
 
 # Task runner temporary files
 task-runner/wrangler-*.jsonc

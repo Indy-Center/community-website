@@ -1,10 +1,4 @@
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
-import { usersTable } from '$lib/db/schema/users';
-import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers.js';
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
-
-const ARTCC_ID = 'ZID';
 
 export const load = async ({ locals }) => {
 	const results = await locals.db.query.vatsimControllersTable.findMany({
@@ -18,7 +12,7 @@ export const load = async ({ locals }) => {
 		}
 	});
 
-	const controllers = await fetchControllers(ARTCC_ID);
+	const controllers = await fetchControllers();
 
 	return {
 		roster: results,

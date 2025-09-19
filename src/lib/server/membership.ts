@@ -10,10 +10,11 @@ import { Role } from '$lib/utils/permissions';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
 import { logger } from './logger';
+import { SITEWIDE_CONFIG } from '$lib/config';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
-const ARTCC_ID = 'ZID';
+const ARTCC_ID = SITEWIDE_CONFIG.FACILITY_ID;
 
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
@@ -34,7 +35,9 @@ const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP
  * @param user the user to process membership sync on
  */
 export async function syncUserMembership(db: Database, user: User) {
-	logger.info(`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(
+		`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 
 	// Check to see if they're on the roster. This may not be 100% accurate if the roster
 	// hasn't been ingested recently.
@@ -62,7 +65,9 @@ export async function syncUserMembership(db: Database, user: User) {
 }
 
 async function processLeavingController(db: Database, user: User) {
-	logger.info(`Processing leaving controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(
+		`Processing leaving controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 
 	await grantRoles(db, user, null);
 
@@ -79,7 +84,9 @@ async function processLeavingController(db: Database, user: User) {
 }
 
 async function processNewController(db: Database, user: User, controller: VatsimController) {
-	logger.info(`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(
+		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 
 	// Grant Certificates
 	const { certifications, endorsements } = await grantInitialCertificationsAndEndorsements(
@@ -122,11 +129,15 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 		timestamp: new Date().toISOString()
 	});
 
-	logger.info(`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`);
+	logger.info(
+		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
+	);
 }
 
 async function grantInitialCertificationsAndEndorsements(db: Database, user: User) {
-	logger.info(`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(
+		`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 
 	const { certifications, endorsements } = determineCertificationsAndEndorsementsFromRating(
 		user.data.vatsim.rating.short
@@ -145,7 +156,9 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 			)
 			.onConflictDoNothing()
 			.returning();
-		logger.info(`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+		logger.info(
+			`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		);
 	}
 
 	if (endorsements.length > 0) {
@@ -162,7 +175,9 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 			)
 			.onConflictDoNothing()
 			.returning();
-		logger.info(`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+		logger.info(
+			`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		);
 	}
 
 	return { certifications, endorsements };
@@ -203,7 +218,9 @@ function determineCertificationsAndEndorsementsFromRating(rating: string) {
 async function grantOperatingInitials(db: Database, user: User) {
 	// Check if user already has operating initials
 	if (user.operatingInitials) {
-		logger.info(`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials})`);
+		logger.info(
+			`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials})`
+		);
 		return user.operatingInitials;
 	}
 
@@ -226,12 +243,16 @@ async function grantOperatingInitials(db: Database, user: User) {
 			.update(usersTable)
 			.set({ operatingInitials: initials })
 			.where(eq(usersTable.id, user.id));
-		logger.info(`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+		logger.info(
+			`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		);
 		return initials;
 	}
 
 	await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
-	logger.info(`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(
+		`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+	);
 	return null;
 }
 
@@ -248,7 +269,9 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 
 	// If no controller is found, don't grant any roles
 	if (!controller) {
-		logger.info(`No controller found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+		logger.info(
+			`No controller found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
+		);
 
 		return;
 	}
@@ -260,7 +283,9 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		.filter((role) => role.facility === ARTCC_ID)
 		.map((role) => role.role);
 
-	logger.info(`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`);
+	logger.info(
+		`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`
+	);
 
 	// Now build a set of roles to apply to the user
 	const rolesToApply = Array.from(
@@ -276,7 +301,9 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		)
 	);
 
-	logger.info(`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`);
+	logger.info(
+		`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`
+	);
 
 	// Apply the roles to the user
 	if (rolesToApply.length > 0) {

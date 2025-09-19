@@ -36,7 +36,7 @@ export const load = async ({ locals, params }) => {
 	let artccInformation = null;
 	if (event.rosterType !== 'none' && event.isRosterPublished) {
 		try {
-			artccInformation = await fetchArtccInformation('ZID');
+			artccInformation = await fetchArtccInformation();
 		} catch (error) {
 			logger.error('Failed to fetch ARTCC information:', error);
 		}

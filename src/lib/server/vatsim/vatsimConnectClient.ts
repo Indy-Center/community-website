@@ -1,5 +1,4 @@
 import { env } from '$env/dynamic/private';
-import { USE_MOCK_DATA } from '$lib/mocks';
 import type { VatsimUserDataResponse, VatsimUserData } from '$lib/types/vatsim';
 import { logger } from '$lib/server/logger';
 

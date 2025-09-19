@@ -3,13 +3,10 @@ import { fetchMetars } from '$lib/server/vatsim/vatsimDataClient';
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt } from 'drizzle-orm';
 
-const ARTCC_ID = 'ZID';
-const AIRPORTS = ['KCMH', 'KCRW', 'KCVG', 'KDAY', 'KEVV', 'KHTS', 'KHUF', 'KIND', 'KLEX', 'KPKB', 'KSDF'];
-
 export const load = async ({ locals }) => {
-	const metars = await fetchMetars(AIRPORTS);
+	const metars = await fetchMetars();
 
-	const controllers = await fetchControllers(ARTCC_ID);
+	const controllers = await fetchControllers();
 
 	const events = await locals.db.query.eventsTable.findMany({
 		orderBy: asc(eventsTable.startTime),

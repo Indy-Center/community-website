@@ -3,17 +3,11 @@ const VATSIM_LIST_EVENTS_BASE_URL = 'https://my.vatsim.net/api/v2/events/view/di
 const VATSIM_EVENT_BASE_URL = 'https://my.vatsim.net/api/v2/events/view';
 
 import type { VatsimEvent, VatsimEventResponse, VatsimMetarResponse } from '$lib/types/vatsim';
-import { USE_MOCK_DATA, MOCK_EVENTS } from '$lib/mocks';
+import { METAR_AIRPORTS } from '$lib/config';
 
-export async function fetchMetars(airports: string[]): Promise<VatsimMetarResponse> {
-	if (USE_MOCK_DATA) {
-		// Return mock METAR data
-		return airports.map((airport) => ({
-			id: airport,
-			metar: `${airport} 301953Z 00000KT 10SM CLR 25/12 A3000`
-		}));
-	}
-
+export async function fetchMetars(
+	airports: string[] = METAR_AIRPORTS
+): Promise<VatsimMetarResponse> {
 	const airportsString = airports.join(',').toUpperCase();
 
 	const url = `${VATSIM_METAR_BASE_URL}/${airportsString}?format=json`;
@@ -25,10 +19,6 @@ export async function fetchMetars(airports: string[]): Promise<VatsimMetarRespon
 }
 
 export async function fetchEvents(): Promise<VatsimEvent[]> {
-	if (USE_MOCK_DATA) {
-		return MOCK_EVENTS;
-	}
-
 	const response = await fetch(VATSIM_LIST_EVENTS_BASE_URL);
 	const data = (await response.json()) as VatsimEventResponse;
 
