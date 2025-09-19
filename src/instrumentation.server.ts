@@ -6,7 +6,7 @@ Sentry.init({
 	tracesSampleRate: 1.0,
 
 	// Enable logs to be sent to Sentry
-	enableLogs: true
+	enableLogs: true,
 
 	// uncomment the line below to enable Spotlight (https://spotlightjs.com)
 	// spotlight: import.meta.env.DEV,
