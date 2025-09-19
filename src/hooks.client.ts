@@ -6,11 +6,6 @@ Sentry.init({
 
 	tracesSampleRate: 1.0,
 
-	// Enable logs to be sent to Sentry
-	integrations: [
-		// send console.log, console.warn, and console.error calls as logs to Sentry
-		Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })
-	],
 	enableLogs: true,
 
 	// This sets the sample rate to be 10%. You may want this to be 100% while
@@ -22,7 +17,10 @@ Sentry.init({
 	replaysOnErrorSampleRate: 1.0,
 
 	// If you don't want to use Session Replay, just remove the line below:
-	integrations: [replayIntegration()]
+	integrations: [
+		replayIntegration(),
+		Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })
+	]
 });
 
 // If you have a custom error handler, pass it to `handleErrorWithSentry`
