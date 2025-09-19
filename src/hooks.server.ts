@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/sveltekit';
+import { instrumentD1WithSentry } from '@sentry/cloudflare';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { drizzle } from '$lib/server/db';
@@ -22,7 +23,7 @@ export const handle = sequence(
 );
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
-	event.locals.db = drizzle(event.platform?.env.DB!);
+	event.locals.db = drizzle(instrumentD1WithSentry(event.platform?.env.DB!));
 
 	return await resolve(event);
 }
