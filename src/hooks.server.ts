@@ -41,9 +41,11 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 	const { user, session, roles } = await validateSessionToken(token, event.locals.db);
 
 	if (!session) {
+		Sentry.setUser(null);
 		deleteSessionTokenCookie(event.cookies);
 		return await resolve(event);
 	}
+	Sentry.setUser({ id: user.id, cid: user.cid });
 	event.locals.user = user;
 	event.locals.roles = roles;
 
