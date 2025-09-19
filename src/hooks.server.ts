@@ -15,7 +15,8 @@ export const handle = sequence(
 		dsn: 'https://7eb744b3548181e2660a874c28f50201@o4510043972304896.ingest.us.sentry.io/4510043975843840',
 		sendDefaultPii: true,
 		tracesSampleRate: 1.0,
-		enableLogs: true
+		enableLogs: true,
+		enabled: import.meta.env.PROD
 	}),
 	Sentry.sentryHandle(),
 	dbHandle,
