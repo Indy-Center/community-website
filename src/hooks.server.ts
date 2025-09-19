@@ -14,7 +14,11 @@ export const handle = sequence(
 		dsn: 'https://7eb744b3548181e2660a874c28f50201@o4510043972304896.ingest.us.sentry.io/4510043975843840',
 		sendDefaultPii: true,
 		tracesSampleRate: 1.0,
-		enableLogs: true
+		enableLogs: true,
+		integrations: [
+			// send console.log, console.warn, and console.error calls as logs to Sentry
+			Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })
+		]
 	}),
 	Sentry.sentryHandle(),
 	dbHandle,
