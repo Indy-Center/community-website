@@ -9,6 +9,7 @@ import { userRolesTable } from '$lib/db/schema/roles';
 import { Role } from '$lib/utils/permissions';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
+import { logger } from './logger';
 
 const BANNED_INITIAL_COMBINATIONS = ['SS'];
 
@@ -33,9 +34,7 @@ const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP
  * @param user the user to process membership sync on
  */
 export async function syncUserMembership(db: Database, user: User) {
-	console.log(
-		`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.info(`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	// Check to see if they're on the roster. This may not be 100% accurate if the roster
 	// hasn't been ingested recently.
@@ -44,28 +43,26 @@ export async function syncUserMembership(db: Database, user: User) {
 	});
 
 	if (controller && user.membership !== 'controller') {
-		console.log(`User ${user.id} is now a controller.`);
+		logger.info(`User ${user.id} is now a controller.`);
 		// Update Their Status
 		await db.update(usersTable).set({ membership: 'controller' }).where(eq(usersTable.id, user.id));
 
 		// Do new controller processing
 		await processNewController(db, user, controller);
 	} else if (!controller && user.membership === 'controller') {
-		console.log(`User ${user.id} is no longer a controller.`);
+		logger.info(`User ${user.id} is no longer a controller.`);
 		// Do leaving controller processing
 		await processLeavingController(db, user);
 	} else if (controller && user.membership === 'controller') {
-		console.log(`User ${user.id} is already a controller. Processing role updates.`);
+		logger.info(`User ${user.id} is already a controller. Processing role updates.`);
 		await grantRoles(db, user, controller);
 	}
 
-	console.log(`Membership sync for user ${user.id} complete.`);
+	logger.info(`Membership sync for user ${user.id} complete.`);
 }
 
 async function processLeavingController(db: Database, user: User) {
-	console.log(
-		`Processing leaving controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.info(`Processing leaving controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	await grantRoles(db, user, null);
 
@@ -82,9 +79,7 @@ async function processLeavingController(db: Database, user: User) {
 }
 
 async function processNewController(db: Database, user: User, controller: VatsimController) {
-	console.log(
-		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.info(`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	// Grant Certificates
 	const { certifications, endorsements } = await grantInitialCertificationsAndEndorsements(
@@ -127,15 +122,11 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 		timestamp: new Date().toISOString()
 	});
 
-	console.log(
-		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
-	);
+	logger.info(`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`);
 }
 
 async function grantInitialCertificationsAndEndorsements(db: Database, user: User) {
-	console.log(
-		`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.info(`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	const { certifications, endorsements } = determineCertificationsAndEndorsementsFromRating(
 		user.data.vatsim.rating.short
@@ -154,9 +145,7 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 			)
 			.onConflictDoNothing()
 			.returning();
-		console.log(
-			`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
+		logger.info(`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 	}
 
 	if (endorsements.length > 0) {
@@ -173,9 +162,7 @@ async function grantInitialCertificationsAndEndorsements(db: Database, user: Use
 			)
 			.onConflictDoNothing()
 			.returning();
-		console.log(
-			`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
+		logger.info(`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 	}
 
 	return { certifications, endorsements };
@@ -216,9 +203,7 @@ function determineCertificationsAndEndorsementsFromRating(rating: string) {
 async function grantOperatingInitials(db: Database, user: User) {
 	// Check if user already has operating initials
 	if (user.operatingInitials) {
-		console.log(
-			`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials}`
-		);
+		logger.info(`User ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) already has operating initials: ${user.operatingInitials})`);
 		return user.operatingInitials;
 	}
 
@@ -241,16 +226,12 @@ async function grantOperatingInitials(db: Database, user: User) {
 			.update(usersTable)
 			.set({ operatingInitials: initials })
 			.where(eq(usersTable.id, user.id));
-		console.log(
-			`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
+		logger.info(`Granted operating initials ${initials} for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 		return initials;
 	}
 
 	await db.update(usersTable).set({ operatingInitials: null }).where(eq(usersTable.id, user.id));
-	console.log(
-		`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.info(`No operating initials found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 	return null;
 }
 
@@ -267,23 +248,19 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 
 	// If no controller is found, don't grant any roles
 	if (!controller) {
-		console.log(
-			`No controller found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
+		logger.info(`No controller found for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 		return;
 	}
 
-	console.log(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.info(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	// Get the user's VATUSA roles for this facility
 	const vatsimRoles = controller.data.roles
 		.filter((role) => role.facility === ARTCC_ID)
 		.map((role) => role.role);
 
-	console.log(
-		`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`
-	);
+	logger.info(`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`);
 
 	// Now build a set of roles to apply to the user
 	const rolesToApply = Array.from(
@@ -299,9 +276,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		)
 	);
 
-	console.log(
-		`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`
-	);
+	logger.info(`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`);
 
 	// Apply the roles to the user
 	if (rolesToApply.length > 0) {
@@ -314,7 +289,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 }
 
 export async function syncMemberships(db: Database) {
-	console.log('Starting bulk membership sync...');
+	logger.info('Starting bulk membership sync...');
 
 	// Demote controllers not in vatsim controllers table
 	const demotedResult = await db
@@ -331,7 +306,7 @@ export async function syncMemberships(db: Database) {
 		)
 		.returning();
 
-	console.log(`Demoted ${demotedResult.length} users from controller to community`);
+	logger.info(`Demoted ${demotedResult.length} users from controller to community`);
 
 	// Do leaving controller processing
 	for (const user of demotedResult) {
@@ -346,7 +321,7 @@ export async function syncMemberships(db: Database) {
 		.where(not(eq(usersTable.membership, 'controller')));
 
 	for (const user of usersToPromote) {
-		console.log(`Promoting user ${user.id} (${user.cid}) to controller`);
+		logger.info(`Promoting user ${user.id} (${user.cid}) to controller`);
 
 		const [updatedUser] = await db
 			.update(usersTable)
@@ -363,7 +338,7 @@ export async function syncMemberships(db: Database) {
 		}
 	}
 
-	console.log(`Promoted ${usersToPromote.length} users from community to controller`);
+	logger.info(`Promoted ${usersToPromote.length} users from community to controller`);
 
 	// Now do role sync for all controllers
 	const usersToSync = await db.query.usersTable.findMany({
@@ -373,7 +348,7 @@ export async function syncMemberships(db: Database) {
 	for (const user of usersToSync) {
 		await syncUserMembership(db, user);
 	}
-	console.log('Bulk membership sync complete');
+	logger.info('Bulk membership sync complete');
 }
 
 function generateOperatingInitialCombinations(firstName: string, lastName: string) {

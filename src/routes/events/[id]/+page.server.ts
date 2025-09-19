@@ -9,6 +9,7 @@ import { canManage, canManageEvents, Role } from '$lib/utils/permissions';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
 import { isBefore, subHours } from 'date-fns';
 import { isSignUpClosed } from '$lib/utils/events';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals, params }) => {
 	const event = await locals.db.query.eventsTable.findFirst({
@@ -37,7 +38,7 @@ export const load = async ({ locals, params }) => {
 		try {
 			artccInformation = await fetchArtccInformation('ZID');
 		} catch (error) {
-			console.error('Failed to fetch ARTCC information:', error);
+			logger.error('Failed to fetch ARTCC information:', error);
 		}
 	}
 

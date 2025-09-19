@@ -10,6 +10,7 @@ import { fetchUserData } from '$lib/server/vatsim/vatsimConnectClient';
 import type { User } from '$lib/db/schema/users';
 import { syncUserMembership } from '$lib/server/membership';
 import { DiscordChannel, sendDiscordEmbed } from '$lib/server/discord';
+import { logger } from '$lib/server/logger';
 
 export async function GET({ locals, url, cookies }: RequestEvent): Promise<Response> {
 	// Extract query parameters
@@ -19,7 +20,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 
 	// Validate parameters
 	if (!code || !state || !storedState) {
-		console.error('Missing required query parameters or cookies', { code, state, storedState });
+		logger.error('Missing required query parameters or cookies', { code, state, storedState });
 		return new Response(JSON.stringify({ error: 'Invalid request' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }
@@ -27,7 +28,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 	}
 
 	if (state !== storedState) {
-		console.error('State mismatch', { received: state, expected: storedState });
+		logger.error('State mismatch', { received: state, expected: storedState });
 		return new Response(JSON.stringify({ error: 'State mismatch' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }
@@ -43,7 +44,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			null
 		);
 	} catch (error) {
-		console.error('Error during token exchange', error);
+		logger.error('Error during token exchange', error);
 		return new Response(JSON.stringify({ error: 'Failed to validate authorization code' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }
@@ -63,7 +64,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 	try {
 		const claims = decodeIdToken(tokens.accessToken());
 	} catch (error) {
-		console.error('Error decoding ID token', error);
+		logger.error('Error decoding ID token', error);
 		return new Response(JSON.stringify({ error: 'Invalid ID token' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }

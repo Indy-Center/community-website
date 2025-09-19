@@ -9,6 +9,7 @@ import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { eq, inArray } from 'drizzle-orm';
 import { usersTable } from '$lib/db/schema/users';
 import { addMonths } from 'date-fns';
+import { logger } from '$lib/server/logger';
 
 const ARTCC_ID = 'ZID';
 
@@ -30,7 +31,7 @@ async function processRoster(db: Database, roster: VatusaRosterMember[]) {
 }
 
 async function syncVatsimControllers(db: Database, roster: VatusaRosterMember[]) {
-	console.log(`Syncing ${roster.length} VATSIM controllers`);
+	logger.info(`Syncing ${roster.length} VATSIM controllers`);
 	const rosterValues = roster.map((member) => ({
 		data: member,
 		cid: String(member.cid)
@@ -41,12 +42,12 @@ async function syncVatsimControllers(db: Database, roster: VatusaRosterMember[])
 		...rosterValues.map((value) => db.insert(vatsimControllersTable).values(value))
 	]);
 
-	console.log(`Synced ${rosterValues.length} VATSIM controllers`);
+	logger.info(`Synced ${rosterValues.length} VATSIM controllers`);
 	return rosterValues.length;
 }
 
 async function renewCertifications(db: Database) {
-	console.log(`Renewing certifications`);
+	logger.info(`Renewing certifications`);
 	const result = await db
 		.update(userCertificationsTable)
 		.set({
@@ -63,5 +64,5 @@ async function renewCertifications(db: Database) {
 		)
 		.returning();
 
-	console.log(`Renewed ${result.length} certifications`);
+	logger.info(`Renewed ${result.length} certifications`);
 }

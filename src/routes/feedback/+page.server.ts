@@ -6,6 +6,7 @@ import { feedbackTable } from '$lib/db/schema/feedback';
 import { eq } from 'drizzle-orm';
 import { usersTable } from '$lib/db/schema/users.js';
 import { notifyDiscordOfFeedback } from '$lib/server/discord';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals, params, url }) => {
 	const form = await superValidate(zod4(feedbackSchema));
@@ -41,7 +42,7 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		console.log(`Saving new feedback for controller "${form.data.controllerId}"`);
+		logger.info(`Saving new feedback for controller "${form.data.controllerId}"`);
 		const [feedback] = await locals.db
 			.insert(feedbackTable)
 			.values({

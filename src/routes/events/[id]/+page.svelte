@@ -33,7 +33,7 @@
 	 * @param positions
 	 */
 	function sortPositions(positions: VnasPosition[] = []) {
-		console.log('sorting positions', positions);
+		// Sorting positions by type and callsign
 		// We have to do a partial callsign match because VnasPosition doesn't tell us.
 		// These are the suffixes to look for
 		const SORT_ORDER = ['APP', 'TWR', 'GND', 'DEL', 'RMP'];

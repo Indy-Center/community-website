@@ -5,6 +5,7 @@ import { canManageEvents } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals, params, url }) => {
 	if (!canManageEvents(locals.roles)) {
@@ -54,7 +55,7 @@ export const actions = {
 			return fail(400, { form, vatsimEvents });
 		}
 
-		console.log(`Saving new event "${form.data.name}"`);
+		logger.info(`Saving new event "${form.data.name}"`);
 		const [savedEvent] = await locals.db
 			.insert(eventsTable)
 			.values({

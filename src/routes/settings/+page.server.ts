@@ -4,6 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { eq } from 'drizzle-orm';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals }) => {
 	if (!locals.user) {
@@ -42,7 +43,7 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		console.log(`Updating settings for user ${locals.user.id}`);
+		logger.info(`Updating settings for user ${locals.user.id}`);
 		
 		const updateData: any = {
 			preferredName: form.data.preferredName,

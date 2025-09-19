@@ -29,7 +29,7 @@
 			const date = parseISO(loginTime);
 			return format(date, 'MMM d, h:mm a');
 		} catch (error) {
-			console.log('Date parsing error:', error, loginTime);
+			// Date parsing failed, showing placeholder
 			return '--:--';
 		}
 	}

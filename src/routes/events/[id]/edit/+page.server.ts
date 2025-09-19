@@ -6,6 +6,7 @@ import { redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals, params }) => {
 	if (!canManageEvents(locals.roles)) {
@@ -56,7 +57,7 @@ export const actions = {
 			return fail(400, { form, vatsimEvents });
 		}
 
-		console.log(`Saving new event "${form.data.name}"`);
+		logger.info(`Updating event "${form.data.name}"`);
 		const [savedEvent] = await locals.db
 			.update(eventsTable)
 			.set({
