@@ -279,7 +279,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		.filter((role) => role.facility === FACILITY_ID)
 		.map((role) => role.role);
 
-	logger.info(
+	logger.debug(
 		`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`
 	);
 
@@ -297,7 +297,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		)
 	);
 
-	logger.info(
+	logger.debug(
 		`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`
 	);
 
