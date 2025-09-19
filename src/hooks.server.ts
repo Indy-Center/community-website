@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/sveltekit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { drizzle } from '$lib/server/db';
@@ -8,7 +9,7 @@ import {
 	setSessionTokenCookie
 } from '$lib/server/session';
 
-export const handle = sequence(dbHandle, authHandle);
+export const handle = sequence(Sentry.sentryHandle(), dbHandle, authHandle);
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.db = drizzle(event.platform?.env.DB!);
@@ -39,3 +40,4 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 
 	return await resolve(event);
 }
+export const handleError = Sentry.handleErrorWithSentry();

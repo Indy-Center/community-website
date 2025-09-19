@@ -32,3 +32,6 @@ task-runner/worker-configuration.d.ts
 
 # Scripts folder (temporary data generation)
 scripts/
+
+# Sentry Config File
+.env.sentry-build-plugin
