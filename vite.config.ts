@@ -7,10 +7,9 @@ import Icons from 'unplugin-icons/vite';
 export default defineConfig({
 	plugins: [
 		sentrySvelteKit({
-			sourceMapsUploadOptions: {
-				org: 'indy-center',
-				project: 'javascript-sveltekit'
-			}
+			org: 'indy-center',
+			project: 'javascript-sveltekit',
+			autoUploadSourceMaps: true
 		}),
 		tailwindcss(),
 		sveltekit(),
