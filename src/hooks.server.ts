@@ -9,7 +9,17 @@ import {
 	setSessionTokenCookie
 } from '$lib/server/session';
 
-export const handle = sequence(Sentry.sentryHandle(), dbHandle, authHandle);
+export const handle = sequence(
+	Sentry.initCloudflareSentryHandle({
+		dsn: 'https://7eb744b3548181e2660a874c28f50201@o4510043972304896.ingest.us.sentry.io/4510043975843840',
+		sendDefaultPii: true,
+		tracesSampleRate: 1.0,
+		enableLogs: true
+	}),
+	Sentry.sentryHandle(),
+	dbHandle,
+	authHandle
+);
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.db = drizzle(event.platform?.env.DB!);
