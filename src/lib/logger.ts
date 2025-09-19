@@ -1,17 +1,6 @@
 import { consola } from 'consola';
-import { browser } from '$app/environment';
+import { env } from '$env/dynamic/public';
 
-// Browser-compatible logger configuration
-// Consola automatically reads CONSOLA_LEVEL environment variable
-let logger = consola;
-
-if (browser) {
-	// In browser environment, Sentry integration is handled via hooks.client.ts
-	// No need to add additional reporters here since Sentry already captures console logs
-	logger = consola.withTag('client');
-} else {
-	// Server-side logger is configured in lib/server/logger.ts
-	logger = consola.withTag('server');
-}
+let logger = consola.create({ level: Number(env.PUBLIC_CONSOLA_LEVEL) });
 
 export { logger };

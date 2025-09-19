@@ -20,7 +20,7 @@
 		"CONNECT_BASE_URL": "https://auth.vatsim.net",
 		"CONNECT_CALLBACK_URL": "https://new.flyindycenter.com/login/connect/callback",
 		"CONNECT_CLIENT_ID": 1653,
-		"CONSOLA_LEVEL": 4
+		"PUBLIC_CONSOLA_LEVEL": 4
 	},
 	"routes": [
 		{
