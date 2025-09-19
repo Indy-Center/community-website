@@ -55,7 +55,7 @@ export const actions = {
 			return fail(400, { form, vatsimEvents });
 		}
 
-		logger.info(`Saving new event "${form.data.name}"`);
+		logger.info(`User ${locals.user?.id} created new event "${form.data.name}"`);
 		const [savedEvent] = await locals.db
 			.insert(eventsTable)
 			.values({

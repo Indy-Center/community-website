@@ -6,6 +6,8 @@ import { logger } from '$lib/server/logger';
 export type { VatsimUserData } from '$lib/types/vatsim';
 
 export async function fetchUserData(accessToken: string): Promise<VatsimUserData | null> {
+	logger.debug('Fetching user data from VATSIM Connect API');
+
 	try {
 		const response = await fetch(`${env.CONNECT_BASE_URL!}/api/user`, {
 			headers: {
@@ -19,7 +21,9 @@ export async function fetchUserData(accessToken: string): Promise<VatsimUserData
 			return null;
 		}
 
-		return (await response.json<VatsimUserDataResponse>()).data;
+		const userData = (await response.json<VatsimUserDataResponse>()).data;
+		logger.debug(`Successfully fetched user data for CID: ${userData.cid}`);
+		return userData;
 	} catch (error) {
 		logger.error('Error during user details fetch', error);
 		return null;

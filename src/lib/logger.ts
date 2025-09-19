@@ -2,6 +2,7 @@ import { consola } from 'consola';
 import { browser } from '$app/environment';
 
 // Browser-compatible logger configuration
+// Consola automatically reads CONSOLA_LEVEL environment variable
 let logger = consola;
 
 if (browser) {

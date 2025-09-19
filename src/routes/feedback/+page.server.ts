@@ -42,7 +42,7 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		logger.info(`Saving new feedback for controller "${form.data.controllerId}"`);
+		logger.info(`User ${locals.user.id} submitted feedback for controller "${form.data.controllerId}"`);
 		const [feedback] = await locals.db
 			.insert(feedbackTable)
 			.values({

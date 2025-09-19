@@ -5,6 +5,7 @@ import type {
 } from '$lib/types/vatusa';
 import { env } from '$env/dynamic/private';
 import { FACILITY_ID } from '$lib/config';
+import { logger } from '$lib/server/logger';
 
 const VATUSA_API_BASE_URL = 'https://api.vatusa.net';
 
@@ -20,12 +21,17 @@ export async function fetchRoster(
 }
 
 export async function checkTransferChecklist(cid: string, artcc: string = FACILITY_ID) {
+	logger.debug(`Checking eligibility for CID ${cid}`);
+
 	const url = `${VATUSA_API_BASE_URL}/user/${cid}/transfer/checklist?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url).then((res) => res.json());
 	const { data } = response as VatusaTransferChecklistResponse;
 
 	const canVisit = isVisitingEligible(data);
 	const canTransfer = isTransferEligible(data);
+
+	logger.info(`Eligibility check for CID ${cid}: Visit=${canVisit}, Transfer=${canTransfer}`);
+	logger.debug(`VATUSA eligibility response for CID ${cid}`, { checklist: data });
 
 	return {
 		checklist: data,
@@ -35,10 +41,18 @@ export async function checkTransferChecklist(cid: string, artcc: string = FACILI
 }
 
 export async function addVisitor(cid: string, artcc: string = FACILITY_ID) {
+	logger.info(`Adding visitor CID ${cid} to facility ${artcc}`);
+
 	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}/roster/manageVisitor/${cid}?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url, {
 		method: 'POST'
 	}).then((res) => res.json());
+
+	if (response.status === 'OK') {
+		logger.info(`Successfully added visitor CID ${cid} to facility ${artcc}`);
+	} else {
+		logger.error(`Failed to add visitor CID ${cid}`, { response });
+	}
 
 	return response;
 }

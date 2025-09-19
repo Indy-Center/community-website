@@ -91,6 +91,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			.returning();
 
 		user = updatedUser;
+		logger.debug(`Updated existing user info for CID ${user.cid}`);
 	} else {
 		// Create new user
 		const [newUser] = await locals.db
@@ -107,6 +108,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			.returning();
 
 		user = newUser;
+		logger.info(`New user created: CID ${user.cid} (${user.firstName} ${user.lastName})`);
 		await sendDiscordEmbed(DiscordChannel.TECH_TEAM_ALERTS, {
 			title: 'New User Registered',
 			description: `User ${user.firstName} ${user.lastName} (${user.cid}) has registered`,
@@ -124,6 +126,9 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 	const sessionToken = generateSessionToken();
 	const session = await createSession(sessionToken, user.id, locals.db);
 	setSessionTokenCookie(cookies, sessionToken, session.expiresAt);
+
+	logger.info(`User login successful: CID ${user.cid} (${user.firstName} ${user.lastName})`);
+	logger.debug(`Session created for user ${user.id}`);
 
 	// Get return URL from cookie, default to '/'
 	const returnUrl = cookies.get('connect_return_url') || '/';

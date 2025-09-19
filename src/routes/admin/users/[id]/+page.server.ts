@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { isAdmin } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
+import { logger } from '$lib/server/logger';
 
 export const load = async ({ params, locals }) => {
 	if (!isAdmin(locals.roles)) {
@@ -34,12 +35,15 @@ export const load = async ({ params, locals }) => {
 export const actions = {
 	setCertification: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
+			logger.warn(`Unauthorized certification change attempt by user ${locals.user?.id} for target user ${params.id}`);
 			return fail(403, { message: 'Unauthorized' });
 		}
 
 		const { id } = params;
 		const formData = await request.formData();
 		const certification = formData.get('certification') as string;
+
+		logger.info(`Admin ${locals.user?.id} changing certification for user ${id} to: ${certification || 'none'}`);
 
 		try {
 			// Get current certification to check if we need to remove T2-CTR endorsement
@@ -88,14 +92,17 @@ export const actions = {
 				}
 			}
 
+			logger.info(`Certification successfully updated for user ${id} by admin ${locals.user?.id}`);
 			return { success: true };
 		} catch (error) {
+			logger.error(`Failed to set certification for user ${id} by admin ${locals.user?.id}`, error);
 			return fail(500, { message: 'Failed to set certification' });
 		}
 	},
 
 	toggleEndorsement: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
+			logger.warn(`Unauthorized endorsement change attempt by user ${locals.user?.id} for target user ${params.id}`);
 			return fail(403, { message: 'Unauthorized' });
 		}
 
@@ -118,6 +125,7 @@ export const actions = {
 
 			if (existingEndorsement) {
 				// Remove endorsement
+				logger.info(`Admin ${locals.user?.id} removing endorsement ${endorsement} from user ${id}`);
 				await locals.db
 					.delete(userEndorsementsTable)
 					.where(
@@ -128,14 +136,17 @@ export const actions = {
 					);
 			} else {
 				// Add endorsement
+				logger.info(`Admin ${locals.user?.id} adding endorsement ${endorsement} to user ${id}`);
 				await locals.db.insert(userEndorsementsTable).values({
 					userId: id,
 					endorsement: endorsement
 				});
 			}
 
+			logger.info(`Endorsement ${endorsement} successfully toggled for user ${id} by admin ${locals.user?.id}`);
 			return { success: true };
 		} catch (error) {
+			logger.error(`Failed to toggle endorsement ${endorsement} for user ${id} by admin ${locals.user?.id}`, error);
 			return fail(500, { message: 'Failed to toggle endorsement' });
 		}
 	}

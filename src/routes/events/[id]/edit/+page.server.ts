@@ -57,7 +57,7 @@ export const actions = {
 			return fail(400, { form, vatsimEvents });
 		}
 
-		logger.info(`Updating event "${form.data.name}"`);
+		logger.info(`User ${locals.user?.id} updated event "${form.data.name}" (${params.id})`);
 		const [savedEvent] = await locals.db
 			.update(eventsTable)
 			.set({
@@ -71,17 +71,7 @@ export const actions = {
 				isPublished: true
 			})
 			.where(eq(eventsTable.id, params.id))
-			.returning()
-			.values({
-				name: form.data.name,
-				description: form.data.description,
-				bannerUrl: form.data.bannerUrl,
-				type: form.data.type,
-				rosterType: form.data.rosterType,
-				startTime: form.data.startTime,
-				endTime: form.data.endTime,
-				isPublished: true
-			});
+			.returning();
 		return redirect(302, `/events/${params.id}`);
 	}
 };

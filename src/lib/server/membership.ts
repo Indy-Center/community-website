@@ -31,7 +31,7 @@ const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP
  * @param user the user to process membership sync on
  */
 export async function syncUserMembership(db: Database, user: User) {
-	logger.info(
+	logger.debug(
 		`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
@@ -53,11 +53,11 @@ export async function syncUserMembership(db: Database, user: User) {
 		// Do leaving controller processing
 		await processLeavingController(db, user);
 	} else if (controller && user.membership === 'controller') {
-		logger.info(`User ${user.id} is already a controller. Processing role updates.`);
+		logger.debug(`User ${user.id} is already a controller. Processing role updates.`);
 		await grantRoles(db, user, controller);
 	}
 
-	logger.info(`Membership sync for user ${user.id} complete.`);
+	logger.debug(`Membership sync for user ${user.id} complete.`);
 }
 
 async function processLeavingController(db: Database, user: User) {
@@ -272,7 +272,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		return;
 	}
 
-	logger.info(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.debug(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
 
 	// Get the user's VATUSA roles for this facility
 	const vatsimRoles = controller.data.roles
@@ -344,7 +344,7 @@ export async function syncMemberships(db: Database) {
 		.where(not(eq(usersTable.membership, 'controller')));
 
 	for (const user of usersToPromote) {
-		logger.info(`Promoting user ${user.id} (${user.cid}) to controller`);
+		logger.debug(`Promoting user ${user.id} (${user.cid}) to controller`);
 
 		const [updatedUser] = await db
 			.update(usersTable)
