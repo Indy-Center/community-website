@@ -91,7 +91,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			.returning();
 
 		user = updatedUser;
-		logger.debug(`Updated existing user info for CID ${user.cid}`);
+		logger.debug('Updated existing user info', { cid: user.cid, userId: user.id });
 	} else {
 		// Create new user
 		const [newUser] = await locals.db
@@ -128,7 +128,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 	setSessionTokenCookie(cookies, sessionToken, session.expiresAt);
 
 	logger.info(`User login successful: CID ${user.cid} (${user.firstName} ${user.lastName})`);
-	logger.debug(`Session created for user ${user.id}`);
+	logger.debug('Session created for user', { userId: user.id, sessionToken });
 
 	// Get return URL from cookie, default to '/'
 	const returnUrl = cookies.get('connect_return_url') || '/';

@@ -21,7 +21,7 @@ export async function fetchRoster(
 }
 
 export async function checkTransferChecklist(cid: string, artcc: string = FACILITY_ID) {
-	logger.debug(`Checking eligibility for CID ${cid}`);
+	logger.debug('Checking VATUSA eligibility', { cid });
 
 	const url = `${VATUSA_API_BASE_URL}/user/${cid}/transfer/checklist?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url).then((res) => res.json());
@@ -31,7 +31,7 @@ export async function checkTransferChecklist(cid: string, artcc: string = FACILI
 	const canTransfer = isTransferEligible(data);
 
 	logger.info(`Eligibility check for CID ${cid}: Visit=${canVisit}, Transfer=${canTransfer}`);
-	logger.debug(`VATUSA eligibility response for CID ${cid}`, { checklist: data });
+	logger.debug('VATUSA eligibility response', { cid, checklist: data });
 
 	return {
 		checklist: data,

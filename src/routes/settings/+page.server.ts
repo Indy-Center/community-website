@@ -43,7 +43,7 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		logger.debug(`Updating settings for user ${locals.user.id}`);
+		logger.debug('Updating user settings', { userId: locals.user.id });
 		
 		const updateData: any = {
 			preferredName: form.data.preferredName,

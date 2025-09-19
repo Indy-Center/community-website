@@ -22,7 +22,7 @@ export async function fetchUserData(accessToken: string): Promise<VatsimUserData
 		}
 
 		const userData = (await response.json<VatsimUserDataResponse>()).data;
-		logger.debug(`Successfully fetched user data for CID: ${userData.cid}`);
+		logger.debug('Successfully fetched user data', { cid: userData.cid });
 		return userData;
 	} catch (error) {
 		logger.error('Error during user details fetch', error);

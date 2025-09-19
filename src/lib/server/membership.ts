@@ -31,9 +31,12 @@ const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP
  * @param user the user to process membership sync on
  */
 export async function syncUserMembership(db: Database, user: User) {
-	logger.debug(
-		`Syncing membership for user ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
+	logger.debug('Syncing user membership', {
+		userId: user.id,
+		cid: user.cid,
+		firstName: user.firstName,
+		lastName: user.lastName
+	});
 
 	// Check to see if they're on the roster. This may not be 100% accurate if the roster
 	// hasn't been ingested recently.
@@ -53,11 +56,11 @@ export async function syncUserMembership(db: Database, user: User) {
 		// Do leaving controller processing
 		await processLeavingController(db, user);
 	} else if (controller && user.membership === 'controller') {
-		logger.debug(`User ${user.id} is already a controller. Processing role updates.`);
+		logger.debug('User is already a controller, processing role updates', { userId: user.id });
 		await grantRoles(db, user, controller);
 	}
 
-	logger.debug(`Membership sync for user ${user.id} complete.`);
+	logger.debug('Membership sync complete', { userId: user.id });
 }
 
 async function processLeavingController(db: Database, user: User) {
@@ -272,16 +275,25 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		return;
 	}
 
-	logger.debug(`Granting roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`);
+	logger.debug('Granting roles for user', {
+		userId: user.id,
+		cid: user.cid,
+		firstName: user.firstName,
+		lastName: user.lastName
+	});
 
 	// Get the user's VATUSA roles for this facility
 	const vatsimRoles = controller.data.roles
 		.filter((role) => role.facility === FACILITY_ID)
 		.map((role) => role.role);
 
-	logger.debug(
-		`VATUSA roles for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${vatsimRoles.join(', ')}`
-	);
+	logger.debug('VATUSA roles for user', {
+		userId: user.id,
+		cid: user.cid,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		roles: vatsimRoles
+	});
 
 	// Now build a set of roles to apply to the user
 	const rolesToApply = Array.from(
@@ -297,9 +309,13 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		)
 	);
 
-	logger.debug(
-		`Roles to apply for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}): ${rolesToApply.join(', ')}`
-	);
+	logger.debug('Roles to apply for user', {
+		userId: user.id,
+		cid: user.cid,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		roles: rolesToApply
+	});
 
 	// Apply the roles to the user
 	if (rolesToApply.length > 0) {
@@ -344,7 +360,7 @@ export async function syncMemberships(db: Database) {
 		.where(not(eq(usersTable.membership, 'controller')));
 
 	for (const user of usersToPromote) {
-		logger.debug(`Promoting user ${user.id} (${user.cid}) to controller`);
+		logger.debug('Promoting user to controller', { userId: user.id, cid: user.cid });
 
 		const [updatedUser] = await db
 			.update(usersTable)
