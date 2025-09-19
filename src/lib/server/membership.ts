@@ -10,11 +10,7 @@ import { Role } from '$lib/utils/permissions';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
 import { logger } from './logger';
-import { SITEWIDE_CONFIG } from '$lib/config';
-
-const BANNED_INITIAL_COMBINATIONS = ['SS'];
-
-const ARTCC_ID = SITEWIDE_CONFIG.FACILITY_ID;
+import { BANNED_TWO_LETTER_COMBINATIONS, FACILITY_ID } from '$lib/config';
 
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
@@ -233,7 +229,7 @@ async function grantOperatingInitials(db: Database, user: User) {
 		})
 	)
 		.map((user) => user.operatingInitials!)
-		.concat(BANNED_INITIAL_COMBINATIONS);
+		.concat(BANNED_TWO_LETTER_COMBINATIONS);
 
 	const combinations = generateOperatingInitialCombinations(user.firstName, user.lastName);
 	const initials = combinations.find((combination) => !existingInitials.includes(combination));
@@ -280,7 +276,7 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 
 	// Get the user's VATUSA roles for this facility
 	const vatsimRoles = controller.data.roles
-		.filter((role) => role.facility === ARTCC_ID)
+		.filter((role) => role.facility === FACILITY_ID)
 		.map((role) => role.role);
 
 	logger.info(

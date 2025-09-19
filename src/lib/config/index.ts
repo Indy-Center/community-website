@@ -13,3 +13,4 @@ export const METAR_AIRPORTS = [
 	'KPKB',
 	'KSDF'
 ];
+export const BANNED_TWO_LETTER_COMBINATIONS = ['SS', 'FU'];
