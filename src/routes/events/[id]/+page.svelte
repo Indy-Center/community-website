@@ -130,7 +130,7 @@
 		});
 
 		// Sort positions within each facility group using the actual VnasPosition data
-		const sortedGroups = Object.values(groups).map(group => ({
+		const sortedGroups = Object.values(groups).map((group) => ({
 			...group,
 			positions: group.positions.sort((a, b) => {
 				const aVnasPos = getPositionInfo(a.position);
@@ -167,6 +167,10 @@
 
 		return sortedGroups;
 	};
+
+	function userAlreadyAssignedToPosition(userId: string) {
+		return event.positions.some((p) => p.userId === userId);
+	}
 </script>
 
 <svelte:head>
@@ -235,7 +239,11 @@
 	</div>
 
 	<!-- Description and Positions -->
-	<div class="grid grid-cols-1 gap-8 {supportsRosters(event.type) && event.rosterType !== 'none' ? 'lg:grid-cols-2' : ''}">
+	<div
+		class="grid grid-cols-1 gap-8 {supportsRosters(event.type) && event.rosterType !== 'none'
+			? 'lg:grid-cols-2'
+			: ''}"
+	>
 		<!-- Event Description -->
 		<Panel title="Event Details" icon={IconTextLong} mode="dark">
 			<div class="p-8">
@@ -305,7 +313,7 @@
 																</button>
 															</form>
 														{/if}
-													{:else if hasControllerAccess && event.rosterType === 'open' && !isSignUpClosed(event)}
+													{:else if hasControllerAccess && event.rosterType === 'open' && !isSignUpClosed(event) && !userAlreadyAssignedToPosition(user?.id)}
 														<!-- Open position for sign-up -->
 														<form
 															method="POST"
@@ -376,7 +384,9 @@
 							<!-- Show existing position requests below submission section -->
 							<div class="border-t border-slate-700/60">
 								<div class="px-6 pt-3 pb-1">
-									<h4 class="text-xs font-semibold tracking-wider text-slate-400 uppercase">Current Requests</h4>
+									<h4 class="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+										Current Requests
+									</h4>
 								</div>
 								<div class="divide-y divide-slate-700/60">
 									{#each event.positionRequests as request}

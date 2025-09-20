@@ -189,7 +189,7 @@
 	};
 
 	const getUserDisplayName = (user: any) => {
-		return user.preferredName || `${user.firstName} ${user.lastName}`;
+		return user?.preferredName || `${user?.firstName} ${user?.lastName}`;
 	};
 
 	// Get all positions from ARTCC data merged together
@@ -261,9 +261,7 @@
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="flex-1">
 			<h1 class="mb-2 text-3xl font-bold text-white">{event?.name || 'Event'}</h1>
-			<p class="text-slate-400">
-				Manage event positions and assignments.
-			</p>
+			<p class="text-slate-400">Manage event positions and assignments.</p>
 		</div>
 		<div class="flex flex-shrink-0 gap-3">
 			<a
@@ -301,7 +299,7 @@
 						<div class="flex items-start justify-between">
 							<div>
 								<div class="font-medium text-white">
-									{getUserDisplayName(request.user)} ({request.user.operatingInitials})
+									{getUserDisplayName(request.user)} ({request.user?.operatingInitials})
 								</div>
 								<div class="mt-1 text-sm text-slate-400">
 									{request.comments || 'No comments provided'}
