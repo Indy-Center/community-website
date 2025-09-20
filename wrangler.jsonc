@@ -18,14 +18,14 @@
 	},
 	"vars": {
 		"CONNECT_BASE_URL": "https://auth.vatsim.net",
-		"CONNECT_CALLBACK_URL": "https://new.flyindycenter.com/login/connect/callback",
+		"CONNECT_CALLBACK_URL": "https://flyindycenter.com/login/connect/callback",
 		"CONNECT_CLIENT_ID": 1653,
 		"PUBLIC_CONSOLA_LEVEL": 4
 	},
 	"routes": [
 		{
 			"custom_domain": true,
-			"pattern": "new.flyindycenter.com"
+			"pattern": "flyindycenter.com"
 		}
 	],
 	"observability": {
