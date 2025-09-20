@@ -3,7 +3,7 @@ import {
 	eventPositionsTable,
 	eventPositionRequestsTable
 } from '$lib/db/schema/events';
-import { eq, not } from 'drizzle-orm';
+import { and, eq, not } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import { canManage, canManageEvents, Role } from '$lib/utils/permissions';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
@@ -114,7 +114,9 @@ export const actions = {
 				userId: locals.session.userId,
 				updatedAt: new Date()
 			})
-			.where(eq(eventPositionsTable.position, position));
+			.where(
+				and(eq(eventPositionsTable.position, position), eq(eventPositionsTable.eventId, params.id))
+			);
 
 		return { success: true };
 	},
@@ -138,7 +140,9 @@ export const actions = {
 				userId: null,
 				updatedAt: new Date()
 			})
-			.where(eq(eventPositionsTable.position, position));
+			.where(
+				and(eq(eventPositionsTable.position, position), eq(eventPositionsTable.eventId, params.id))
+			);
 
 		return { success: true };
 	},
