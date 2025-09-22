@@ -9,6 +9,7 @@ export default defineConfig({
 		sentrySvelteKit({
 			org: 'indy-center',
 			project: 'community-website',
+			authToken: process.env.SENTRY_AUTH_TOKEN,
 			autoUploadSourceMaps: true
 		}),
 		tailwindcss(),
