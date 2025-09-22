@@ -4,26 +4,18 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import Icons from 'unplugin-icons/vite';
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
 	plugins: [
 		sentrySvelteKit({
 			org: 'indy-center',
 			project: 'community-website',
 			authToken: process.env.SENTRY_AUTH_TOKEN,
-			autoUploadSourceMaps: true,
-			sourceMapsUploadOptions: {
-				include: ['.svelte-kit/output/client/', '.svelte-kit/output/server/'],
-				cleanArtifacts: true,
-				deleteFilesAfterUpload: false
-			}
+			adapter: 'cloudflare'
 		}),
 		tailwindcss(),
 		sveltekit(),
 		Icons({
 			compiler: 'svelte'
 		})
-	],
-	build: {
-		sourcemap: true
-	}
-});
+	]
+}));
