@@ -10,12 +10,20 @@ export default defineConfig({
 			org: 'indy-center',
 			project: 'community-website',
 			authToken: process.env.SENTRY_AUTH_TOKEN,
-			autoUploadSourceMaps: true
+			autoUploadSourceMaps: true,
+			sourceMapsUploadOptions: {
+				include: ['.svelte-kit/output/client/', '.svelte-kit/output/server/'],
+				cleanArtifacts: true,
+				deleteFilesAfterUpload: false
+			}
 		}),
 		tailwindcss(),
 		sveltekit(),
 		Icons({
 			compiler: 'svelte'
 		})
-	]
+	],
+	build: {
+		sourcemap: true
+	}
 });
