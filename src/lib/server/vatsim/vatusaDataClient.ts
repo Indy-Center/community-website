@@ -46,18 +46,23 @@ export async function addVisitor(cid: string, artcc: string = FACILITY_ID) {
 	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}/roster/manageVisitor/${cid}?apikey=${env.VATUSA_API_KEY}`;
 	const response = await fetch(url, {
 		method: 'POST'
-	}).then((res) => res.json());
+	});
 
-	if (response.status === 'OK') {
-		logger.info(`Successfully added visitor CID ${cid} to facility ${artcc}`);
+	if (!response.ok) {
+		logger.error('Failed to add visitor', {
+			status: response.status,
+			statusText: response.statusText
+		});
 	} else {
-		logger.error(`Failed to add visitor CID ${cid}`, { response });
+		logger.info(`Successfully added visitor CID ${cid} to facility ${artcc}`);
 	}
-
-	return response;
 }
 
 function isVisitingEligible(checklist: VatusaTransferChecklist) {
+	if (!checklist) {
+		return false;
+	}
+
 	return (
 		// VATUSA Controller
 		checklist.homecontroller === true &&
@@ -75,6 +80,10 @@ function isVisitingEligible(checklist: VatusaTransferChecklist) {
 }
 
 function isTransferEligible(checklist: VatusaTransferChecklist) {
+	if (!checklist) {
+		return false;
+	}
+
 	return (
 		// Basic Exam Complete
 		checklist.needbasic === true &&
