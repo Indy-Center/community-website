@@ -3,7 +3,12 @@
 	import IconEye from '~icons/mdi/eye';
 	import IconThermometer from '~icons/mdi/thermometer';
 	import IconGauge from '~icons/mdi/gauge';
-	import IconChevronDown from '~icons/mdi/chevron-down';
+	import IconCloud from '~icons/mdi/cloud';
+	import IconWeatherRainy from '~icons/mdi/weather-rainy';
+	import IconWeatherSnowy from '~icons/mdi/weather-snowy';
+	import IconWeatherFog from '~icons/mdi/weather-fog';
+	import IconChart from '~icons/mdi/chart-box-outline';
+	import IconInformation from '~icons/mdi/information-outline';
 
 	type Props = {
 		id: string;
@@ -11,8 +16,6 @@
 	};
 
 	let { id, metar }: Props = $props();
-
-	let expanded = $state(false);
 
 	function parseMetar(metar: string) {
 		const parts = metar.split(' ');
@@ -62,8 +65,20 @@
 		const ceilingMatch = metar.match(/(?:BKN|OVC)(\d{3})/);
 		const ceiling = ceilingMatch ? parseInt(ceilingMatch[1]) * 100 : null;
 
+		// Weather phenomena parsing
+		const weatherPhenomena = [];
+		if (metar.includes('RA') || metar.includes('-RA') || metar.includes('+RA')) {
+			weatherPhenomena.push('rain');
+		}
+		if (metar.includes('SN') || metar.includes('-SN') || metar.includes('+SN')) {
+			weatherPhenomena.push('snow');
+		}
+		if (metar.includes('FG') || metar.includes('BR')) {
+			weatherPhenomena.push('fog');
+		}
+
 		return {
-			wind: calmMatch 
+			wind: calmMatch
 				? { direction: '000', speed: '00', gusts: null, calm: true }
 				: windMatch
 				? {
@@ -77,7 +92,8 @@
 			ceiling,
 			temperature: tempMatch ? tempMatch[1].replace('M', '-') : null,
 			dewpoint: tempMatch ? tempMatch[2].replace('M', '-') : null,
-			altimeter: altimeterMatch ? (parseInt(altimeterMatch[1]) / 100).toFixed(2) : null
+			altimeter: altimeterMatch ? (parseInt(altimeterMatch[1]) / 100).toFixed(2) : null,
+			weatherPhenomena
 		};
 	}
 
@@ -134,38 +150,122 @@
 	const flightConditions = $derived(getFlightConditions(parsed.visibility, parsed.ceiling));
 </script>
 
-<div
-	class="group relative flex items-center gap-3 rounded border border-slate-700/60 bg-slate-800/60 px-3 py-2 transition-all hover:border-sky-500/30"
->
-	<!-- Airport code with flight conditions color -->
-	<div
-		class="flex-shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-sm font-bold {flightConditions.color} {flightConditions.bg}"
-	>
-		{id}
+<div class="group flex flex-col gap-1.5 rounded-r-md border border-slate-700/50 px-2.5 py-2 shadow-sm transition-all hover:shadow-md border-l-[3px] {flightConditions.category === 'VFR' ? 'border-l-green-500 bg-slate-800/60 hover:bg-slate-800/80' : flightConditions.category === 'MVFR' ? 'border-l-blue-500 bg-slate-800/60 hover:bg-slate-800/80' : flightConditions.category === 'IFR' ? 'border-l-red-500 bg-slate-800/60 hover:bg-slate-800/80' : 'border-l-purple-500 bg-slate-800/60 hover:bg-slate-800/80'}">
+	<!-- Header: Airport code and flight category -->
+	<div class="flex items-center justify-between">
+		<div class="font-mono text-base font-semibold tracking-wide text-slate-100">
+			{id}
+		</div>
+		<div class="flex items-center gap-1">
+			<a
+				href="https://metar-taf.com/{id}"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-700/50 hover:text-sky-400"
+				title="View METAR/TAF for {id}"
+			>
+				<IconInformation class="h-4 w-4" />
+			</a>
+			<a
+				href="https://tools.flyindycenter.com/charts?airport={id}"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-700/50 hover:text-sky-400"
+				title="View charts for {id}"
+			>
+				<IconChart class="h-4 w-4" />
+			</a>
+			<div class="rounded bg-slate-700/40 px-1.5 py-0.5 text-xs font-semibold {flightConditions.color}">
+				{flightConditions.category}
+			</div>
+		</div>
 	</div>
 
-	<!-- Weather info -->
-	<div class="flex-1 space-y-0.5 text-xs">
+	<!-- Main weather data grid -->
+	<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
 		<!-- Wind -->
 		<div class="flex items-center gap-1">
-			<IconWeatherWindy class="h-3 w-3 text-slate-400" />
+			<IconWeatherWindy class="h-3 w-3 flex-shrink-0 text-slate-400" />
 			{#if parsed.wind && !parsed.wind.calm}
-				<span class="font-medium text-slate-200">
-					{#if parsed.wind.variable}<span class="text-yellow-400">VRB</span>{:else}{parsed.wind.direction}°{/if}@<span class="text-sky-300">{parsed.wind.speed}</span>{#if parsed.wind.gusts}<span class="text-orange-400">G{parsed.wind.gusts}</span>{/if}
+				<span class="text-slate-100">
+					{#if parsed.wind.variable}
+						<span class="text-yellow-400">VRB</span>
+					{:else}
+						<span class="text-slate-200">{parsed.wind.direction}°</span>
+					{/if}
+					<span class="text-slate-400">@</span>
+					<span class="text-sky-400">{parsed.wind.speed}</span>
+					{#if parsed.wind.gusts}
+						<span class="text-orange-400">G{parsed.wind.gusts}</span>
+					{/if}
 				</span>
 			{:else if parsed.wind?.calm}
-				<span class="text-slate-200 font-medium">Calm</span>
+				<span class="text-slate-300">Calm</span>
 			{/if}
 		</div>
-		
+
 		<!-- Altimeter -->
-		{#if parsed.altimeter}
-			<div class="flex items-center gap-1">
-				<IconGauge class="h-3 w-3 text-slate-400" />
-				<span class="font-medium text-slate-200">
-					{parsed.altimeter}"
+		<div class="flex items-center gap-1">
+			<IconGauge class="h-3 w-3 flex-shrink-0 text-slate-400" />
+			<span class="text-slate-200">
+				{parsed.altimeter || '--'}"
+			</span>
+		</div>
+
+		<!-- Temperature/Dewpoint -->
+		<div class="flex items-center gap-1">
+			<IconThermometer class="h-3 w-3 flex-shrink-0 text-slate-400" />
+			{#if parsed.temperature && parsed.dewpoint}
+				<span class="text-slate-100">
+					<span class="text-orange-300">{parsed.temperature}°</span>
+					<span class="text-slate-400">/</span>
+					<span class="text-cyan-300">{parsed.dewpoint}°</span>
 				</span>
-			</div>
-		{/if}
+			{:else}
+				<span class="text-slate-400">--</span>
+			{/if}
+		</div>
+
+		<!-- Visibility -->
+		<div class="flex items-center gap-1">
+			<IconEye class="h-3 w-3 flex-shrink-0 text-slate-400" />
+			<span class="text-slate-200">
+				{parsed.visibility !== null ? (parsed.visibility >= 10 ? '10+' : parsed.visibility) + 'SM' : '--'}
+			</span>
+		</div>
+
+		<!-- Ceiling -->
+		<div class="col-span-2 flex items-center gap-1">
+			<IconCloud class="h-3 w-3 flex-shrink-0 text-slate-400" />
+			<span class="text-slate-200">
+				{parsed.ceiling !== null ? (parsed.ceiling >= 10000 ? (parsed.ceiling).toLocaleString() : (parsed.ceiling / 100).toFixed(0) + (parsed.ceiling < 1000 ? '' : '00')) + 'ft' : 'Unlimited'}
+			</span>
+		</div>
 	</div>
+
+	<!-- Weather phenomena (only show if present) -->
+	{#if parsed.weatherPhenomena.length > 0}
+		<div class="flex items-center gap-1.5">
+			{#each parsed.weatherPhenomena as phenomenon}
+				<div class="group/icon relative">
+					{#if phenomenon === 'rain'}
+						<IconWeatherRainy class="h-3.5 w-3.5 text-blue-400 transition-colors group-hover/icon:text-blue-300" />
+						<div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900/95 px-2 py-1 text-xs text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100">
+							Rain
+						</div>
+					{:else if phenomenon === 'snow'}
+						<IconWeatherSnowy class="h-3.5 w-3.5 text-blue-200 transition-colors group-hover/icon:text-blue-100" />
+						<div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900/95 px-2 py-1 text-xs text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100">
+							Snow
+						</div>
+					{:else if phenomenon === 'fog'}
+						<IconWeatherFog class="h-3.5 w-3.5 text-slate-400 transition-colors group-hover/icon:text-slate-300" />
+						<div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900/95 px-2 py-1 text-xs text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100">
+							Fog
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>

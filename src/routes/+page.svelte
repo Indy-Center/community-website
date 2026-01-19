@@ -1,11 +1,13 @@
 <script lang="ts">
-	import EventCard from '$lib/components/events/EventListCard.svelte';
+	import EventGridCard from '$lib/components/events/EventGridCard.svelte';
 	import WeatherPanel from '$lib/components/status/WeatherPanel.svelte';
 	import ControllersPanel from '$lib/components/status/ControllersPanel.svelte';
+	import Panel from '$lib/components/Panel.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';
 	import DynamicMembershipButton from '$lib/components/DynamicMembershipButton.svelte';
 	import IconDiscord from '~icons/mdi/discord';
 	import IconVisit from '~icons/mdi/sign-direction-plus';
+	import IconCalendar from '~icons/mdi/calendar-clock';
 
 	let { data } = $props();
 </script>
@@ -37,26 +39,39 @@
 			<DynamicMembershipButton user={data.user} class="shadow-lg" />
 		</div>
 	</PageHero>
-	<!-- Events Section -->
-	<div class="w-full overflow-hidden bg-gray-900">
-		<div class="mx-auto flex max-w-6xl flex-col items-center justify-center gap-2 md:flex-row">
-			{#each data.events as event}
-				<div class="w-full min-w-0 md:max-w-md md:flex-1">
-					<EventCard {event} />
+	<!-- Main Content Section -->
+	<div class="w-full bg-gray-900 py-4">
+		<div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4">
+			<!-- Events Section - Full Width -->
+			{#if data.events.length > 0}
+				<Panel title="Upcoming Events" icon={IconCalendar}>
+					<div class="p-4">
+						<div class="mx-auto grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+							{#each data.events.slice(0, 3) as event}
+								<EventGridCard {event} />
+							{/each}
+						</div>
+					</div>
+					<div class="border-t border-slate-700/60 px-4 py-3">
+						<a
+							href="/events"
+							class="inline-flex items-center text-xs font-medium text-sky-400 transition-colors hover:text-sky-300"
+						>
+							View All Events →
+						</a>
+					</div>
+				</Panel>
+			{/if}
+
+			<!-- Status Section - Two Columns -->
+			<div class="flex w-full flex-col gap-4 md:flex-row">
+				<div class="w-full md:w-3/5">
+					<WeatherPanel metars={data.metars} />
 				</div>
-			{/each}
-		</div>
-	</div>
 
-	<!-- Status Section -->
-	<div class="w-full bg-gray-900">
-		<div class="mx-auto flex w-full max-w-6xl flex-col gap-2 md:flex-row">
-			<div class="flex-1">
-				<WeatherPanel metars={data.metars} />
-			</div>
-
-			<div class="flex-1">
-				<ControllersPanel controllers={data.controllers} />
+				<div class="w-full md:w-2/5">
+					<ControllersPanel controllers={data.controllers} />
+				</div>
 			</div>
 		</div>
 	</div>
