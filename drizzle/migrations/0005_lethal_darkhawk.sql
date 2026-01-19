@@ -1,0 +1,1 @@
+CREATE INDEX `event_positions_event_id_position_idx` ON `event_positions` (`event_id`,`position`);
