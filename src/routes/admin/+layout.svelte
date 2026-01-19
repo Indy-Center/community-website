@@ -7,13 +7,13 @@
 
 	const adminLinks = [
 		{
-			label: 'Users',
+			label: 'Manage Users',
 			href: '/admin/users',
 			icon: IconAccountGroup,
 			description: 'Manage user accounts, roles, and permissions'
 		},
 		{
-			label: 'Feedback',
+			label: 'Manage Feedback',
 			href: '/admin/feedback',
 			icon: IconMessage,
 			description: 'Review and manage controller feedback'

@@ -1,7 +1,7 @@
 export enum Role {
 	ADMIN = 'admin',
 	CAN_MANAGE_EVENTS = 'events:manage',
-	CAN_MANAGE_USERS = 'users:manage'
+	EVENTS_PROHIBIT_SIGNUP = 'events:prohibit_signup'
 }
 
 export function isAdmin(roles?: string[] | null) {
@@ -20,6 +20,7 @@ export function canManageEvents(roles: string[] | null) {
 	return canManage(roles, Role.CAN_MANAGE_EVENTS);
 }
 
-export function canManageUsers(roles: string[] | null) {
-	return canManage(roles, Role.CAN_MANAGE_USERS);
+export function isEventSignupProhibited(roles: string[] | null) {
+	if (!roles) return false;
+	return roles.includes(Role.EVENTS_PROHIBIT_SIGNUP);
 }

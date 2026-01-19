@@ -104,7 +104,9 @@
 									{#if feedback.callsign}
 										({feedback.callsign})
 									{/if}
-									{feedback.submitter.email}
+									{#if feedback.submitter?.email}
+										• {feedback.submitter.email}
+									{/if}
 								</div>
 								<div class="mt-1 text-xs text-gray-500">
 									{formatDistanceToNow(new Date(feedback.createdAt!))} ago
@@ -265,7 +267,9 @@
 												{#if feedback.callsign}
 													({feedback.callsign})
 												{/if}
-												{feedback.submitter.email}
+												{#if feedback.submitter?.email}
+													• {feedback.submitter.email}
+												{/if}
 											</div>
 											<div class="mt-1 text-xs text-gray-500">
 												{formatDistanceToNow(new Date(feedback.createdAt!))} ago

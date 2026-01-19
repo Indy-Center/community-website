@@ -5,7 +5,7 @@ import {
 } from '$lib/db/schema/events';
 import { and, eq, not } from 'drizzle-orm';
 import { redirect, fail } from '@sveltejs/kit';
-import { canManage, canManageEvents, Role } from '$lib/utils/permissions';
+import { canManage, canManageEvents, isEventSignupProhibited, Role } from '$lib/utils/permissions';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
 import { isBefore, subHours } from 'date-fns';
 import { isSignUpClosed } from '$lib/utils/events';
@@ -107,6 +107,11 @@ export const actions = {
 		}
 
 		const form = await superValidate(request, zod4(signUpForPositionSchema));
+
+		// Check if user is prohibited from signing up
+		if (isEventSignupProhibited(locals.roles)) {
+			return fail(403, { error: 'You are not permitted to sign up for event positions', form });
+		}
 
 		if (!form.valid) {
 			return fail(400, { form });

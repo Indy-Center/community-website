@@ -5,6 +5,7 @@
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import type { User } from '$lib/db/schema/users';
 	import { CERTIFICATIONS, ENDORSEMENTS } from '$lib/config/certifications';
+	import { Role } from '$lib/utils/permissions';
 
 	let { data } = $props();
 
@@ -23,12 +24,12 @@
 
 	function getRoleBadgeColor(role: string): string {
 		switch (role) {
-			case 'admin':
+			case Role.ADMIN:
 				return 'bg-red-600/20 text-red-300 border-red-500/30';
-			case 'events:manage':
+			case Role.CAN_MANAGE_EVENTS:
 				return 'bg-purple-600/20 text-purple-300 border-purple-500/30';
-			case 'users:manage':
-				return 'bg-blue-600/20 text-blue-300 border-blue-500/30';
+			case Role.EVENTS_PROHIBIT_SIGNUP:
+				return 'bg-orange-600/20 text-orange-300 border-orange-500/30';
 			default:
 				return 'bg-gray-600/20 text-gray-300 border-gray-500/30';
 		}
@@ -49,6 +50,20 @@
 	function hasEndorsement(endorsement: string): boolean {
 		return user.endorsements.some((e) => e.endorsement === endorsement);
 	}
+
+	function hasRole(role: string): boolean {
+		return user.roles.some((r) => r.role === role);
+	}
+
+	// Roles that can be manually managed by admins (excludes VATUSA auto-managed roles)
+	const permissionRoles = [
+		{ key: Role.ADMIN, label: 'Administrator', description: 'Full system access' },
+		{ key: Role.CAN_MANAGE_EVENTS, label: 'Manage Events', description: 'Can create and edit events' }
+	];
+
+	const restrictionRoles = [
+		{ key: Role.EVENTS_PROHIBIT_SIGNUP, label: 'Prohibit Event Signup', description: 'Cannot sign up for event positions' }
+	];
 
 	let certificationForm: HTMLFormElement;
 
@@ -242,6 +257,136 @@
 					</button>
 				</form>
 			{/each}
+		</div>
+	</div>
+
+	<!-- Roles Management -->
+	<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-6">
+		<div class="mb-6">
+			<h2 class="text-lg font-semibold text-white">System Roles</h2>
+			<p class="text-sm text-gray-400">Manage permissions and restrictions for this user</p>
+		</div>
+
+		<!-- Permissions -->
+		<div class="mb-6">
+			<h3 class="mb-3 text-sm font-semibold text-slate-300">Permissions</h3>
+			<div class="space-y-2">
+				{#each permissionRoles as roleItem}
+					<form
+						method="POST"
+						action="?/toggleRole"
+						use:enhance={() => {
+							return async ({ result }) => {
+								if (result.type === 'success') {
+									await invalidateAll();
+								}
+							};
+						}}
+						class="block"
+					>
+						<input type="hidden" name="role" value={roleItem.key} />
+						<button
+							type="submit"
+							class="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-all duration-200 {hasRole(
+								roleItem.key
+							)
+								? getRoleBadgeColor(roleItem.key) + ' hover:opacity-80'
+								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:bg-slate-700 hover:border-slate-500'}"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex-1">
+									<div class="font-semibold text-sm">{roleItem.label}</div>
+									<div class="mt-0.5 text-xs text-gray-400">{roleItem.description}</div>
+								</div>
+								<div
+									class="ml-4 flex h-5 w-5 items-center justify-center rounded border {hasRole(
+										roleItem.key
+									)
+										? 'border-current bg-current'
+										: 'border-slate-500'}"
+								>
+									{#if hasRole(roleItem.key)}
+										<svg
+											class="h-3 w-3 text-white"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="3"
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+									{/if}
+								</div>
+							</div>
+						</button>
+					</form>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Restrictions -->
+		<div>
+			<h3 class="mb-3 text-sm font-semibold text-slate-300">Restrictions</h3>
+			<div class="space-y-2">
+				{#each restrictionRoles as roleItem}
+					<form
+						method="POST"
+						action="?/toggleRole"
+						use:enhance={() => {
+							return async ({ result }) => {
+								if (result.type === 'success') {
+									await invalidateAll();
+								}
+							};
+						}}
+						class="block"
+					>
+						<input type="hidden" name="role" value={roleItem.key} />
+						<button
+							type="submit"
+							class="w-full cursor-pointer rounded-lg border px-4 py-3 text-left transition-all duration-200 {hasRole(
+								roleItem.key
+							)
+								? getRoleBadgeColor(roleItem.key) + ' hover:opacity-80'
+								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:bg-slate-700 hover:border-slate-500'}"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex-1">
+									<div class="font-semibold text-sm">{roleItem.label}</div>
+									<div class="mt-0.5 text-xs text-gray-400">{roleItem.description}</div>
+								</div>
+								<div
+									class="ml-4 flex h-5 w-5 items-center justify-center rounded border {hasRole(
+										roleItem.key
+									)
+										? 'border-current bg-current'
+										: 'border-slate-500'}"
+								>
+									{#if hasRole(roleItem.key)}
+										<svg
+											class="h-3 w-3 text-white"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="3"
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+									{/if}
+								</div>
+							</div>
+						</button>
+					</form>
+				{/each}
+			</div>
 		</div>
 	</div>
 </div>

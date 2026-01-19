@@ -14,7 +14,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import EventDetailsPanel from '$lib/components/events/EventDetailsPanel.svelte';
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
-	import { canManageEvents } from '$lib/utils/permissions.js';
+	import { canManageEvents, isEventSignupProhibited } from '$lib/utils/permissions.js';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 	import { isSignUpClosed } from '$lib/utils/events.js';
 	import { supportsRosters } from '$lib/config/events';
@@ -27,6 +27,9 @@
 
 	// Check if user has controller membership (for position sign-ups)
 	const hasControllerAccess = $derived(user?.membership === 'controller');
+	
+	// Check if user is prohibited from signing up
+	const isSignupProhibited = $derived(isEventSignupProhibited(data?.roles));
 
 	/**
 	 * Position sorting puts the positions in order of Approach > Tower > Ground > Delivery > Ramp/Other
@@ -313,7 +316,7 @@
 																</button>
 															</form>
 														{/if}
-													{:else if hasControllerAccess && event.rosterType === 'open' && !isSignUpClosed(event) && !userAlreadyAssignedToPosition(user?.id)}
+													{:else if hasControllerAccess && !isSignupProhibited && event.rosterType === 'open' && !isSignUpClosed(event) && !userAlreadyAssignedToPosition(user?.id)}
 														<!-- Open position for sign-up -->
 														<form
 															method="POST"
