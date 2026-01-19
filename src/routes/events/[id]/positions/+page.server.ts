@@ -1,8 +1,11 @@
 import { eventsTable, eventPositionsTable } from '$lib/db/schema/events';
 import { eq, and } from 'drizzle-orm';
-import { redirect } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 import { canManageEvents } from '$lib/utils/permissions.js';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
+import { superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { z } from 'zod';
 
 export const load = async ({ locals, params, depends }) => {
 	if (!canManageEvents(locals.roles)) {
@@ -42,23 +45,38 @@ export const load = async ({ locals, params, depends }) => {
 	};
 };
 
+const updateAssignmentSchema = z.object({
+	positionId: z.string().min(1),
+	userId: z.string().optional().nullable()
+});
+
+const addPositionSchema = z.object({
+	position: z.array(z.string().min(1)).min(1)
+});
+
+const removePositionSchema = z.object({
+	position: z.string().min(1)
+});
+
 export const actions = {
 	updateAssignment: async ({ locals, request, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
 
-		const formData = await request.formData();
-		const positionId = formData.get('positionId');
-		const userId = formData.get('userId') || null;
+		const form = await superValidate(request, zod4(updateAssignmentSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
 
 		await locals.db
 			.update(eventPositionsTable)
 			.set({
-				userId: userId === 'null' || userId === '' ? null : userId,
+				userId: form.data.userId || null,
 				updatedAt: new Date()
 			})
-			.where(eq(eventPositionsTable.position, positionId));
+			.where(and(eq(eventPositionsTable.position, form.data.positionId), eq(eventPositionsTable.eventId, params.id)));
 
 		return { success: true };
 	},
@@ -68,12 +86,13 @@ export const actions = {
 			return redirect(302, '/');
 		}
 
-		const formData = await request.formData();
-		const positions = formData.getAll('position') as string[];
+		const form = await superValidate(request, zod4(addPositionSchema));
 
-		if (!positions.length) {
-			return { error: 'No positions selected' };
+		if (!form.valid) {
+			return fail(400, { form });
 		}
+
+		const positions = form.data.position;
 
 		// Check for existing positions
 		const existingPositions = await Promise.all(
@@ -87,7 +106,7 @@ export const actions = {
 
 		const duplicates = positions.filter((_, index) => existingPositions[index]);
 		if (duplicates.length > 0) {
-			return { error: `Positions already exist: ${duplicates.join(', ')}` };
+			return fail(400, { error: `Positions already exist: ${duplicates.join(', ')}`, form });
 		}
 
 		// Insert all positions
@@ -107,17 +126,16 @@ export const actions = {
 			return redirect(302, '/');
 		}
 
-		const formData = await request.formData();
-		const position = formData.get('position') as string;
+		const form = await superValidate(request, zod4(removePositionSchema));
 
-		if (!position) {
-			return { error: 'Position is required' };
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		await locals.db
 			.delete(eventPositionsTable)
 			.where(
-				and(eq(eventPositionsTable.eventId, params.id), eq(eventPositionsTable.position, position))
+				and(eq(eventPositionsTable.eventId, params.id), eq(eventPositionsTable.position, form.data.position))
 			);
 
 		return { success: true };

@@ -6,6 +6,9 @@ import { fail } from '@sveltejs/kit';
 import { isAdmin } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
 import { logger } from '$lib/server/logger';
+import { superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { z } from 'zod';
 
 export const load = async ({ params, locals }) => {
 	if (!isAdmin(locals.roles)) {
@@ -32,6 +35,14 @@ export const load = async ({ params, locals }) => {
 	};
 };
 
+const setCertificationSchema = z.object({
+	certification: z.string().optional()
+});
+
+const toggleEndorsementSchema = z.object({
+	endorsement: z.string().min(1)
+});
+
 export const actions = {
 	setCertification: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
@@ -40,8 +51,13 @@ export const actions = {
 		}
 
 		const { id } = params;
-		const formData = await request.formData();
-		const certification = formData.get('certification') as string;
+		const form = await superValidate(request, zod4(setCertificationSchema));
+
+		if (!form.valid) {
+			return fail(400, { form, message: 'Invalid certification data' });
+		}
+
+		const certification = form.data.certification;
 
 		logger.info(`Admin ${locals.user?.id} changing certification for user ${id} to: ${certification || 'none'}`);
 
@@ -107,12 +123,13 @@ export const actions = {
 		}
 
 		const { id } = params;
-		const formData = await request.formData();
-		const endorsement = formData.get('endorsement') as string;
+		const form = await superValidate(request, zod4(toggleEndorsementSchema));
 
-		if (!endorsement) {
-			return fail(400, { message: 'Endorsement is required' });
+		if (!form.valid) {
+			return fail(400, { form, message: 'Endorsement is required' });
 		}
+
+		const endorsement = form.data.endorsement;
 
 		try {
 			// Check if the endorsement exists

@@ -4,6 +4,9 @@ import { isAdmin } from '$lib/utils/permissions';
 import { redirect, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { logger } from '$lib/server/logger';
+import { superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { z } from 'zod';
 
 export const load = async ({ locals }) => {
 	if (!isAdmin(locals.roles)) {
@@ -24,6 +27,10 @@ export const load = async ({ locals }) => {
 	};
 };
 
+const feedbackActionSchema = z.object({
+	feedbackId: z.string().min(1)
+});
+
 export const actions = {
 	approve: async ({ request, locals }) => {
 		if (!isAdmin(locals.roles)) {
@@ -31,14 +38,14 @@ export const actions = {
 			return fail(403, { message: 'Unauthorized' });
 		}
 
-		const formData = await request.formData();
-		const feedbackId = formData.get('feedbackId') as string;
+		const form = await superValidate(request, zod4(feedbackActionSchema));
 
-		logger.info(`Admin ${locals.user?.id} approving feedback ${feedbackId}`);
-
-		if (!feedbackId) {
-			return fail(400, { message: 'Feedback ID is required' });
+		if (!form.valid) {
+			return fail(400, { form, message: 'Feedback ID is required' });
 		}
+
+		const feedbackId = form.data.feedbackId;
+		logger.info(`Admin ${locals.user?.id} approving feedback ${feedbackId}`);
 
 		try {
 			const [feedback] = await locals.db
@@ -65,14 +72,14 @@ export const actions = {
 			return fail(403, { message: 'Unauthorized' });
 		}
 
-		const formData = await request.formData();
-		const feedbackId = formData.get('feedbackId') as string;
+		const form = await superValidate(request, zod4(feedbackActionSchema));
 
-		logger.info(`Admin ${locals.user?.id} rejecting feedback ${feedbackId}`);
-
-		if (!feedbackId) {
-			return fail(400, { message: 'Feedback ID is required' });
+		if (!form.valid) {
+			return fail(400, { form, message: 'Feedback ID is required' });
 		}
+
+		const feedbackId = form.data.feedbackId;
+		logger.info(`Admin ${locals.user?.id} rejecting feedback ${feedbackId}`);
 
 		try {
 			const [feedback] = await locals.db

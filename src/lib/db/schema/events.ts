@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { sqliteTable } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, index } from 'drizzle-orm/sqlite-core';
 import { text } from 'drizzle-orm/sqlite-core';
 import { integer } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
@@ -23,21 +23,27 @@ export const eventsTable = sqliteTable('events', {
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 });
 
-export const eventPositionsTable = sqliteTable('event_positions', {
-	eventId: text('event_id').notNull(),
-	position: text('position').notNull(),
-	userId: text('filled_by_user_id'),
-	requiredCertifications: text('required_certifications', { mode: 'json' })
-		.notNull()
-		.default(sql`'[]'`)
-		.$type<string[]>(),
-	requiredEndorsements: text('required_endorsements', { mode: 'json' })
-		.notNull()
-		.default(sql`'[]'`)
-		.$type<string[]>(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
-});
+export const eventPositionsTable = sqliteTable(
+	'event_positions',
+	{
+		eventId: text('event_id').notNull(),
+		position: text('position').notNull(),
+		userId: text('filled_by_user_id'),
+		requiredCertifications: text('required_certifications', { mode: 'json' })
+			.notNull()
+			.default(sql`'[]'`)
+			.$type<string[]>(),
+		requiredEndorsements: text('required_endorsements', { mode: 'json' })
+			.notNull()
+			.default(sql`'[]'`)
+			.$type<string[]>(),
+		createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+		updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+	},
+	(table) => [
+		index('event_positions_event_id_position_idx').on(table.eventId, table.position)
+	]
+);
 
 export const eventRelations = relations(eventsTable, ({ many }) => ({
 	positions: many(eventPositionsTable),

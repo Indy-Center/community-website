@@ -4,12 +4,15 @@ import {
 	eventPositionRequestsTable
 } from '$lib/db/schema/events';
 import { and, eq, not } from 'drizzle-orm';
-import { redirect } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 import { canManage, canManageEvents, Role } from '$lib/utils/permissions';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
 import { isBefore, subHours } from 'date-fns';
 import { isSignUpClosed } from '$lib/utils/events';
 import { logger } from '$lib/server/logger';
+import { superValidate } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { z } from 'zod';
 
 export const load = async ({ locals, params }) => {
 	const event = await locals.db.query.eventsTable.findFirst({
@@ -49,6 +52,18 @@ export const load = async ({ locals, params }) => {
 		userId: locals.session?.userId
 	};
 };
+
+const signUpForPositionSchema = z.object({
+	position: z.string().min(1)
+});
+
+const unassignFromPositionSchema = z.object({
+	position: z.string().min(1)
+});
+
+const requestPositionSchema = z.object({
+	comments: z.string().optional()
+});
 
 export const actions = {
 	delete: async ({ locals, params }) => {
@@ -91,11 +106,10 @@ export const actions = {
 			return redirect(302, '/auth/login');
 		}
 
-		const formData = await request.formData();
-		const position = formData.get('position') as string;
+		const form = await superValidate(request, zod4(signUpForPositionSchema));
 
-		if (!position) {
-			return { error: 'Position is required' };
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		// Check if event exists and roster is published
@@ -104,7 +118,7 @@ export const actions = {
 		});
 
 		if (isSignUpClosed(event)) {
-			return { error: 'Event roster is not available for sign-up' };
+			return fail(400, { error: 'Event roster is not available for sign-up', form });
 		}
 
 		// Update the position assignment
@@ -115,7 +129,7 @@ export const actions = {
 				updatedAt: new Date()
 			})
 			.where(
-				and(eq(eventPositionsTable.position, position), eq(eventPositionsTable.eventId, params.id))
+				and(eq(eventPositionsTable.position, form.data.position), eq(eventPositionsTable.eventId, params.id))
 			);
 
 		return { success: true };
@@ -126,11 +140,10 @@ export const actions = {
 			return redirect(302, '/auth/login');
 		}
 
-		const formData = await request.formData();
-		const position = formData.get('position') as string;
+		const form = await superValidate(request, zod4(unassignFromPositionSchema));
 
-		if (!position) {
-			return { error: 'Position is required' };
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		// Update the position to unassign
@@ -141,7 +154,7 @@ export const actions = {
 				updatedAt: new Date()
 			})
 			.where(
-				and(eq(eventPositionsTable.position, position), eq(eventPositionsTable.eventId, params.id))
+				and(eq(eventPositionsTable.position, form.data.position), eq(eventPositionsTable.eventId, params.id))
 			);
 
 		return { success: true };
@@ -152,8 +165,11 @@ export const actions = {
 			return redirect(302, '/auth/login');
 		}
 
-		const formData = await request.formData();
-		const comments = formData.get('comments') as string;
+		const form = await superValidate(request, zod4(requestPositionSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
 
 		// Check if event exists and is assigned roster type
 		const event = await locals.db.query.eventsTable.findFirst({
@@ -161,7 +177,7 @@ export const actions = {
 		});
 
 		if (!event || event.rosterType !== 'assigned') {
-			return { error: 'Position requests are not available for this event' };
+			return fail(400, { error: 'Position requests are not available for this event', form });
 		}
 
 		// Check if user already has a request for this event
@@ -171,7 +187,7 @@ export const actions = {
 		});
 
 		if (existingRequest) {
-			return { error: 'You already have a position request for this event' };
+			return fail(400, { error: 'You already have a position request for this event', form });
 		}
 
 		// Create position request
@@ -179,7 +195,7 @@ export const actions = {
 			id: crypto.randomUUID(),
 			eventId: params.id,
 			userId: locals.session.userId,
-			comments
+			comments: form.data.comments
 		});
 
 		return { success: true };
