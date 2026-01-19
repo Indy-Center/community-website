@@ -4,12 +4,12 @@ import { FACILITY_ID } from '$lib/config';
 const VNAS_DATA_FEED_BASE_URL = 'https://live.env.vnas.vatsim.net/data-feed';
 const VNAS_ARTCC_BASE_URL = 'https://data-api.vnas.vatsim.net/api/artccs';
 
-export async function fetchControllers(artcc: string = FACILITY_ID) {
+export async function fetchControllers(artcc: string = FACILITY_ID, includeObservers: boolean = false, includeInactive: boolean = false) {
 	const url = `${VNAS_DATA_FEED_BASE_URL}/controllers.json`;
 	const response = await fetch(url).then((res) => res.json());
 	const { controllers } = response as VnasControllerResponse;
 
-	const filteredControllers = controllers.filter((controller) => controller.artccId === artcc);
+	const filteredControllers = controllers.filter((controller) => controller.artccId === artcc && (includeObservers || !controller.isObserver) && (includeInactive || controller.isActive));
 
 	return filteredControllers;
 }

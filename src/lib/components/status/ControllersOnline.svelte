@@ -1,17 +1,18 @@
 <script lang="ts">
-	import type { VnasController } from '$lib/types';
+	import type { VnasController } from '$lib/types/vnas';
 	import ControllerRow from './ControllerRow.svelte';
 
-	const { controllers }: { controllers: VnasController[] } = $props();
+	let { controllers }: { controllers: VnasController[] } = $props();
 
 
+	// Gets the primary position of the controller.
 	const displayedControllers = $derived.by(() => {
 		return controllers
 			.map((controller) => {
 				return {
 					...controller,
 					primaryPosition: controller.positions.find(
-						(position) => position.isPrimary && position.isActive
+						(position) => position.isPrimary
 					)
 				};
 			})
