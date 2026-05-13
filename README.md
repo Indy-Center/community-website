@@ -70,4 +70,4 @@ Production secrets (OAuth credentials, Sentry DSN, etc.) live in Cloudflare — 
 
 ## Disclaimer
 
-Not affiliated with the FAA or any aviation governing body. For use on the [VATSIM](https://www.vatsim.net) network only.
+We are not affiliated with the FAA or any aviation governing body. This software is for flight simulation use on the [VATSIM](https://www.vatsim.net) network.
