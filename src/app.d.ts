@@ -6,6 +6,11 @@ import type { UserWithRelations } from '$lib/user';
 
 // for information about these interfaces
 declare global {
+	namespace Cloudflare {
+		interface Env {
+			DB: D1Database;
+		}
+	}
 	namespace App {
 		interface Platform {
 			env: Env;

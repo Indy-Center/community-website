@@ -5,10 +5,14 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "community-website",
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	"main": "src/worker.ts",
 	"account_id": "afd63515948c9b2188ce14ef1504b2c1",
 	"compatibility_date": "2025-08-30",
 	"compatibility_flags": ["nodejs_compat"],
+	"alias": {
+		"$env/dynamic/private": "@indy-center/adapter-cloudflare/env-shim",
+		"$env/dynamic/public": "@indy-center/adapter-cloudflare/env-shim"
+	},
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
@@ -28,6 +32,9 @@
 			"pattern": "flyindycenter.com"
 		}
 	],
+	"triggers": {
+		"crons": ["0-59/5 * * * *"]
+	},
 	"upload_source_maps": true,
 	"observability": {
 		"enabled": true
