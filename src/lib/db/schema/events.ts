@@ -40,9 +40,7 @@ export const eventPositionsTable = sqliteTable(
 		createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 		updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 	},
-	(table) => [
-		index('event_positions_event_id_position_idx').on(table.eventId, table.position)
-	]
+	(table) => [index('event_positions_event_id_position_idx').on(table.eventId, table.position)]
 );
 
 export const eventRelations = relations(eventsTable, ({ many }) => ({

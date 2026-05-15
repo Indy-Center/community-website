@@ -51,7 +51,9 @@ const toggleRoleSchema = z.object({
 export const actions = {
 	setCertification: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
-			logger.warn(`Unauthorized certification change attempt by user ${locals.user?.id} for target user ${params.id}`);
+			logger.warn(
+				`Unauthorized certification change attempt by user ${locals.user?.id} for target user ${params.id}`
+			);
 			return fail(403, { message: 'Unauthorized' });
 		}
 
@@ -64,7 +66,9 @@ export const actions = {
 
 		const certification = form.data.certification;
 
-		logger.info(`Admin ${locals.user?.id} changing certification for user ${id} to: ${certification || 'none'}`);
+		logger.info(
+			`Admin ${locals.user?.id} changing certification for user ${id} to: ${certification || 'none'}`
+		);
 
 		try {
 			// Get current certification to check if we need to remove T2-CTR endorsement
@@ -123,7 +127,9 @@ export const actions = {
 
 	toggleEndorsement: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
-			logger.warn(`Unauthorized endorsement change attempt by user ${locals.user?.id} for target user ${params.id}`);
+			logger.warn(
+				`Unauthorized endorsement change attempt by user ${locals.user?.id} for target user ${params.id}`
+			);
 			return fail(403, { message: 'Unauthorized' });
 		}
 
@@ -165,17 +171,24 @@ export const actions = {
 				});
 			}
 
-			logger.info(`Endorsement ${endorsement} successfully toggled for user ${id} by admin ${locals.user?.id}`);
+			logger.info(
+				`Endorsement ${endorsement} successfully toggled for user ${id} by admin ${locals.user?.id}`
+			);
 			return { success: true };
 		} catch (error) {
-			logger.error(`Failed to toggle endorsement ${endorsement} for user ${id} by admin ${locals.user?.id}`, error);
+			logger.error(
+				`Failed to toggle endorsement ${endorsement} for user ${id} by admin ${locals.user?.id}`,
+				error
+			);
 			return fail(500, { message: 'Failed to toggle endorsement' });
 		}
 	},
 
 	toggleRole: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
-			logger.warn(`Unauthorized role change attempt by user ${locals.user?.id} for target user ${params.id}`);
+			logger.warn(
+				`Unauthorized role change attempt by user ${locals.user?.id} for target user ${params.id}`
+			);
 			return fail(403, { message: 'Unauthorized' });
 		}
 
@@ -212,7 +225,10 @@ export const actions = {
 			logger.info(`Role ${role} successfully toggled for user ${id} by admin ${locals.user?.id}`);
 			return { success: true };
 		} catch (error) {
-			logger.error(`Failed to toggle role ${role} for user ${id} by admin ${locals.user?.id}`, error);
+			logger.error(
+				`Failed to toggle role ${role} for user ${id} by admin ${locals.user?.id}`,
+				error
+			);
 			return fail(500, { message: 'Failed to toggle role' });
 		}
 	}

@@ -139,7 +139,7 @@
 						<!-- Event Banner -->
 						<div class="relative lg:w-72 lg:flex-shrink-0">
 							<div
-								class="absolute inset-0 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r z-10"
+								class="absolute inset-0 z-10 bg-gradient-to-l from-transparent via-slate-800/20 to-slate-800/40 lg:bg-gradient-to-r"
 							></div>
 							<ImageWithFallback
 								src={nextEvent.bannerUrl}

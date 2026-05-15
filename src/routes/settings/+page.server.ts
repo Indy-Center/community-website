@@ -12,7 +12,7 @@ export const load = async ({ locals }) => {
 	}
 
 	const isController = locals.user.membership === 'controller';
-	
+
 	// Pre-fill form with current user data
 	const prefilledData = {
 		preferredName: locals.user.preferredName || `${locals.user.firstName} ${locals.user.lastName}`,
@@ -34,7 +34,7 @@ export const actions = {
 		if (!locals.user) {
 			return redirect(302, '/login/connect');
 		}
-		
+
 		const isController = locals.user.membership === 'controller';
 		const schema = isController ? controllerSettingsSchema : userSettingsSchema;
 		const form = await superValidate(request, zod4(schema));
@@ -44,23 +44,20 @@ export const actions = {
 		}
 
 		logger.debug('Updating user settings', { userId: locals.user.id });
-		
+
 		const updateData: any = {
 			preferredName: form.data.preferredName,
 			pronouns: form.data.pronouns || null
 		};
-		
+
 		if (isController) {
 			updateData.operatingInitials = form.data.operatingInitials;
 		} else {
 			// Clear operating initials for non-controllers
 			updateData.operatingInitials = null;
 		}
-		
-		await locals.db
-			.update(usersTable)
-			.set(updateData)
-			.where(eq(usersTable.id, locals.user.id));
+
+		await locals.db.update(usersTable).set(updateData).where(eq(usersTable.id, locals.user.id));
 
 		return { form };
 	}

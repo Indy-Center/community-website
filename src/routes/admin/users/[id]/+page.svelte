@@ -58,11 +58,19 @@
 	// Roles that can be manually managed by admins (excludes VATUSA auto-managed roles)
 	const permissionRoles = [
 		{ key: Role.ADMIN, label: 'Administrator', description: 'Full system access' },
-		{ key: Role.CAN_MANAGE_EVENTS, label: 'Manage Events', description: 'Can create and edit events' }
+		{
+			key: Role.CAN_MANAGE_EVENTS,
+			label: 'Manage Events',
+			description: 'Can create and edit events'
+		}
 	];
 
 	const restrictionRoles = [
-		{ key: Role.EVENTS_PROHIBIT_SIGNUP, label: 'Prohibit Event Signup', description: 'Cannot sign up for event positions' }
+		{
+			key: Role.EVENTS_PROHIBIT_SIGNUP,
+			label: 'Prohibit Event Signup',
+			description: 'Cannot sign up for event positions'
+		}
 	];
 
 	let certificationForm: HTMLFormElement;
@@ -291,11 +299,11 @@
 								roleItem.key
 							)
 								? getRoleBadgeColor(roleItem.key) + ' hover:opacity-80'
-								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:bg-slate-700 hover:border-slate-500'}"
+								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:border-slate-500 hover:bg-slate-700'}"
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
-									<div class="font-semibold text-sm">{roleItem.label}</div>
+									<div class="text-sm font-semibold">{roleItem.label}</div>
 									<div class="mt-0.5 text-xs text-gray-400">{roleItem.description}</div>
 								</div>
 								<div
@@ -352,11 +360,11 @@
 								roleItem.key
 							)
 								? getRoleBadgeColor(roleItem.key) + ' hover:opacity-80'
-								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:bg-slate-700 hover:border-slate-500'}"
+								: 'border-slate-600 bg-slate-700/50 text-gray-300 hover:border-slate-500 hover:bg-slate-700'}"
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
-									<div class="font-semibold text-sm">{roleItem.label}</div>
+									<div class="text-sm font-semibold">{roleItem.label}</div>
 									<div class="mt-0.5 text-xs text-gray-400">{roleItem.description}</div>
 								</div>
 								<div

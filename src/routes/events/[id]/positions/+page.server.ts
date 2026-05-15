@@ -76,7 +76,12 @@ export const actions = {
 				userId: form.data.userId || null,
 				updatedAt: new Date()
 			})
-			.where(and(eq(eventPositionsTable.position, form.data.positionId), eq(eventPositionsTable.eventId, params.id)));
+			.where(
+				and(
+					eq(eventPositionsTable.position, form.data.positionId),
+					eq(eventPositionsTable.eventId, params.id)
+				)
+			);
 
 		return { success: true };
 	},
@@ -135,7 +140,10 @@ export const actions = {
 		await locals.db
 			.delete(eventPositionsTable)
 			.where(
-				and(eq(eventPositionsTable.eventId, params.id), eq(eventPositionsTable.position, form.data.position))
+				and(
+					eq(eventPositionsTable.eventId, params.id),
+					eq(eventPositionsTable.position, form.data.position)
+				)
 			);
 
 		return { success: true };

@@ -37,7 +37,7 @@
 		<button
 			type="button"
 			onclick={toggleDropdown}
-			class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 hover:border-slate-500 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
+			class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:border-slate-500 hover:bg-slate-600 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900 focus:outline-none"
 		>
 			<IconDownload class="h-4 w-4" />
 			Import from VATSIM
@@ -45,7 +45,9 @@
 		</button>
 
 		{#if dropdownOpen}
-			<div class="absolute right-0 mt-2 w-96 rounded-lg border border-slate-600 bg-slate-800 shadow-xl backdrop-blur-sm z-50">
+			<div
+				class="absolute right-0 z-50 mt-2 w-96 rounded-lg border border-slate-600 bg-slate-800 shadow-xl backdrop-blur-sm"
+			>
 				<div class="p-2">
 					<div class="mb-2 px-3 py-2">
 						<h3 class="text-sm font-medium text-gray-300">Available VATSIM Events</h3>
@@ -70,30 +72,36 @@
 											/>
 										</div>
 									{:else}
-										<div class="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-slate-700 text-gray-400">
+										<div
+											class="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-slate-700 text-gray-400"
+										>
 											<IconGlobe class="h-6 w-6" />
 										</div>
 									{/if}
 
 									<!-- Event Details -->
 									<div class="min-w-0 flex-1">
-										<h4 class="mb-1 text-sm font-medium text-white line-clamp-2">
+										<h4 class="mb-1 line-clamp-2 text-sm font-medium text-white">
 											{event.name}
 										</h4>
-										
+
 										{#if event.short_description}
-											<p class="mb-2 text-xs text-gray-400 line-clamp-2">
+											<p class="mb-2 line-clamp-2 text-xs text-gray-400">
 												{event.short_description}
 											</p>
 										{/if}
 
 										<!-- Event Metadata -->
 										<div class="flex flex-wrap gap-1">
-											<span class="inline-flex items-center rounded-md bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300 border border-sky-500/20">
+											<span
+												class="inline-flex items-center rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300"
+											>
 												{event.type}
 											</span>
 											{#if event.start_time}
-												<span class="inline-flex items-center rounded-md bg-slate-600/50 px-2 py-0.5 text-xs font-medium text-slate-300">
+												<span
+													class="inline-flex items-center rounded-md bg-slate-600/50 px-2 py-0.5 text-xs font-medium text-slate-300"
+												>
 													{format(utc(event.start_time), 'MMM d, HH:mm')}Z
 												</span>
 											{/if}

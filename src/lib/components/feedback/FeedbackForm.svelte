@@ -18,21 +18,24 @@
 
 <form method="POST" use:enhance class="w-full max-w-5xl">
 	{#if $message}
-		<div class="mb-8 rounded-lg border border-green-400/30 bg-green-400/10 px-6 py-4 backdrop-blur-sm">
+		<div
+			class="mb-8 rounded-lg border border-green-400/30 bg-green-400/10 px-6 py-4 backdrop-blur-sm"
+		>
 			<div class="flex items-center gap-3">
 				<div class="rounded-full bg-green-400/20 p-1">
 					<svg class="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"
+						></path>
 					</svg>
 				</div>
-				<p class="text-green-300 font-medium">{$message}</p>
+				<p class="font-medium text-green-300">{$message}</p>
 			</div>
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 		<!-- Main Form Fields -->
-		<div class="lg:col-span-2 space-y-6">
+		<div class="space-y-6 lg:col-span-2">
 			<!-- Controller Selection -->
 			<div>
 				<label for="controllerId" class="mb-2 block text-sm font-medium text-gray-300"
@@ -57,7 +60,7 @@
 			</div>
 
 			<!-- Position and Callsign -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="position" class="mb-2 block text-sm font-medium text-gray-300"
 						>Position {#if $errors.position}<span class="text-red-400">- {$errors.position}</span
@@ -76,8 +79,7 @@
 				<div>
 					<label for="callsign" class="mb-2 block text-sm font-medium text-gray-300"
 						>Your Callsign <span class="text-gray-500">(optional)</span>
-						{#if $errors.callsign}<span class="text-red-400">- {$errors.callsign}</span
-							>{/if}</label
+						{#if $errors.callsign}<span class="text-red-400">- {$errors.callsign}</span>{/if}</label
 					>
 					<input
 						type="text"
@@ -111,7 +113,6 @@
 					<option value="excellent">Excellent</option>
 				</select>
 			</div>
-
 		</div>
 
 		<!-- Comments Section -->
@@ -137,10 +138,10 @@ What did they do well? Any suggestions for improvement?"
 	</div>
 
 	<!-- Submit Button - Outside grid to flow naturally on mobile -->
-	<div class="border-t border-slate-600 pt-6 mt-8">
+	<div class="mt-8 border-t border-slate-600 pt-6">
 		<button
 			type="submit"
-			class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-sky-600 px-8 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
+			class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-8 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none sm:w-auto"
 		>
 			Submit Feedback
 		</button>

@@ -11,7 +11,7 @@
 
 {#if size === 'minimal'}
 	<!-- Minimal header for non-home pages -->
-	<div class="relative w-full bg-slate-800 text-white pt-16">
+	<div class="relative w-full bg-slate-800 pt-16 text-white">
 		<div class="mx-auto max-w-6xl px-4 py-6">
 			{@render children()}
 		</div>
@@ -19,7 +19,7 @@
 {:else}
 	<!-- Default and compact headers with halftone background -->
 	<div
-		class="relative flex w-full items-center overflow-hidden bg-gradient-to-b from-slate-700 to-slate-850 text-white"
+		class="to-slate-850 relative flex w-full items-center overflow-hidden bg-gradient-to-b from-slate-700 text-white"
 		class:min-h-[200px]={size === 'default'}
 		class:sm:min-h-[240px]={size === 'default'}
 		class:lg:min-h-[280px]={size === 'default'}
@@ -34,7 +34,7 @@
 			class="absolute inset-0 z-0"
 			style="background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0); background-size: 20px 20px;"
 		></div>
-		<div 
+		<div
 			class="relative z-10 mx-auto max-w-6xl px-4 text-center"
 			class:py-4={size === 'default'}
 			class:pt-20={size === 'default'}

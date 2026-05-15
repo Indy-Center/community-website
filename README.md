@@ -32,12 +32,12 @@ A lightweight Cloudflare Worker (`task-runner`) with a single `process-roster` e
 
 ## Bindings
 
-| Binding | Type | Purpose |
-|---------|------|---------|
-| `IDENTITY` | Service | RPC calls to the identity Worker |
-| `DB` | D1 | Website-local data (sessions, roster cache, etc.) |
-| `ASSETS` | Assets | Static files from the SvelteKit build |
-| `CF_VERSION_METADATA` | Version metadata | Build version tracking |
+| Binding               | Type             | Purpose                                           |
+| --------------------- | ---------------- | ------------------------------------------------- |
+| `IDENTITY`            | Service          | RPC calls to the identity Worker                  |
+| `DB`                  | D1               | Website-local data (sessions, roster cache, etc.) |
+| `ASSETS`              | Assets           | Static files from the SvelteKit build             |
+| `CF_VERSION_METADATA` | Version metadata | Build version tracking                            |
 
 ## Local development
 

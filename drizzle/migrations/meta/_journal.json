@@ -1,48 +1,48 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1757374138124,
-      "tag": "0000_nasty_spiral",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1757461406212,
-      "tag": "0001_colossal_agent_zero",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1757824093422,
-      "tag": "0002_lively_gambit",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1757890422066,
-      "tag": "0003_long_darkhawk",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1757895853179,
-      "tag": "0004_confused_quasimodo",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1768843423476,
-      "tag": "0005_lethal_darkhawk",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1757374138124,
+			"tag": "0000_nasty_spiral",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1757461406212,
+			"tag": "0001_colossal_agent_zero",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1757824093422,
+			"tag": "0002_lively_gambit",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1757890422066,
+			"tag": "0003_long_darkhawk",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "6",
+			"when": 1757895853179,
+			"tag": "0004_confused_quasimodo",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1768843423476,
+			"tag": "0005_lethal_darkhawk",
+			"breakpoints": true
+		}
+	]
 }

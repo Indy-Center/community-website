@@ -7,7 +7,11 @@
 	import IconCalendar from '~icons/mdi/calendar';
 	import IconMessage from '~icons/mdi/message';
 
-	let { user, roles, mobile = false }: { user: User | undefined; roles: string[] | undefined; mobile?: boolean } = $props();
+	let {
+		user,
+		roles,
+		mobile = false
+	}: { user: User | undefined; roles: string[] | undefined; mobile?: boolean } = $props();
 
 	const BASE_LINKS = [
 		{

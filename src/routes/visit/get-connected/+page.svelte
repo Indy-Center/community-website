@@ -14,11 +14,12 @@
 </div>
 
 <!-- Main Content -->
-<div class="max-w-2xl mx-auto">
+<div class="mx-auto max-w-2xl">
 	<Panel title="Connect Your VATSIM Account" icon={IconAccount} mode="dark">
 		<div class="p-8 text-center">
 			<p class="mb-6 leading-relaxed text-slate-300">
-				Join our community by connecting your VATSIM account! This gives you access to providing feedback on your ATC experience and connecting with other pilots and controllers.
+				Join our community by connecting your VATSIM account! This gives you access to providing
+				feedback on your ATC experience and connecting with other pilots and controllers.
 			</p>
 
 			<a

@@ -31,7 +31,9 @@ export const actions = {
 
 		await addVisitor(user.cid);
 
-		logger.info(`Visitor application submitted for CID ${user.cid} (${user.firstName} ${user.lastName})`);
+		logger.info(
+			`Visitor application submitted for CID ${user.cid} (${user.firstName} ${user.lastName})`
+		);
 
 		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, {
 			title: 'Incoming New Visitor',

@@ -14,11 +14,11 @@
 		mode === 'dark'
 			? 'bg-slate-800/60 border-slate-700/60 text-white backdrop-blur-sm'
 			: 'bg-white border-gray-200 text-gray-900';
-	const headerModeClasses =
+	const headerModeClasses = mode === 'dark' ? 'border-slate-700/60' : 'border-gray-200';
+	const gradientClass =
 		mode === 'dark'
-			? 'border-slate-700/60'
-			: 'border-gray-200';
-	const gradientClass = mode === 'dark' ? 'md:after:from-slate-800/60 md:after:to-transparent' : 'md:after:from-white md:after:to-transparent';
+			? 'md:after:from-slate-800/60 md:after:to-transparent'
+			: 'md:after:from-white md:after:to-transparent';
 	const wrapperClasses = overflow
 		? `h-full relative md:after:pointer-events-none md:after:absolute md:after:bottom-0 md:after:left-0 md:after:right-0 md:after:h-6 md:after:bg-gradient-to-t ${gradientClass}`
 		: 'h-full';

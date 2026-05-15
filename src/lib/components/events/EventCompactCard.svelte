@@ -35,7 +35,9 @@
 		<!-- Event Content - Right Side -->
 		<div class="flex flex-1 flex-col justify-between p-3">
 			<div>
-				<h3 class="mb-1 line-clamp-1 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300">
+				<h3
+					class="mb-1 line-clamp-1 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300"
+				>
 					{event.name}
 				</h3>
 				{#if event.description}
@@ -50,7 +52,8 @@
 				<div class="flex items-center justify-between text-xs">
 					<time class="inline-flex items-center gap-1 text-slate-400">
 						<IconClock class="h-3 w-3" />
-						{startLocal} {localTimezone}
+						{startLocal}
+						{localTimezone}
 					</time>
 					<span class="font-medium text-sky-300">{eventDate}</span>
 				</div>

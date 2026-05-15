@@ -3,7 +3,12 @@
 
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { EventSchema } from '$lib/forms/events';
-	import { EVENT_ROSTER_TYPES, EVENT_TYPES, getEventTypeConfig, isRosterTypeAllowed } from '$lib/config/events';
+	import {
+		EVENT_ROSTER_TYPES,
+		EVENT_TYPES,
+		getEventTypeConfig,
+		isRosterTypeAllowed
+	} from '$lib/config/events';
 	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
 
 	const { data }: { data: SuperValidated<Infer<EventSchema>> } = $props();
@@ -50,20 +55,8 @@
 
 				<!-- Event Times -->
 				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-					<DateTimeInput
-						{form}
-						{errors}
-						{constraints}
-						fieldName="startTime"
-						label="Start Time"
-					/>
-					<DateTimeInput
-						{form}
-						{errors}
-						{constraints}
-						fieldName="endTime"
-						label="End Time"
-					/>
+					<DateTimeInput {form} {errors} {constraints} fieldName="startTime" label="Start Time" />
+					<DateTimeInput {form} {errors} {constraints} fieldName="endTime" label="End Time" />
 				</div>
 
 				<!-- Event Classification -->

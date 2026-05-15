@@ -7,11 +7,7 @@
 	let { controllers }: { controllers: VnasController[] } = $props();
 </script>
 
-<Panel
-	title="Controllers Online"
-	icon={IconAccountGroup}
-	overflow={controllers.length > 0}
->
+<Panel title="Controllers Online" icon={IconAccountGroup} overflow={controllers.length > 0}>
 	<div class="grid grid-cols-1 gap-1">
 		{#if controllers.length > 0}
 			{#each controllers as controller}

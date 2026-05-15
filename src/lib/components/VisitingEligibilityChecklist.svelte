@@ -24,9 +24,11 @@
 </script>
 
 <!-- Status Banner -->
-<div class="mb-6 rounded-lg border p-4 {isEligible
-	? 'border-green-500/30 bg-green-500/10'
-	: 'border-yellow-500/30 bg-yellow-500/10'}">
+<div
+	class="mb-6 rounded-lg border p-4 {isEligible
+		? 'border-green-500/30 bg-green-500/10'
+		: 'border-yellow-500/30 bg-yellow-500/10'}"
+>
 	<div class="flex items-center gap-3">
 		{#if isEligible}
 			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
@@ -54,9 +56,11 @@
 	<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 		{#each checklistItems as item}
 			<div class="flex items-center gap-3 rounded-lg bg-slate-700/20 px-3 py-2 text-sm">
-				<div class="flex h-5 w-5 items-center justify-center rounded-full {item.value
-					? 'bg-green-500/20'
-					: 'bg-red-500/20'}">
+				<div
+					class="flex h-5 w-5 items-center justify-center rounded-full {item.value
+						? 'bg-green-500/20'
+						: 'bg-red-500/20'}"
+				>
 					{#if item.value}
 						<IconCheck class="h-3 w-3 text-green-400" />
 					{:else}
@@ -78,12 +82,17 @@
 <!-- Action Button -->
 <div class="text-center">
 	{#if isEligible}
-		<button class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700">
+		<button
+			class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700"
+		>
 			<IconAccount class="h-4 w-4" />
 			Request to Visit Indy Center
 		</button>
 	{:else}
-		<button disabled class="inline-flex items-center gap-2 rounded-lg bg-slate-600 px-6 py-3 text-sm font-medium text-slate-400 cursor-not-allowed">
+		<button
+			disabled
+			class="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-slate-600 px-6 py-3 text-sm font-medium text-slate-400"
+		>
 			<IconClose class="h-4 w-4" />
 			Not Eligible
 		</button>

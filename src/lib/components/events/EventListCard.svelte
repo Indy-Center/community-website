@@ -32,8 +32,10 @@
 			/>
 			<div class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"></div>
 			<!-- Date and time overlay -->
-			<div class="absolute bottom-2 right-2">
-				<div class="rounded-lg bg-slate-800/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+			<div class="absolute right-2 bottom-2">
+				<div
+					class="rounded-lg bg-slate-800/80 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm"
+				>
 					<div>{eventDate}</div>
 					<div class="text-sky-300">{startLocal} {localTimezone}</div>
 				</div>
@@ -42,7 +44,9 @@
 
 		<!-- Event Content -->
 		<div class="flex flex-1 flex-col p-3">
-			<h3 class="mb-2 line-clamp-2 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300">
+			<h3
+				class="mb-2 line-clamp-2 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300"
+			>
 				{event.name}
 			</h3>
 
@@ -62,7 +66,8 @@
 						</time>
 						<time class="inline-flex items-center gap-1 text-sky-300">
 							<IconClock class="h-3 w-3" />
-							{startLocal} - {endLocal} {localTimezone}
+							{startLocal} - {endLocal}
+							{localTimezone}
 						</time>
 					</div>
 				{/if}

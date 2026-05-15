@@ -134,7 +134,10 @@ export const actions = {
 				updatedAt: new Date()
 			})
 			.where(
-				and(eq(eventPositionsTable.position, form.data.position), eq(eventPositionsTable.eventId, params.id))
+				and(
+					eq(eventPositionsTable.position, form.data.position),
+					eq(eventPositionsTable.eventId, params.id)
+				)
 			);
 
 		return { success: true };
@@ -159,7 +162,10 @@ export const actions = {
 				updatedAt: new Date()
 			})
 			.where(
-				and(eq(eventPositionsTable.position, form.data.position), eq(eventPositionsTable.eventId, params.id))
+				and(
+					eq(eventPositionsTable.position, form.data.position),
+					eq(eventPositionsTable.eventId, params.id)
+				)
 			);
 
 		return { success: true };

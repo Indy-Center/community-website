@@ -63,11 +63,11 @@ export const EVENT_TYPES: EventTypeConfig[] = [
 
 // Helper functions
 export function getEventTypeConfig(key: EventType): EventTypeConfig | undefined {
-	return EVENT_TYPES.find(type => type.key === key);
+	return EVENT_TYPES.find((type) => type.key === key);
 }
 
 export function getRosterTypeConfig(key: RosterType): EventRosterTypeConfig | undefined {
-	return EVENT_ROSTER_TYPES.find(type => type.key === key);
+	return EVENT_ROSTER_TYPES.find((type) => type.key === key);
 }
 
 export function supportsRosters(eventType: EventType): boolean {

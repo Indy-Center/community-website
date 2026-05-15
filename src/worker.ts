@@ -1,6 +1,6 @@
-import { setEnv } from '@indy-center/adapter-cloudflare/env-shim';
 import { drizzle } from '$lib/server/db';
 import { runProcessRoster } from '$lib/server/triggers/processRoster.js';
+import { setEnv } from '@indy-center/adapter-cloudflare/env-shim';
 import sv from '../.svelte-kit/cloudflare/_worker.js';
 
 export default {

@@ -32,20 +32,28 @@
 				class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
 				fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
 			/>
-			<div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+			<div
+				class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"
+			></div>
 
 			<!-- Date Badge -->
-			<div class="absolute right-2 top-2">
-				<div class="flex flex-col items-center rounded-md bg-slate-900/90 px-2 py-1.5 backdrop-blur-sm">
-					<span class="text-lg font-bold leading-none text-white">{eventDate.split(' ')[1]}</span>
-					<span class="text-[10px] font-medium uppercase leading-none text-sky-400">{eventDate.split(' ')[0]}</span>
+			<div class="absolute top-2 right-2">
+				<div
+					class="flex flex-col items-center rounded-md bg-slate-900/90 px-2 py-1.5 backdrop-blur-sm"
+				>
+					<span class="text-lg leading-none font-bold text-white">{eventDate.split(' ')[1]}</span>
+					<span class="text-[10px] leading-none font-medium text-sky-400 uppercase"
+						>{eventDate.split(' ')[0]}</span
+					>
 				</div>
 			</div>
 		</div>
 
 		<!-- Event Content -->
 		<div class="flex flex-1 flex-col p-3">
-			<h3 class="mb-1.5 line-clamp-2 text-base font-bold text-white transition-colors duration-300 group-hover:text-sky-300">
+			<h3
+				class="mb-1.5 line-clamp-2 text-base font-bold text-white transition-colors duration-300 group-hover:text-sky-300"
+			>
 				{event.name}
 			</h3>
 

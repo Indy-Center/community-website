@@ -4,16 +4,13 @@
 
 	let { controllers }: { controllers: VnasController[] } = $props();
 
-
 	// Gets the primary position of the controller.
 	const displayedControllers = $derived.by(() => {
 		return controllers
 			.map((controller) => {
 				return {
 					...controller,
-					primaryPosition: controller.positions.find(
-						(position) => position.isPrimary
-					)
+					primaryPosition: controller.positions.find((position) => position.isPrimary)
 				};
 			})
 			.filter((controller) => controller.primaryPosition);
@@ -26,7 +23,7 @@
 			<span class="text-sm text-gray-500">No controllers online</span>
 		</div>
 	{:else}
-		<div class="overflow-y-auto h-full">
+		<div class="h-full overflow-y-auto">
 			{#each displayedControllers as controller}
 				<ControllerRow {controller} />
 			{/each}

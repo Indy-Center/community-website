@@ -27,7 +27,7 @@
 
 	// Check if user has controller membership (for position sign-ups)
 	const hasControllerAccess = $derived(user?.membership === 'controller');
-	
+
 	// Check if user is prohibited from signing up
 	const isSignupProhibited = $derived(isEventSignupProhibited(data?.roles));
 
