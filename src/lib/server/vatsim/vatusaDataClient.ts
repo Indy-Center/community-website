@@ -64,8 +64,6 @@ function isVisitingEligible(checklist: VatusaTransferChecklist) {
 	}
 
 	return (
-		// VATUSA Controller
-		checklist.homecontroller === true &&
 		// Has Home Facility
 		checklist.hasHome === true &&
 		// Basic Exam Complete

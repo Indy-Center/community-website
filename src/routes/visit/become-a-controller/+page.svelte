@@ -34,11 +34,12 @@
 
 		// Check if user has community membership and sufficient VATSIM rating (S1+)
 		if (user.membership === 'community' && user.data.vatsim.rating.id >= 2) {
-			// Check if they're in USA division
-			if (user.data?.vatsim?.division?.id === 'USA') {
+			// Division doesn't gate this - VATUSA and non-VATUSA controllers alike
+			// can view the checklist as long as they have a home facility on file.
+			if (data.checklist?.hasHome) {
 				return 'qualified-controller';
 			} else {
-				return 'not-controller'; // Not in USA division, show Join VATUSA button
+				return 'not-controller';
 			}
 		}
 

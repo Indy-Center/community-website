@@ -19,11 +19,6 @@
 
 	// Visiting requirements - tight and easy to understand
 	const visitingItems = [
-		{
-			key: 'homecontroller',
-			label: 'VATUSA Controller',
-			value: checklist.homecontroller
-		},
 		{ key: 'hasHome', label: 'Has Home Facility', value: checklist.hasHome },
 		{ key: 'needbasic', label: 'Basic Exam Complete', value: checklist.needbasic },
 		{ key: '50hrs', label: '50+ Hours Since Promotion', value: checklist['50hrs'] },
@@ -211,4 +206,16 @@
 			</button>
 		{/if}
 	</div>
+
+	<p class="text-center text-xs text-slate-500">
+		If any of these requirements look incorrect, reach out on the
+		<a
+			href="https://discord.indy.center"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="text-sky-400 hover:underline"
+		>
+			Indy Center Discord
+		</a>.
+	</p>
 </div>
