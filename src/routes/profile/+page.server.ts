@@ -38,15 +38,24 @@ export const load = async ({ locals, url }) => {
 		.orderBy(desc(feedbackTable.createdAt));
 
 	// Pilots who gave their callsign are shown by their preferred name, or first name and
-	// last initial ("Tom M.") if they haven't set one; the rest stay anonymous, and their
-	// name never leaves the server
+	// last initial ("Tom M.") if they haven't set a custom one; the rest stay anonymous, and
+	// their name never leaves the server
 	const feedback = rows.map((row) => {
 		const callsign = row.callsign?.trim() || null;
-		const preferredName = row.submitterPreferredName?.trim();
 		const firstName = row.submitterFirstName?.trim();
-		const lastInitial = row.submitterLastName?.trim().charAt(0);
-		const shortName = firstName && (lastInitial ? `${firstName} ${lastInitial}.` : firstName);
-		const submitterName = callsign ? preferredName || shortName || null : null;
+		const lastName = row.submitterLastName?.trim();
+		const shortName = firstName && (lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName);
+
+		// Settings pre-fills the preferred name with the full name, so a preferred name that
+		// just matches it isn't a real choice and would expose the full last name
+		const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
+		const preferredName = row.submitterPreferredName?.trim();
+		const hasCustomPreferredName =
+			!!preferredName && normalize(preferredName) !== normalize(`${firstName} ${lastName}`);
+
+		const submitterName = callsign
+			? (hasCustomPreferredName ? preferredName : shortName) || null
+			: null;
 
 		return {
 			id: row.id,
