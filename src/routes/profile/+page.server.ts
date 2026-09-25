@@ -5,7 +5,10 @@ import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { and, desc, eq } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
 import { logger } from '$lib/server/logger';
+
+const submitter = alias(usersTable, 'submitter');
 
 export const load = async ({ locals, url }) => {
 	if (!locals.user) {
@@ -14,21 +17,45 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	// Approved feedback about this user, at every rating. The submitter and their
-	// callsign are left out so feedback stays anonymous to the controller.
-	const feedback = await locals.db
+	// Approved feedback about this user, at every rating
+	const rows = await locals.db
 		.select({
 			id: feedbackTable.id,
 			rating: feedbackTable.rating,
 			position: feedbackTable.position,
+			callsign: feedbackTable.callsign,
 			feedback: feedbackTable.feedback,
-			createdAt: feedbackTable.createdAt
+			createdAt: feedbackTable.createdAt,
+			submitterFirstName: submitter.firstName,
+			submitterLastName: submitter.lastName,
+			submitterPreferredName: submitter.preferredName
 		})
 		.from(feedbackTable)
+		.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
 		.where(
 			and(eq(feedbackTable.controllerId, locals.user.id), eq(feedbackTable.status, 'approved'))
 		)
 		.orderBy(desc(feedbackTable.createdAt));
+
+	// Pilots who gave their callsign are shown by name; the rest stay anonymous, so
+	// their name never leaves the server
+	const feedback = rows.map((row) => {
+		const callsign = row.callsign?.trim() || null;
+		const submitterName =
+			callsign && row.submitterFirstName
+				? row.submitterPreferredName || `${row.submitterFirstName} ${row.submitterLastName}`
+				: null;
+
+		return {
+			id: row.id,
+			rating: row.rating,
+			position: row.position,
+			feedback: row.feedback,
+			createdAt: row.createdAt,
+			callsign,
+			submitterName
+		};
+	});
 
 	return {
 		form,

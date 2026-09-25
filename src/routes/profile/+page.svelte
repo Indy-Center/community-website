@@ -169,6 +169,15 @@
 							{#if item.feedback?.trim()}
 								<p class="mt-2 text-sm whitespace-pre-line text-gray-300">{item.feedback}</p>
 							{/if}
+							{#if item.callsign}
+								<p class="mt-2 text-xs text-gray-400">
+									—
+									{#if item.submitterName}
+										<span class="text-gray-300">{item.submitterName}</span> ·
+									{/if}
+									<span class="font-mono">{item.callsign}</span>
+								</p>
+							{/if}
 						</li>
 					{/each}
 				</ul>
