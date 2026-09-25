@@ -87,6 +87,17 @@
 					tabindex="-1"
 				>
 					<div class="space-y-1 p-3">
+						<!-- Profile -->
+						<a
+							href="/profile"
+							role="menuitem"
+							onclick={closeDropdown}
+							class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-slate-600/30 hover:text-white"
+						>
+							<IconAccount class="h-4 w-4" />
+							<span>My Profile</span>
+						</a>
+
 						<!-- Settings -->
 						<a
 							href="/settings"
