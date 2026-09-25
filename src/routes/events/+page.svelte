@@ -12,6 +12,7 @@
 	import { canManageEvents } from '$lib/utils/permissions.js';
 	import type { Event } from '$lib/db/schema/events';
 	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
+	import AddToCalendarDropdown from '$lib/components/events/AddToCalendarDropdown.svelte';
 
 	let { data } = $props();
 	let { events, vatsimEvents } = data;
@@ -87,7 +88,8 @@
 {:else}
 	<!-- Next Event - Featured -->
 	{#if nextEvent}
-		<div class="mb-8">
+		<!-- Calendar button sits beside the link, not inside it, so clicking it doesn't navigate -->
+		<div class="relative mb-8">
 			<a href="/events/{nextEvent.id}" class="block">
 				<article
 					class="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-r from-slate-800/60 via-slate-800/40 to-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-xl hover:shadow-sky-500/10"
@@ -181,6 +183,9 @@
 					></div>
 				</article>
 			</a>
+			<div class="absolute right-3 bottom-3 z-20">
+				<AddToCalendarDropdown event={nextEvent} compact />
+			</div>
 		</div>
 	{/if}
 
@@ -189,74 +194,79 @@
 		<div class="mb-8">
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each otherEvents as event}
-					<a href="/events/{event.id}" class="group block h-full">
-						<article
-							class="relative flex h-full flex-col overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-lg hover:shadow-sky-500/5"
-						>
-							<!-- Event Banner -->
-							<div class="relative h-24 flex-shrink-0 overflow-hidden">
-								<ImageWithFallback
-									src={event.bannerUrl}
-									alt="{event.name} banner"
-									class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-									fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
-								/>
-								<div
-									class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
-								></div>
-								<!-- Dynamic Badge for Grid Events -->
-								<div class="absolute top-2 left-2 z-10">
-									{#if !isEventPublished(event)}
-										<div
-											class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
-										>
-											Draft
-										</div>
-									{/if}
-								</div>
-							</div>
-
-							<!-- Event Content -->
-							<div class="flex flex-1 flex-col p-3">
-								<h3
-									class="mb-2 line-clamp-2 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300"
-								>
-									{event.name}
-								</h3>
-
-								{#if event.description}
-									<p class="mb-2 line-clamp-2 text-xs text-slate-300">
-										{event.description}
-									</p>
-								{/if}
-
-								<!-- Event Metadata -->
-								<div class="mb-2 flex flex-wrap gap-1">
-									<EventTypeBadge eventType={event.type} size="sm" />
-									{#if shouldShowRosterBadge(event.type)}
-										<RosterTypeBadge rosterType={event.rosterType} size="sm" />
-									{/if}
+					<div class="relative h-full">
+						<a href="/events/{event.id}" class="group block h-full">
+							<article
+								class="relative flex h-full flex-col overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/30 hover:shadow-lg hover:shadow-sky-500/5"
+							>
+								<!-- Event Banner -->
+								<div class="relative h-24 flex-shrink-0 overflow-hidden">
+									<ImageWithFallback
+										src={event.bannerUrl}
+										alt="{event.name} banner"
+										class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+										fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
+									/>
+									<div
+										class="absolute inset-0 bg-gradient-to-t from-slate-800/60 to-transparent"
+									></div>
+									<!-- Dynamic Badge for Grid Events -->
+									<div class="absolute top-2 left-2 z-10">
+										{#if !isEventPublished(event)}
+											<div
+												class="rounded-full border border-yellow-500/50 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300 backdrop-blur-sm"
+											>
+												Draft
+											</div>
+										{/if}
+									</div>
 								</div>
 
-								<!-- Event Time - Push to bottom -->
-								<div class="mt-auto">
-									{#if event.startTime}
-										<div class="flex flex-col gap-0.5 text-xs">
-											<time class="inline-flex items-center gap-1 text-slate-400">
-												<IconGlobe class="h-3 w-3" />
-												{format(utc(event.startTime), "MMM d 'at' HH:mm")} UTC
-											</time>
-											<time class="inline-flex items-center gap-1 text-sky-300">
-												<IconClock class="h-3 w-3" />
-												{format(event.startTime, "MMM d 'at' HH:mm")}
-												{format(event.startTime, 'zzz')}
-											</time>
-										</div>
+								<!-- Event Content -->
+								<div class="flex flex-1 flex-col p-3">
+									<h3
+										class="mb-2 line-clamp-2 text-sm font-semibold text-white transition-colors duration-300 group-hover:text-sky-300"
+									>
+										{event.name}
+									</h3>
+
+									{#if event.description}
+										<p class="mb-2 line-clamp-2 text-xs text-slate-300">
+											{event.description}
+										</p>
 									{/if}
+
+									<!-- Event Metadata -->
+									<div class="mb-2 flex flex-wrap gap-1">
+										<EventTypeBadge eventType={event.type} size="sm" />
+										{#if shouldShowRosterBadge(event.type)}
+											<RosterTypeBadge rosterType={event.rosterType} size="sm" />
+										{/if}
+									</div>
+
+									<!-- Event Time - Push to bottom -->
+									<div class="mt-auto">
+										{#if event.startTime}
+											<div class="flex flex-col gap-0.5 text-xs">
+												<time class="inline-flex items-center gap-1 text-slate-400">
+													<IconGlobe class="h-3 w-3" />
+													{format(utc(event.startTime), "MMM d 'at' HH:mm")} UTC
+												</time>
+												<time class="inline-flex items-center gap-1 text-sky-300">
+													<IconClock class="h-3 w-3" />
+													{format(event.startTime, "MMM d 'at' HH:mm")}
+													{format(event.startTime, 'zzz')}
+												</time>
+											</div>
+										{/if}
+									</div>
 								</div>
-							</div>
-						</article>
-					</a>
+							</article>
+						</a>
+						<div class="absolute right-3 bottom-3">
+							<AddToCalendarDropdown {event} compact />
+						</div>
+					</div>
 				{/each}
 			</div>
 		</div>

@@ -13,6 +13,7 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import EventDetailsPanel from '$lib/components/events/EventDetailsPanel.svelte';
+	import AddToCalendarDropdown from '$lib/components/events/AddToCalendarDropdown.svelte';
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
 	import { canManageEvents, isEventSignupProhibited } from '$lib/utils/permissions.js';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
@@ -188,9 +189,11 @@
 				<h1 class="mb-3 text-3xl font-bold text-white">{event.name}</h1>
 			</div>
 
-			<!-- Action Buttons (if user has permissions) -->
-			{#if canManageEvents(data?.roles)}
-				<div class="flex flex-shrink-0 gap-3">
+			<div class="flex flex-shrink-0 flex-wrap gap-3">
+				<AddToCalendarDropdown {event} />
+
+				<!-- Action Buttons (if user has permissions) -->
+				{#if canManageEvents(data?.roles)}
 					<ActionToggle
 						action="?/togglePublish"
 						currentState={event.isPublished}
@@ -218,8 +221,8 @@
 					</a>
 
 					<DeleteButton />
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
 	</div>
 
