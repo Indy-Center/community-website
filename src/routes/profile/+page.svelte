@@ -54,6 +54,7 @@
 		operatingInitials={user.operatingInitials}
 		atcRating={user.data.vatsim.rating.short || null}
 		pilotRating={user.data.vatsim.pilotrating.short || null}
+		staffBadges={data.staffBadges}
 	/>
 	{#if data.hasPublicProfile}
 		<a

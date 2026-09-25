@@ -1,5 +1,7 @@
 <script lang="ts">
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
+	import StaffBadges from '$lib/components/StaffBadges.svelte';
+	import type { StaffBadgeKey } from '$lib/config/staffBadges';
 	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
 
@@ -10,7 +12,8 @@
 		membership,
 		operatingInitials,
 		atcRating,
-		pilotRating
+		pilotRating,
+		staffBadges = []
 	}: {
 		name: string;
 		pronouns: string | null;
@@ -19,6 +22,7 @@
 		operatingInitials: string | null;
 		atcRating: string | null;
 		pilotRating: string | null;
+		staffBadges?: StaffBadgeKey[];
 	} = $props();
 </script>
 
@@ -55,6 +59,7 @@
 					{pilotRating}
 				</span>
 			{/if}
+			<StaffBadges badges={staffBadges} />
 		</div>
 	</div>
 </div>

@@ -5,6 +5,7 @@
 	import IconTransmissionTower from '~icons/mdi/transmission-tower';
 	import IconCog from '~icons/mdi/cog';
 	import Tooltip from '$lib/components/Tooltip.svelte';
+	import StaffBadges from '$lib/components/StaffBadges.svelte';
 	import type { VnasController } from '$lib/types/vnas.js';
 	import {
 		CERTIFICATIONS,
@@ -20,7 +21,7 @@
 
 	// Display names now handled by centralized configuration
 
-	const { roster, controllers, roles } = data;
+	const { roster, controllers, roles, staffBadges } = data;
 
 	let searchTerm = $state('');
 	let sortField = $state<string>('initials');
@@ -303,6 +304,9 @@
 								{member.data.rating_short}
 							</div>
 						</Tooltip>
+
+						<!-- Staff -->
+						<StaffBadges badges={staffBadges[member.data.cid] ?? []} />
 
 						<!-- Certifications -->
 						{#if member.user?.certifications && member.user.certifications.length > 0}

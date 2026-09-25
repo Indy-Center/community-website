@@ -24,6 +24,7 @@
 		operatingInitials={profile.operatingInitials}
 		atcRating={profile.atcRating}
 		pilotRating={profile.pilotRating}
+		staffBadges={profile.staffBadges}
 	/>
 	{#if data.isOwnProfile}
 		<a

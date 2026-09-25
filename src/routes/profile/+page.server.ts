@@ -2,6 +2,7 @@ import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { averageRating } from '$lib/utils/feedbackRatings';
+import { getStaffBadges } from '$lib/server/staff';
 import { profileSchema } from '$lib/forms/profile';
 import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
@@ -81,7 +82,8 @@ export const load = async ({ locals, url }) => {
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		isController: locals.user.membership === 'controller',
-		hasPublicProfile: !!rosterEntry
+		hasPublicProfile: !!rosterEntry,
+		staffBadges: (await getStaffBadges(locals.db)).get(locals.user.cid) ?? []
 	};
 };
 

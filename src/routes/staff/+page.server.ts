@@ -1,7 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { FACILITY_ID } from '$lib/config';
 import {
 	STAFF_POSITIONS,
 	STAFF_TEAMS,
@@ -16,6 +15,7 @@ import {
 } from '$lib/db/schema/staff';
 import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
+import { getPositionHolders, getSectionMembers, getVatusaHolders } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
 
 const POSITION_KEYS = STAFF_POSITIONS.map((position) => position.key) as [string, ...string[]];
@@ -35,15 +35,6 @@ function getDisplayName(member: RosterMember) {
 		member.user?.preferredName ??
 		`${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`
 	);
-}
-
-// CIDs holding a role according to VATUSA facility roles
-function getVatusaHolders(roster: RosterMember[], role: string) {
-	return roster
-		.filter((member) =>
-			member.data.roles?.some((r) => r.facility === FACILITY_ID && r.role === role)
-		)
-		.map((member) => member.cid);
 }
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
@@ -92,39 +83,25 @@ export const load = async ({ locals }) => {
 		};
 	}
 
-	function getPositionHolders(position: string) {
-		const manual = assignments.filter((a) => a.position === position).map((a) => a.cid);
-		if (isManualOnlyPosition(position) || manual.length > 0) return manual;
-		return getVatusaHolders(roster, position);
-	}
-
 	const staff = STAFF_POSITIONS.map((position) => ({
 		...position,
 		manualOnly: isManualOnlyPosition(position.key),
 		isManual: assignments.some((a) => a.position === position.key),
 		emails: getEmails(position.key),
-		members: getPositionHolders(position.key).map(describe).sort(byName)
+		members: getPositionHolders(position.key, roster, assignments).map(describe).sort(byName)
 	}));
 
 	const teams = STAFF_TEAMS.map((team) => {
-		const leads = getPositionHolders(team.lead);
+		const leads = getPositionHolders(team.lead, roster, assignments);
 
 		return {
 			...team,
 			emails: getEmails(team.key),
 			leads: leads.map(describe).sort(byName),
-			sections: team.sections.map((section) => {
-				// Manual membership changes are stored under the section key
-				const rows = teamRows.filter((row) => row.team === section.key);
-				const cids = new Set([
-					...(section.vatusaRole ? getVatusaHolders(roster, section.vatusaRole) : []),
-					...rows.filter((row) => !row.excluded).map((row) => row.cid)
-				]);
-				for (const row of rows) if (row.excluded) cids.delete(row.cid);
-				for (const cid of leads) cids.delete(cid);
-
-				return { ...section, members: [...cids].map(describe).sort(byName) };
-			})
+			sections: team.sections.map((section) => ({
+				...section,
+				members: getSectionMembers(section, leads, roster, teamRows).map(describe).sort(byName)
+			}))
 		};
 	});
 

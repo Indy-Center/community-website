@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { averageRating } from '$lib/utils/feedbackRatings';
+import { getStaffBadges } from '$lib/server/staff';
 
 // Public profile. Like the public roster, only controllers on the roster have one, and
 // only public fields are sent (no email, raw VATSIM data, or individual feedback).
@@ -48,7 +49,8 @@ export const load = async ({ locals, params }) => {
 			operatingInitials: user?.operatingInitials ?? null,
 			atcRating: user?.data.vatsim.rating.short ?? roster.rating_short ?? null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
-			bio: user?.bio ?? null
+			bio: user?.bio ?? null,
+			staffBadges: (await getStaffBadges(locals.db)).get(controller.cid) ?? []
 		},
 		feedback: {
 			average: averageRating(ratings.map((r) => r.rating)),
