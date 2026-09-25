@@ -1,32 +1,22 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
 	import { format } from 'date-fns';
-	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
+	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
+	import StarDisplay from '$lib/components/profile/StarDisplay.svelte';
 	import { MAX_BIO_LENGTH } from '$lib/forms/profile';
-	import IconStar from '~icons/mdi/star';
-	import IconStarOutline from '~icons/mdi/star-outline';
+	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
 	import IconMessage from '~icons/mdi/message-text';
 	import IconCheck from '~icons/mdi/check-circle';
+	import IconEye from '~icons/mdi/eye';
+	import IconStar from '~icons/mdi/star';
 
 	const { data } = $props();
+
+	const user = $derived(data.user!);
 
 	const { form, errors, enhance, constraints, message, delayed } = superForm(data.form, {
 		resetForm: false
 	});
-
-	// Same 1-5 scale as the feedback star picker
-	const RATING_STARS: Record<string, number> = {
-		poor: 1,
-		fair: 2,
-		good: 3,
-		very_good: 4,
-		excellent: 5
-	};
-
-	function ratingLabel(rating: string) {
-		const label = rating.replaceAll('_', ' ');
-		return label.charAt(0).toUpperCase() + label.slice(1);
-	}
 
 	function ratingColor(rating: string) {
 		switch (rating) {
@@ -55,18 +45,31 @@
 	<title>Indy Center | Profile</title>
 </svelte:head>
 
-<div class="mb-8 flex flex-wrap items-center gap-4">
-	<div>
-		<h1 class="text-3xl font-bold text-white">Profile</h1>
-		<div class="mt-2 flex flex-wrap items-center gap-3 text-gray-400">
-			<MembershipBadge size="sm" membership={data.user!.membership} />
-			<span class="font-medium text-gray-200">
-				{data.user!.preferredName || `${data.user!.firstName} ${data.user!.lastName}`}
-			</span>
-			<span class="font-mono text-sm">CID {data.user!.cid}</span>
-		</div>
-	</div>
+<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+	<ProfileHeader
+		name={user.preferredName || `${user.firstName} ${user.lastName}`}
+		pronouns={user.pronouns}
+		cid={user.cid}
+		membership={user.membership}
+		operatingInitials={user.operatingInitials}
+		atcRating={user.data.vatsim.rating.short || null}
+		pilotRating={user.data.vatsim.pilotrating.short || null}
+	/>
+	{#if data.hasPublicProfile}
+		<a
+			href="/profile/{user.cid}"
+			class="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-slate-700/50 hover:text-white"
+		>
+			<IconEye class="h-4 w-4" />
+			View public profile
+		</a>
+	{/if}
 </div>
+<p class="-mt-4 mb-6 text-sm text-gray-500">
+	Change your name and pronouns in <a href="/settings" class="text-sky-400 hover:text-sky-300"
+		>Settings</a
+	>.
+</p>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
 	<!-- About -->
@@ -91,13 +94,16 @@
 					aria-invalid={$errors.bio ? 'true' : undefined}
 					{...$constraints.bio}
 				></textarea>
-				<p
-					class="mt-1 text-right text-xs {bioLength > MAX_BIO_LENGTH
-						? 'text-red-400'
-						: 'text-gray-500'}"
-				>
-					{bioLength} / {MAX_BIO_LENGTH}
-				</p>
+				<div class="mt-1 flex justify-between gap-4 text-xs text-gray-500">
+					<span>
+						{data.hasPublicProfile
+							? 'Shown on your public profile'
+							: 'Only you can see this for now'}
+					</span>
+					<span class={bioLength > MAX_BIO_LENGTH ? 'text-red-400' : ''}>
+						{bioLength} / {MAX_BIO_LENGTH}
+					</span>
+				</div>
 			</div>
 
 			<div class="flex items-center justify-end gap-4 border-t border-slate-600 pt-6">
@@ -128,7 +134,13 @@
 					<IconMessage class="h-5 w-5" />
 					Your Feedback
 				</h2>
-				<span class="text-sm text-gray-400">{data.feedback.length} approved</span>
+				<span class="flex items-center gap-1 text-sm text-gray-400">
+					{#if data.averageRating !== null}
+						<IconStar class="h-4 w-4 text-yellow-400" />
+						<span class="font-medium text-gray-200">{data.averageRating.toFixed(1)}</span> avg ·
+					{/if}
+					{data.feedback.length} approved
+				</span>
 			</div>
 
 			{#if data.feedback.length === 0}
@@ -142,18 +154,11 @@
 						<li class="px-6 py-4">
 							<div class="flex flex-wrap items-center justify-between gap-2">
 								<div class="flex items-center gap-2">
-									<span
-										class="flex {ratingColor(item.rating)}"
-										role="img"
-										aria-label="{ratingLabel(item.rating)}, {stars} out of 5 stars"
-									>
-										{#each [1, 2, 3, 4, 5] as n}
-											{#if n <= stars}
-												<IconStar class="h-4 w-4" />
-											{:else}
-												<IconStarOutline class="h-4 w-4 text-slate-600" />
-											{/if}
-										{/each}
+									<span class={ratingColor(item.rating)}>
+										<StarDisplay
+											value={stars}
+											label="{ratingLabel(item.rating)}, {stars} out of 5 stars"
+										/>
 									</span>
 									<span class="text-sm font-medium {ratingColor(item.rating)}">
 										{ratingLabel(item.rating)}

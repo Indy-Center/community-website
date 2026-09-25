@@ -1,5 +1,7 @@
 import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
+import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
+import { averageRating } from '$lib/utils/feedbackRatings';
 import { profileSchema } from '$lib/forms/profile';
 import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
@@ -68,10 +70,18 @@ export const load = async ({ locals, url }) => {
 		};
 	});
 
+	// Only controllers on the roster have a public profile
+	const rosterEntry = await locals.db.query.vatsimControllersTable.findFirst({
+		where: eq(vatsimControllersTable.cid, locals.user.cid),
+		columns: { cid: true }
+	});
+
 	return {
 		form,
 		feedback,
-		isController: locals.user.membership === 'controller'
+		averageRating: averageRating(feedback.map((f) => f.rating)),
+		isController: locals.user.membership === 'controller',
+		hasPublicProfile: !!rosterEntry
 	};
 };
 
