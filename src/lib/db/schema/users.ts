@@ -21,8 +21,6 @@ export const usersTable = sqliteTable('users', {
 	pronouns: text('pronouns'),
 	membership: text('membership', { enum: ['basic', 'community', 'controller'] }).notNull(),
 	operatingInitials: text('operating_initials'),
-	discordId: text('discord_id'),
-	teamspeakUid: text('teamspeak_uid'),
 	bio: text('bio'),
 	data: text('data', { mode: 'json' }).$type<VatsimUserData>().notNull()
 });

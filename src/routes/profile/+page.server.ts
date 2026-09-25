@@ -12,14 +12,7 @@ export const load = async ({ locals, url }) => {
 		return redirect(302, `/login/connect?returnUrl=${encodeURIComponent(url.pathname)}`);
 	}
 
-	const form = await superValidate(
-		{
-			discordId: locals.user.discordId ?? '',
-			teamspeakUid: locals.user.teamspeakUid ?? '',
-			bio: locals.user.bio ?? ''
-		},
-		zod4(profileSchema)
-	);
+	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
 	// Approved feedback about this user, at every rating. The submitter and their
 	// callsign are left out so feedback stays anonymous to the controller.
@@ -60,11 +53,7 @@ export const actions = {
 
 		await locals.db
 			.update(usersTable)
-			.set({
-				discordId: form.data.discordId || null,
-				teamspeakUid: form.data.teamspeakUid || null,
-				bio: form.data.bio || null
-			})
+			.set({ bio: form.data.bio || null })
 			.where(eq(usersTable.id, locals.user.id));
 
 		form.message = 'Profile saved';

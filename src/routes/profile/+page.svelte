@@ -77,50 +77,6 @@
 			<h2 class="text-lg font-semibold text-white">About You</h2>
 
 			<div>
-				<label for="discordId" class="mb-2 block text-sm font-medium text-gray-300">
-					Discord ID <span class="text-gray-500">(optional)</span>
-					{#if $errors.discordId}<span class="text-red-400">- {$errors.discordId}</span>{/if}
-				</label>
-				<input
-					id="discordId"
-					type="text"
-					name="discordId"
-					inputmode="numeric"
-					title="Discord ID must be 17–20 digits"
-					bind:value={$form.discordId}
-					class="{inputClass} font-mono"
-					placeholder="e.g. 123456789012345678"
-					aria-invalid={$errors.discordId ? 'true' : undefined}
-					{...$constraints.discordId}
-				/>
-				<p class="mt-1 text-xs text-gray-500">
-					In Discord, turn on Developer Mode (Settings → Advanced), then right-click your name and
-					choose Copy User ID
-				</p>
-			</div>
-
-			<div>
-				<label for="teamspeakUid" class="mb-2 block text-sm font-medium text-gray-300">
-					TeamSpeak Identity <span class="text-gray-500">(optional)</span>
-					{#if $errors.teamspeakUid}<span class="text-red-400">- {$errors.teamspeakUid}</span>{/if}
-				</label>
-				<input
-					id="teamspeakUid"
-					type="text"
-					name="teamspeakUid"
-					bind:value={$form.teamspeakUid}
-					class="{inputClass} font-mono"
-					placeholder="e.g. 0Vd1vVHEuyRS+5xyzAbCdEfGhIj="
-					title="TeamSpeak identity must be 28 characters ending in ="
-					aria-invalid={$errors.teamspeakUid ? 'true' : undefined}
-					{...$constraints.teamspeakUid}
-				/>
-				<p class="mt-1 text-xs text-gray-500">
-					In TeamSpeak, open Tools → Identities and copy your Unique ID
-				</p>
-			</div>
-
-			<div>
 				<label for="bio" class="mb-2 block text-sm font-medium text-gray-300">
 					Bio <span class="text-gray-500">(optional)</span>
 					{#if $errors.bio}<span class="text-red-400">- {$errors.bio}</span>{/if}
