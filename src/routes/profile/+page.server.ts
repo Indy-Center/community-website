@@ -27,8 +27,7 @@ export const load = async ({ locals, url }) => {
 			feedback: feedbackTable.feedback,
 			createdAt: feedbackTable.createdAt,
 			submitterFirstName: submitter.firstName,
-			submitterLastName: submitter.lastName,
-			submitterPreferredName: submitter.preferredName
+			submitterLastName: submitter.lastName
 		})
 		.from(feedbackTable)
 		.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
@@ -37,14 +36,14 @@ export const load = async ({ locals, url }) => {
 		)
 		.orderBy(desc(feedbackTable.createdAt));
 
-	// Pilots who gave their callsign are shown by name; the rest stay anonymous, so
-	// their name never leaves the server
+	// Pilots who gave their callsign are shown as first name and last initial from their
+	// VATSIM account ("Tom M."); the rest stay anonymous. Only the short form leaves the server.
 	const feedback = rows.map((row) => {
 		const callsign = row.callsign?.trim() || null;
+		const firstName = row.submitterFirstName?.trim();
+		const lastInitial = row.submitterLastName?.trim().charAt(0);
 		const submitterName =
-			callsign && row.submitterFirstName
-				? row.submitterPreferredName || `${row.submitterFirstName} ${row.submitterLastName}`
-				: null;
+			callsign && firstName ? (lastInitial ? `${firstName} ${lastInitial}.` : firstName) : null;
 
 		return {
 			id: row.id,
