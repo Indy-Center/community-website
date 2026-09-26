@@ -60,6 +60,8 @@ export const actions = {
 		logger.info(`User ${locals.user?.id} updated event "${form.data.name}" (${params.id})`);
 		const [savedEvent] = await locals.db
 			.update(eventsTable)
+			// isPublished is deliberately not set here: publishing is controlled only by
+			// the togglePublish action, so saving an edit must not change it
 			.set({
 				name: form.data.name,
 				description: form.data.description,
@@ -67,8 +69,7 @@ export const actions = {
 				type: form.data.type,
 				rosterType: form.data.rosterType,
 				startTime: form.data.startTime,
-				endTime: form.data.endTime,
-				isPublished: true
+				endTime: form.data.endTime
 			})
 			.where(eq(eventsTable.id, params.id))
 			.returning();
