@@ -33,7 +33,7 @@ export const load = async ({ locals, params, depends }) => {
 	}
 
 	const users = await locals.db.query.usersTable.findMany({
-		orderBy: (users, { asc }) => [asc(users.preferredName), asc(users.firstName)]
+		orderBy: (users, { asc }) => [asc(users.firstName), asc(users.lastName)]
 	});
 
 	const artccInformation = await fetchArtccInformation();

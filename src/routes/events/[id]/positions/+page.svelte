@@ -13,6 +13,7 @@
 	import IconDraft from '~icons/mdi/publish-off';
 	import IconArrowLeft from '~icons/mdi/arrow-left';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
+	import ControllerPicker from '$lib/components/events/ControllerPicker.svelte';
 
 	let { data } = $props();
 
@@ -407,22 +408,15 @@
 												}
 											};
 										}}
-										class="inline"
+										class="block"
 									>
 										<input type="hidden" name="positionId" value={position.position} />
-										<select
+										<ControllerPicker
 											name="userId"
-											value={position.userId || ''}
-											onchange={(e) => e.target.form.requestSubmit()}
-											class="w-full rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-sky-500"
-										>
-											<option value="">Unassigned</option>
-											{#each users as user}
-												<option value={user.id}>
-													{getUserDisplayName(user)} ({user.operatingInitials})
-												</option>
-											{/each}
-										</select>
+											{users}
+											value={position.userId}
+											onselect={(form) => form?.requestSubmit()}
+										/>
 									</form>
 								</td>
 
