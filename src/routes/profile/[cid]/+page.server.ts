@@ -1,12 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
-import { feedbackTable } from '$lib/db/schema/feedback';
+import { eq } from 'drizzle-orm';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
-import { averageRating } from '$lib/utils/feedbackRatings';
 import { getStaffBadges } from '$lib/server/staff';
 
 // Public profile. Like the public roster, only controllers on the roster have one, and
-// only public fields are sent (no email, raw VATSIM data, or individual feedback).
+// only public fields are sent (no email, raw VATSIM data, or feedback).
 export const load = async ({ locals, params }) => {
 	const controller = await locals.db.query.vatsimControllersTable.findFirst({
 		where: eq(vatsimControllersTable.cid, params.cid),
@@ -32,14 +30,6 @@ export const load = async ({ locals, params }) => {
 			? roster.fname
 			: `${roster.fname} ${roster.lname}`;
 
-	// Only the rating values are needed for the average
-	const ratings = user
-		? await locals.db
-				.select({ rating: feedbackTable.rating })
-				.from(feedbackTable)
-				.where(and(eq(feedbackTable.controllerId, user.id), eq(feedbackTable.status, 'approved')))
-		: [];
-
 	return {
 		profile: {
 			cid: controller.cid,
@@ -51,10 +41,6 @@ export const load = async ({ locals, params }) => {
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
 			staffBadges: (await getStaffBadges(locals.db)).get(controller.cid) ?? []
-		},
-		feedback: {
-			average: averageRating(ratings.map((r) => r.rating)),
-			count: ratings.length
 		},
 		isOwnProfile: locals.user?.cid === controller.cid
 	};
