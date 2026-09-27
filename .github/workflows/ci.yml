@@ -2,8 +2,8 @@ name: Tests and Verification
 on:
   push:
     branches: [main]
+  # Every PR, including ones stacked on another feature branch
   pull_request:
-    branches: [main]
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
