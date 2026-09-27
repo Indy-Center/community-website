@@ -8,6 +8,8 @@
 	import IconChevronDown from '~icons/mdi/chevron-down';
 	import IconBook from '~icons/mdi/book-open-variant';
 	import IconTools from '~icons/mdi/tools';
+	import IconAdmin from '~icons/mdi/shield-account';
+	import { isAdmin } from '$lib/utils/permissions';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
 
@@ -97,6 +99,19 @@
 							<IconCog class="h-4 w-4" />
 							<span>Manage Settings</span>
 						</a>
+
+						{#if isAdmin(roles)}
+							<!-- Admin -->
+							<a
+								href="/admin"
+								role="menuitem"
+								onclick={closeDropdown}
+								class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-slate-600/30 hover:text-white"
+							>
+								<IconAdmin class="h-4 w-4" />
+								<span>Admin</span>
+							</a>
+						{/if}
 
 						<!-- Divider -->
 						<div class="my-2 border-t border-white/50"></div>

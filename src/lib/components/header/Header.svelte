@@ -3,7 +3,6 @@
 	import Logo from '../Logo.svelte';
 	import UserProfileDropdown from './UserProfileDropdown.svelte';
 	import NavigationLinks from './NavigationLinks.svelte';
-	import ExternalLinks from './ExternalLinks.svelte';
 	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
 	import IconLogout from '~icons/mdi/logout';
@@ -11,6 +10,8 @@
 	import IconMenu from '~icons/mdi/menu';
 	import IconClose from '~icons/mdi/close';
 	import IconCog from '~icons/mdi/cog';
+	import IconAdmin from '~icons/mdi/shield-account';
+	import { isAdmin } from '$lib/utils/permissions';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
 
@@ -44,7 +45,7 @@
 			<Logo class="h-8 w-auto" />
 		</a>
 		<div class="hidden md:block">
-			<NavigationLinks user={data.user} roles={data.roles} />
+			<NavigationLinks />
 		</div>
 	</div>
 
@@ -53,8 +54,6 @@
 		<!-- Main Navigation -->
 
 		<UserProfileDropdown user={data.user} roles={data.roles} />
-		<!-- Quick Links -->
-		<ExternalLinks />
 	</div>
 
 	<!-- Mobile Menu Button -->
@@ -89,9 +88,7 @@
 		<nav aria-label="Mobile navigation">
 			<div class="mx-auto max-w-7xl space-y-1 px-2 py-3">
 				<!-- Navigation Links -->
-				<NavigationLinks user={data.user} roles={data.roles} mobile={true} />
-
-				<ExternalLinks mobile={true} />
+				<NavigationLinks mobile={true} />
 
 				<!-- User Info Section -->
 				{#if data.user}
@@ -135,6 +132,16 @@
 									<IconCog class="h-4 w-4" />
 									<span>Manage Settings</span>
 								</a>
+								{#if isAdmin(data.roles)}
+									<a
+										href="/admin"
+										class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+										onclick={() => (showMobileMenu = false)}
+									>
+										<IconAdmin class="h-4 w-4" />
+										<span>Admin</span>
+									</a>
+								{/if}
 								<a
 									href="/logout"
 									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-red-600/30 px-4 py-2 text-sm text-red-300 transition-colors duration-200 hover:border-red-500/50 hover:bg-red-600/20 hover:text-red-200"
