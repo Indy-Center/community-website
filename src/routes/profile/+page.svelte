@@ -3,6 +3,7 @@
 	import { format } from 'date-fns';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import StarDisplay from '$lib/components/profile/StarDisplay.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import { MAX_BIO_LENGTH } from '$lib/forms/profile';
 	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
 	import IconMessage from '~icons/mdi/message-text';
@@ -13,6 +14,13 @@
 	const { data } = $props();
 
 	const user = $derived(data.user!);
+
+	const FEEDBACK_PER_PAGE = 5;
+	let feedbackPage = $state(1);
+	const feedbackPageCount = $derived(Math.ceil(data.feedback.length / FEEDBACK_PER_PAGE));
+	const pagedFeedback = $derived(
+		data.feedback.slice((feedbackPage - 1) * FEEDBACK_PER_PAGE, feedbackPage * FEEDBACK_PER_PAGE)
+	);
 
 	const { form, errors, enhance, constraints, message, delayed } = superForm(data.form, {
 		resetForm: false
@@ -150,7 +158,7 @@
 				</p>
 			{:else}
 				<ul class="divide-y divide-slate-700/60">
-					{#each data.feedback as item (item.id)}
+					{#each pagedFeedback as item (item.id)}
 						{@const stars = RATING_STARS[item.rating] ?? 0}
 						<li class="px-6 py-4">
 							<div class="flex flex-wrap items-center justify-between gap-2">
@@ -187,6 +195,11 @@
 						</li>
 					{/each}
 				</ul>
+				<Pagination
+					bind:page={feedbackPage}
+					pageCount={feedbackPageCount}
+					class="border-t border-slate-700/60 px-6 py-3"
+				/>
 			{/if}
 		</div>
 	{/if}
