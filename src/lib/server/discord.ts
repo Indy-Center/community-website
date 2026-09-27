@@ -172,21 +172,18 @@ function fieldValue(value: string) {
 }
 
 /**
- * Posts published feedback to the community announcements channel, using the values staff
- * chose to publish rather than the original submission. Identified feedback includes the
- * pilot's name and callsign; de-identified feedback leaves them out. Like the old website's
- * post, it never includes CIDs, the reviewer, or the feedback ID.
+ * Posts identified published feedback to the feedback channel, using the values staff chose
+ * to publish rather than the original submission. De-identified feedback is never posted.
+ * Like the old website's post, it never includes CIDs, the reviewer, or the feedback ID.
  *
  * Never throws, so a Discord problem can't fail publishing. Returns whether the post went out.
  */
 export async function announcePublishedFeedback(db: Database, feedback: Feedback) {
-	if (!feedback.publishMode) return false;
+	if (feedback.publishMode !== 'identified') return false;
 
-	const webhookUrl = env.DISCORD_WEBHOOK_COMMUNITY_ANNOUNCEMENTS;
+	const webhookUrl = env.DISCORD_WEBHOOK_FEEDBACK;
 	if (!webhookUrl) {
-		logger.warn(
-			'DISCORD_WEBHOOK_COMMUNITY_ANNOUNCEMENTS is not set, skipping feedback announcement'
-		);
+		logger.warn('DISCORD_WEBHOOK_FEEDBACK is not set, skipping feedback announcement');
 		return false;
 	}
 
@@ -216,13 +213,11 @@ export async function announcePublishedFeedback(db: Database, feedback: Feedback
 			}
 		];
 
-		if (feedback.publishMode === 'identified') {
-			const pilot = [feedback.publishedPilotName?.trim(), feedback.publishedCallsign?.trim()]
-				.filter(Boolean)
-				.join(' · ');
-			if (pilot) {
-				fields.push({ name: 'Pilot', value: fieldValue(pilot), inline: false });
-			}
+		const pilot = [feedback.publishedPilotName?.trim(), feedback.publishedCallsign?.trim()]
+			.filter(Boolean)
+			.join(' · ');
+		if (pilot) {
+			fields.push({ name: 'Pilot', value: fieldValue(pilot), inline: false });
 		}
 
 		const comments = feedback.publishedFeedback?.trim();

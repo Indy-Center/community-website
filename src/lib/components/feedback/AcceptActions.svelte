@@ -29,7 +29,7 @@
 		identified:
 			"Accept and publish this feedback as is? It goes to Discord and the public profile with the pilot's name and callsign. The Discord post can't be undone.",
 		deidentified:
-			"Accept and publish this feedback de-identified? It goes to Discord without pilot details. The Discord post can't be undone."
+			"Accept and publish this feedback de-identified? It goes on the controller's private profile without pilot details and isn't posted to Discord. This can't be undone."
 	};
 
 	const submit: SubmitFunction = ({ formData, cancel }) => {
@@ -101,7 +101,7 @@
 					<IconIncognito class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
 					<span>
 						Accept & publish de-identified
-						<span class="block text-xs text-gray-400">Discord without pilot details</span>
+						<span class="block text-xs text-gray-400">Private profile, no Discord post</span>
 					</span>
 				</button>
 				<button

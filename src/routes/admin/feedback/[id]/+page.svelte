@@ -75,11 +75,11 @@
 
 	const submit: SubmitFunction = ({ cancel, action }) => {
 		if (action.search === '?/publish') {
-			const where =
+			const message =
 				publishMode === 'identified'
-					? 'Discord and the public profile, with the pilot details'
-					: 'Discord without pilot details, and the private profile only';
-			if (!confirm(`Publish this feedback to ${where}? The Discord post can't be undone.`)) {
+					? "Publish this feedback to Discord and the public profile, with the pilot details? The Discord post can't be undone."
+					: "Publish this feedback de-identified? It goes on the controller's private profile without pilot details and isn't posted to Discord. This can't be undone.";
+			if (!confirm(message)) {
 				cancel();
 				return;
 			}
@@ -352,8 +352,8 @@
 										<IconIncognito class="h-4 w-4" /> De-identified
 									</span>
 									<span class="text-xs text-gray-400">
-										Posted to Discord without pilot details, and to the controller's private profile
-										only
+										Shown on the controller's private profile only, without pilot details. Not
+										posted to Discord
 									</span>
 								</span>
 							</label>
@@ -434,7 +434,7 @@
 						{/if}
 						· {feedback.publishMode === 'identified'
 							? 'Discord and public profile'
-							: 'Discord and private profile'}
+							: 'Private profile only'}
 					</p>
 					<dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
 						<div>

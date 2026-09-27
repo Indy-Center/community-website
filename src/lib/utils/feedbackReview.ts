@@ -4,8 +4,8 @@ export const FEEDBACK_STATUSES = ['pending', 'follow_up', 'approved', 'rejected'
 export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
 
 // Identified feedback is posted with the pilot's details to Discord and the public profile.
-// De-identified feedback is posted to Discord without them and only shown on the
-// controller's private profile.
+// De-identified feedback is only shown on the controller's private profile, without them,
+// and is never posted to Discord.
 export const PUBLISH_MODES = ['identified', 'deidentified'] as const;
 export type PublishMode = (typeof PUBLISH_MODES)[number];
 
