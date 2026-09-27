@@ -1,102 +1,63 @@
 import { feedbackTable } from '$lib/db/schema/feedback';
-import { notifyDiscordOfFeedbackStatusChange } from '$lib/server/discord';
-import { isAdmin } from '$lib/utils/permissions';
-import { redirect, fail } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
-import { logger } from '$lib/server/logger';
-import { superValidate } from 'sveltekit-superforms';
-import { zod4 } from 'sveltekit-superforms/adapters';
-import { z } from 'zod';
+import { FEEDBACK_STATUSES, type FeedbackStatus } from '$lib/utils/feedbackReview';
+import { canReviewFeedback } from '$lib/utils/permissions';
+import { getFeedbackReviewers } from '$lib/server/feedback';
+import { redirect } from '@sveltejs/kit';
+import { count } from 'drizzle-orm';
 
-export const load = async ({ locals }) => {
-	if (!isAdmin(locals.roles)) {
+export const load = async ({ locals, url }) => {
+	if (!canReviewFeedback(locals.roles)) {
 		return redirect(302, '/admin');
 	}
 
-	// Get all feedback with submitter and controller user data
+	const requested = url.searchParams.get('status');
+	const status: FeedbackStatus = FEEDBACK_STATUSES.includes(requested as FeedbackStatus)
+		? (requested as FeedbackStatus)
+		: 'pending';
+	const mine = url.searchParams.get('mine') === '1';
+
 	const feedback = await locals.db.query.feedbackTable.findMany({
-		orderBy: (feedback, { desc }) => [desc(feedback.createdAt)],
+		where: (feedback, { and, eq }) =>
+			mine && locals.user
+				? and(eq(feedback.status, status), eq(feedback.assigneeId, locals.user.id))
+				: eq(feedback.status, status),
+		// New and follow up are worked oldest first; the filed ones read newest first
+		orderBy: (feedback, { asc, desc }) =>
+			status === 'pending' || status === 'follow_up'
+				? [asc(feedback.createdAt)]
+				: [desc(feedback.updatedAt)],
 		with: {
-			submitter: true,
-			controller: true
+			submitter: {
+				columns: { firstName: true, lastName: true, preferredName: true, cid: true }
+			},
+			controller: {
+				columns: { firstName: true, lastName: true, preferredName: true, cid: true }
+			},
+			assignee: {
+				columns: { firstName: true, lastName: true, preferredName: true }
+			}
 		}
 	});
 
-	return {
-		feedback
-	};
-};
-
-const feedbackActionSchema = z.object({
-	feedbackId: z.string().min(1)
-});
-
-export const actions = {
-	approve: async ({ request, locals }) => {
-		if (!isAdmin(locals.roles)) {
-			logger.warn(`Unauthorized feedback approval attempt by user ${locals.user?.id}`);
-			return fail(403, { message: 'Unauthorized' });
-		}
-
-		const form = await superValidate(request, zod4(feedbackActionSchema));
-
-		if (!form.valid) {
-			return fail(400, { form, message: 'Feedback ID is required' });
-		}
-
-		const feedbackId = form.data.feedbackId;
-		logger.info(`Admin ${locals.user?.id} approving feedback ${feedbackId}`);
-
-		try {
-			const [feedback] = await locals.db
-				.update(feedbackTable)
-				.set({
-					status: 'approved',
-					updatedAt: new Date()
-				})
-				.where(eq(feedbackTable.id, feedbackId))
-				.returning();
-
-			await notifyDiscordOfFeedbackStatusChange(locals.db, feedback, locals.user);
-			logger.info(`Feedback ${feedbackId} approved by admin ${locals.user?.id}`);
-			return { success: true };
-		} catch (error) {
-			logger.error(`Failed to approve feedback ${feedbackId} by admin ${locals.user?.id}`, error);
-			return fail(500, { message: 'Failed to approve feedback' });
-		}
-	},
-
-	reject: async ({ request, locals }) => {
-		if (!isAdmin(locals.roles)) {
-			logger.warn(`Unauthorized feedback rejection attempt by user ${locals.user?.id}`);
-			return fail(403, { message: 'Unauthorized' });
-		}
-
-		const form = await superValidate(request, zod4(feedbackActionSchema));
-
-		if (!form.valid) {
-			return fail(400, { form, message: 'Feedback ID is required' });
-		}
-
-		const feedbackId = form.data.feedbackId;
-		logger.info(`Admin ${locals.user?.id} rejecting feedback ${feedbackId}`);
-
-		try {
-			const [feedback] = await locals.db
-				.update(feedbackTable)
-				.set({
-					status: 'rejected',
-					updatedAt: new Date()
-				})
-				.where(eq(feedbackTable.id, feedbackId))
-				.returning();
-
-			await notifyDiscordOfFeedbackStatusChange(locals.db, feedback, locals.user);
-			logger.info(`Feedback ${feedbackId} rejected by admin ${locals.user?.id}`);
-			return { success: true };
-		} catch (error) {
-			logger.error(`Failed to reject feedback ${feedbackId} by admin ${locals.user?.id}`, error);
-			return fail(500, { message: 'Failed to reject feedback' });
-		}
+	const counts = Object.fromEntries(FEEDBACK_STATUSES.map((s) => [s, 0])) as Record<
+		FeedbackStatus,
+		number
+	>;
+	const countRows = await locals.db
+		.select({ status: feedbackTable.status, count: count() })
+		.from(feedbackTable)
+		.groupBy(feedbackTable.status);
+	for (const row of countRows) {
+		if (row.status in counts) counts[row.status] = row.count;
 	}
+
+	return {
+		feedback,
+		status,
+		mine,
+		counts,
+		// For the follow up menu on new feedback
+		reviewers: status === 'pending' ? await getFeedbackReviewers(locals.db) : [],
+		userId: locals.user?.id
+	};
 };

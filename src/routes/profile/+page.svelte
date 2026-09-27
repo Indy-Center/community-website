@@ -9,6 +9,7 @@
 	import IconMessage from '~icons/mdi/message-text';
 	import IconCheck from '~icons/mdi/check-circle';
 	import IconEye from '~icons/mdi/eye';
+	import IconLock from '~icons/mdi/lock';
 	import IconStar from '~icons/mdi/star';
 
 	const { data } = $props();
@@ -148,13 +149,14 @@
 						<IconStar class="h-4 w-4 text-yellow-400" />
 						<span class="font-medium text-gray-200">{data.averageRating.toFixed(1)}</span> avg ·
 					{/if}
-					{data.feedback.length} approved
+					{data.feedback.length} accepted
 				</span>
 			</div>
 
 			{#if data.feedback.length === 0}
 				<p class="px-6 py-8 text-center text-sm text-gray-400">
-					No approved feedback yet. Once pilot feedback about you is approved, it will show up here.
+					No feedback yet. Once staff review and accept pilot feedback about you, it will show up
+					here.
 				</p>
 			{:else}
 				<ul class="divide-y divide-slate-700/60">
@@ -183,15 +185,29 @@
 							{#if item.feedback?.trim()}
 								<p class="mt-2 text-sm whitespace-pre-line text-gray-300">{item.feedback}</p>
 							{/if}
-							{#if item.callsign}
-								<p class="mt-2 text-xs text-gray-400">
-									—
-									{#if item.submitterName}
-										<span class="text-gray-300">{item.submitterName}</span> ·
-									{/if}
-									<span class="font-mono">{item.callsign}</span>
-								</p>
-							{/if}
+							<p class="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-gray-400">
+								{#if item.submitterName || item.callsign}
+									<span>
+										—
+										{#if item.submitterName}
+											<span class="text-gray-300">{item.submitterName}</span>
+										{/if}
+										{#if item.submitterName && item.callsign}·{/if}
+										{#if item.callsign}
+											<span class="font-mono">{item.callsign}</span>
+										{/if}
+									</span>
+								{/if}
+								{#if item.publishMode === 'identified'}
+									<span class="flex items-center gap-1 text-sky-400">
+										<IconEye class="h-3 w-3" /> Posted to Discord
+									</span>
+								{:else}
+									<span class="flex items-center gap-1">
+										<IconLock class="h-3 w-3" /> Only visible to you
+									</span>
+								{/if}
+							</p>
 						</li>
 					{/each}
 				</ul>

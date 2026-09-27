@@ -7,11 +7,8 @@ import { profileSchema } from '$lib/forms/profile';
 import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { and, desc, eq } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/sqlite-core';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { logger } from '$lib/server/logger';
-
-const submitter = alias(usersTable, 'submitter');
 
 export const load = async ({ locals, url }) => {
 	if (!locals.user) {
@@ -20,56 +17,26 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	// Approved feedback about this user, at every rating
-	const rows = await locals.db
+	// Accepted feedback about this user. Published feedback is shown as staff chose to publish
+	// it; unpublished feedback is shown as submitted, without the pilot's name or callsign.
+	const feedback = await locals.db
 		.select({
 			id: feedbackTable.id,
-			rating: feedbackTable.rating,
-			position: feedbackTable.position,
-			callsign: feedbackTable.callsign,
-			feedback: feedbackTable.feedback,
-			createdAt: feedbackTable.createdAt,
-			submitterFirstName: submitter.firstName,
-			submitterLastName: submitter.lastName,
-			submitterPreferredName: submitter.preferredName
+			rating: sql<string>`coalesce(${feedbackTable.publishedRating}, ${feedbackTable.rating})`,
+			position: sql<string>`coalesce(${feedbackTable.publishedPosition}, ${feedbackTable.position})`,
+			feedback: sql<
+				string | null
+			>`case when ${feedbackTable.publishMode} is null then ${feedbackTable.feedback} else ${feedbackTable.publishedFeedback} end`,
+			callsign: feedbackTable.publishedCallsign,
+			submitterName: feedbackTable.publishedPilotName,
+			publishMode: feedbackTable.publishMode,
+			createdAt: feedbackTable.createdAt
 		})
 		.from(feedbackTable)
-		.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
 		.where(
 			and(eq(feedbackTable.controllerId, locals.user.id), eq(feedbackTable.status, 'approved'))
 		)
 		.orderBy(desc(feedbackTable.createdAt));
-
-	// Pilots who gave their callsign are shown by their preferred name, or first name and
-	// last initial ("Tom M.") if they haven't set a custom one; the rest stay anonymous, and
-	// their name never leaves the server
-	const feedback = rows.map((row) => {
-		const callsign = row.callsign?.trim() || null;
-		const firstName = row.submitterFirstName?.trim();
-		const lastName = row.submitterLastName?.trim();
-		const shortName = firstName && (lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName);
-
-		// Settings pre-fills the preferred name with the full name, so a preferred name that
-		// just matches it isn't a real choice and would expose the full last name
-		const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
-		const preferredName = row.submitterPreferredName?.trim();
-		const hasCustomPreferredName =
-			!!preferredName && normalize(preferredName) !== normalize(`${firstName} ${lastName}`);
-
-		const submitterName = callsign
-			? (hasCustomPreferredName ? preferredName : shortName) || null
-			: null;
-
-		return {
-			id: row.id,
-			rating: row.rating,
-			position: row.position,
-			feedback: row.feedback,
-			createdAt: row.createdAt,
-			callsign,
-			submitterName
-		};
-	});
 
 	// Only controllers on the roster have a public profile
 	const rosterEntry = await locals.db.query.vatsimControllersTable.findFirst({

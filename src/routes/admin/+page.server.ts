@@ -1,4 +1,4 @@
-import { isAdmin } from '$lib/utils/permissions';
+import { canReviewFeedback, isAdmin } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
 import { usersTable } from '$lib/db/schema/users';
 import { eventsTable, eventPositionsTable } from '$lib/db/schema/events';
@@ -7,7 +7,7 @@ import { count, eq, sql } from 'drizzle-orm';
 
 export const load = async ({ locals }) => {
 	if (!isAdmin(locals.roles)) {
-		return redirect(302, '/');
+		return redirect(302, canReviewFeedback(locals.roles) ? '/admin/feedback' : '/');
 	}
 
 	// Get user stats

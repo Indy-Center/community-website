@@ -28,6 +28,8 @@
 				return 'bg-red-600/20 text-red-300 border-red-500/30';
 			case Role.CAN_MANAGE_EVENTS:
 				return 'bg-purple-600/20 text-purple-300 border-purple-500/30';
+			case Role.FEEDBACK_REVIEWER:
+				return 'bg-sky-600/20 text-sky-300 border-sky-500/30';
 			case Role.EVENTS_PROHIBIT_SIGNUP:
 				return 'bg-orange-600/20 text-orange-300 border-orange-500/30';
 			default:
@@ -62,6 +64,11 @@
 			key: Role.CAN_MANAGE_EVENTS,
 			label: 'Manage Events',
 			description: 'Can create and edit events'
+		},
+		{
+			key: Role.FEEDBACK_REVIEWER,
+			label: 'Feedback Reviewer',
+			description: 'Can review, follow up on, and publish feedback'
 		}
 	];
 
