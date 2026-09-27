@@ -200,7 +200,7 @@
 								{/if}
 								{#if item.publishMode === 'identified'}
 									<span class="flex items-center gap-1 text-sky-400">
-										<IconEye class="h-3 w-3" /> On your public profile
+										<IconEye class="h-3 w-3" /> Posted to Discord
 									</span>
 								{:else}
 									<span class="flex items-center gap-1">

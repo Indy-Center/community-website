@@ -77,7 +77,7 @@
 		if (action.search === '?/publish') {
 			const message =
 				publishMode === 'identified'
-					? "Publish this feedback to Discord and the public profile, with the pilot details? The Discord post can't be undone."
+					? "Publish this feedback to Discord, with the pilot details? The Discord post can't be undone."
 					: "Publish this feedback de-identified? It goes on the controller's private profile without pilot details and isn't posted to Discord. This can't be undone.";
 			if (!confirm(message)) {
 				cancel();
@@ -330,7 +330,7 @@
 										<IconAccount class="h-4 w-4" /> Identified
 									</span>
 									<span class="text-xs text-gray-400">
-										Posted to Discord and the public profile with the pilot's name and callsign
+										Posted to Discord with the pilot's name and callsign
 									</span>
 								</span>
 							</label>
@@ -433,7 +433,7 @@
 							on {format(new Date(feedback.publishedAt), 'MMM d, yyyy')}
 						{/if}
 						· {feedback.publishMode === 'identified'
-							? 'Discord and public profile'
+							? 'Discord and private profile'
 							: 'Private profile only'}
 					</p>
 					<dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
