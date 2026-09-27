@@ -57,7 +57,7 @@
 				<div class="flex items-center space-x-2">
 					<span class="font-medium">{getFullName(user)}</span>
 					<div class="flex items-center space-x-1">
-						{#if user.data.vatsim.rating.short}
+						{#if user.membership === 'controller' && user.data.vatsim.rating.short}
 							<div
 								class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
 							>
@@ -65,7 +65,7 @@
 								{user.data.vatsim.rating.short}
 							</div>
 						{/if}
-						{#if user.data.vatsim.pilotrating.short}
+						{#if user.data.vatsim.pilotrating.id > 0}
 							<div
 								class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
 							>

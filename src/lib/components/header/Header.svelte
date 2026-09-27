@@ -105,7 +105,7 @@
 							</div>
 
 							<div class="mb-3 flex flex-wrap gap-2">
-								{#if data.user.data.vatsim.rating.short}
+								{#if data.user.membership === 'controller' && data.user.data.vatsim.rating.short}
 									<div
 										class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
 									>
@@ -113,7 +113,7 @@
 										{data.user.data.vatsim.rating.short}
 									</div>
 								{/if}
-								{#if data.user.data.vatsim.pilotrating.short}
+								{#if data.user.data.vatsim.pilotrating.id > 0}
 									<div
 										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
 									>
