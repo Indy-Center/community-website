@@ -7,6 +7,7 @@
 	import IconCalendar from '~icons/mdi/calendar';
 	import IconMessage from '~icons/mdi/message';
 	import IconBadge from '~icons/mdi/badge-account-horizontal';
+	import { canReviewFeedback, isAdmin } from '$lib/utils/permissions';
 
 	let {
 		user,
@@ -44,11 +45,21 @@
 
 	const links = $derived([
 		...BASE_LINKS,
-		...(user && roles?.includes('admin')
+		...(user && isAdmin(roles)
 			? [
 					{
 						label: 'Admin',
 						href: '/admin',
+						icon: IconCog
+					}
+				]
+			: []),
+		// Reviewers only have the feedback section of admin
+		...(user && !isAdmin(roles) && canReviewFeedback(roles)
+			? [
+					{
+						label: 'Reviews',
+						href: '/admin/feedback',
 						icon: IconCog
 					}
 				]

@@ -1,12 +1,23 @@
 <script lang="ts">
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
+	import StarDisplay from '$lib/components/profile/StarDisplay.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import IconMessage from '~icons/mdi/message-text';
 	import IconAccount from '~icons/mdi/account-circle';
 	import IconPencil from '~icons/mdi/pencil';
+	import { format } from 'date-fns';
+	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
 
 	const { data } = $props();
 
 	const profile = $derived(data.profile);
+
+	const FEEDBACK_PER_PAGE = 5;
+	let feedbackPage = $state(1);
+	const feedbackPageCount = $derived(Math.ceil(data.feedback.length / FEEDBACK_PER_PAGE));
+	const pagedFeedback = $derived(
+		data.feedback.slice((feedbackPage - 1) * FEEDBACK_PER_PAGE, feedbackPage * FEEDBACK_PER_PAGE)
+	);
 </script>
 
 <svelte:head>
@@ -74,3 +85,50 @@
 		</div>
 	</div>
 </div>
+
+{#if data.feedback.length > 0}
+	<div class="mt-6 rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
+		<h2
+			class="flex items-center gap-2 border-b border-slate-700/60 px-6 py-4 text-lg font-semibold text-white"
+		>
+			<IconMessage class="h-5 w-5" />
+			What pilots are saying
+		</h2>
+		<ul class="divide-y divide-slate-700/60">
+			{#each pagedFeedback as item (item.id)}
+				{@const stars = RATING_STARS[item.rating] ?? 0}
+				<li class="px-6 py-4">
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<StarDisplay
+							value={stars}
+							label="{ratingLabel(item.rating)}, {stars} out of 5 stars"
+							class="h-4 w-4 text-yellow-400"
+						/>
+						<div class="flex items-center gap-3 text-xs text-gray-400">
+							<span class="font-mono">{item.position}</span>
+							{#if item.createdAt}
+								<span>{format(new Date(item.createdAt), 'MMM d, yyyy')}</span>
+							{/if}
+						</div>
+					</div>
+					{#if item.feedback?.trim()}
+						<p class="mt-2 text-sm whitespace-pre-line text-gray-300">{item.feedback}</p>
+					{/if}
+					{#if item.pilotName || item.callsign}
+						<p class="mt-2 text-xs text-gray-400">
+							—
+							{#if item.pilotName}<span class="text-gray-300">{item.pilotName}</span>{/if}
+							{#if item.pilotName && item.callsign}·{/if}
+							{#if item.callsign}<span class="font-mono">{item.callsign}</span>{/if}
+						</p>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+		<Pagination
+			bind:page={feedbackPage}
+			pageCount={feedbackPageCount}
+			class="border-t border-slate-700/60 px-6 py-3"
+		/>
+	</div>
+{/if}
