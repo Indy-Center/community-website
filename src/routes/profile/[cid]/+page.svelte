@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
-	import StarDisplay from '$lib/components/profile/StarDisplay.svelte';
 	import IconMessage from '~icons/mdi/message-text';
 	import IconAccount from '~icons/mdi/account-circle';
 	import IconPencil from '~icons/mdi/pencil';
@@ -8,7 +7,6 @@
 	const { data } = $props();
 
 	const profile = $derived(data.profile);
-	const average = $derived(data.feedback.average);
 </script>
 
 <svelte:head>
@@ -55,7 +53,7 @@
 		{/if}
 	</div>
 
-	<!-- Feedback summary -->
+	<!-- Feedback -->
 	<div class="h-fit rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm lg:col-span-2">
 		<h2
 			class="flex items-center gap-2 border-b border-slate-700/60 px-6 py-4 text-lg font-semibold text-white"
@@ -64,24 +62,9 @@
 			Pilot Feedback
 		</h2>
 		<div class="px-6 py-5">
-			{#if average !== null}
-				<div class="flex items-center gap-3">
-					<span class="text-4xl font-bold text-white">{average.toFixed(1)}</span>
-					<div>
-						<StarDisplay
-							value={average}
-							label="{average.toFixed(1)} out of 5 stars"
-							class="h-5 w-5 text-yellow-400"
-						/>
-						<p class="mt-1 text-sm text-gray-400">
-							from {data.feedback.count}
-							{data.feedback.count === 1 ? 'review' : 'reviews'}
-						</p>
-					</div>
-				</div>
-			{:else}
-				<p class="text-sm text-gray-400">No feedback yet.</p>
-			{/if}
+			<p class="text-sm text-gray-400">
+				Flew with {profile.name} recently? Let us know how it went.
+			</p>
 			<a
 				href="/feedback"
 				class="mt-4 inline-flex text-sm font-medium text-sky-400 transition-colors hover:text-sky-300"
