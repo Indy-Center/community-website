@@ -303,7 +303,8 @@ export const actions = {
 	}
 };
 
-// Saves what gets published, posts it to Discord, and logs it. Returns whether Discord got it.
+// Saves what gets published, posts identified feedback to Discord, and logs it. Returns
+// whether Discord got it, or null for de-identified feedback, which isn't posted.
 async function publishFeedback(
 	locals: App.Locals,
 	id: string,
@@ -330,14 +331,14 @@ async function publishFeedback(
 		.where(eq(feedbackTable.id, id))
 		.returning();
 
-	const posted = await announcePublishedFeedback(locals.db, feedback);
+	const posted = identified ? await announcePublishedFeedback(locals.db, feedback) : null;
 
 	await logFeedbackEvent(locals.db, {
 		feedbackId: id,
 		userId: locals.user!.id,
 		type: 'published',
 		value: mode,
-		body: posted ? null : 'The Discord post failed; the feedback is still on the profile.'
+		body: posted === false ? 'The Discord post failed; the feedback is still on the profile.' : null
 	});
 
 	return posted;
