@@ -23,6 +23,8 @@
 		atcRating={profile.atcRating}
 		pilotRating={profile.pilotRating}
 		staffBadges={profile.staffBadges}
+		certifications={profile.certifications}
+		endorsements={profile.endorsements}
 	/>
 	{#if data.isOwnProfile}
 		<a

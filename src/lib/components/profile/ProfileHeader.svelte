@@ -1,7 +1,12 @@
 <script lang="ts">
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import StaffBadges from '$lib/components/StaffBadges.svelte';
+	import Tooltip from '$lib/components/Tooltip.svelte';
 	import type { StaffBadgeKey } from '$lib/config/staffBadges';
+	import {
+		getCertificationDisplayName,
+		getEndorsementDisplayName
+	} from '$lib/config/certifications';
 	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
 
@@ -13,7 +18,9 @@
 		operatingInitials,
 		atcRating,
 		pilotRating,
-		staffBadges = []
+		staffBadges = [],
+		certifications = [],
+		endorsements = []
 	}: {
 		name: string;
 		pronouns: string | null;
@@ -23,7 +30,12 @@
 		atcRating: string | null;
 		pilotRating: string | null;
 		staffBadges?: StaffBadgeKey[];
+		certifications?: string[];
+		endorsements?: string[];
 	} = $props();
+
+	const CHIP =
+		'inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs font-semibold text-white';
 </script>
 
 <div class="flex flex-wrap items-center gap-4">
@@ -39,13 +51,13 @@
 			<span class="font-mono">CID {cid}</span>
 			{#if operatingInitials}
 				<span
-					class="rounded-md bg-slate-700 px-2 py-0.5 font-mono text-xs text-slate-200"
+					class="rounded-md bg-indigo-600/80 px-2 py-0.5 font-mono text-xs font-semibold text-white"
 					title="Operating initials">{operatingInitials}</span
 				>
 			{/if}
 			{#if atcRating}
 				<span
-					class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-0.5 font-mono text-xs text-sky-200"
+					class="flex items-center gap-1 rounded-md bg-sky-600/90 px-2 py-0.5 font-mono text-xs font-semibold text-white"
 				>
 					<IconRating class="h-3 w-3" />
 					{atcRating}
@@ -53,13 +65,23 @@
 			{/if}
 			{#if pilotRating}
 				<span
-					class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-0.5 font-mono text-xs text-pink-200"
+					class="flex items-center gap-1 rounded-md bg-pink-600/80 px-2 py-0.5 font-mono text-xs font-semibold text-white"
 				>
 					<IconAirplane class="h-3 w-3" />
 					{pilotRating}
 				</span>
 			{/if}
 			<StaffBadges badges={staffBadges} />
+			{#each certifications as certification (certification)}
+				<Tooltip text={getCertificationDisplayName(certification)}>
+					<span class="{CHIP} bg-emerald-600/80">{certification}</span>
+				</Tooltip>
+			{/each}
+			{#each endorsements as endorsement (endorsement)}
+				<Tooltip text={getEndorsementDisplayName(endorsement)}>
+					<span class="{CHIP} bg-purple-600/80">{endorsement}</span>
+				</Tooltip>
+			{/each}
 		</div>
 	</div>
 </div>

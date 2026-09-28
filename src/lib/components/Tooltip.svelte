@@ -5,7 +5,7 @@
 </script>
 
 <div
-	class="relative inline-block"
+	class="relative inline-flex"
 	onmouseenter={() => (showTooltip = true)}
 	onmouseleave={() => (showTooltip = false)}
 >
