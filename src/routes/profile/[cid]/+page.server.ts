@@ -8,7 +8,7 @@ import { getStaffBadges } from '$lib/server/staff';
 export const load = async ({ locals, params }) => {
 	const controller = await locals.db.query.vatsimControllersTable.findFirst({
 		where: eq(vatsimControllersTable.cid, params.cid),
-		with: { user: true }
+		with: { user: { with: { certifications: true, endorsements: true } } }
 	});
 
 	if (!controller) {
@@ -40,7 +40,9 @@ export const load = async ({ locals, params }) => {
 			atcRating: user?.data.vatsim.rating.short ?? roster.rating_short ?? null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
-			staffBadges: (await getStaffBadges(locals.db)).get(controller.cid) ?? []
+			staffBadges: (await getStaffBadges(locals.db)).get(controller.cid) ?? [],
+			certifications: user?.certifications.map((c) => c.certification) ?? [],
+			endorsements: user?.endorsements.map((e) => e.endorsement) ?? []
 		},
 		isOwnProfile: locals.user?.cid === controller.cid
 	};

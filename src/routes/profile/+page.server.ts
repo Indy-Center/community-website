@@ -1,6 +1,8 @@
 import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
+import { userCertificationsTable } from '$lib/db/schema/certifications';
+import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { averageRating } from '$lib/utils/feedbackRatings';
 import { getStaffBadges } from '$lib/server/staff';
 import { profileSchema } from '$lib/forms/profile';
@@ -77,13 +79,24 @@ export const load = async ({ locals, url }) => {
 		columns: { cid: true }
 	});
 
+	const certifications = await locals.db
+		.select({ certification: userCertificationsTable.certification })
+		.from(userCertificationsTable)
+		.where(eq(userCertificationsTable.userId, locals.user.id));
+	const endorsements = await locals.db
+		.select({ endorsement: userEndorsementsTable.endorsement })
+		.from(userEndorsementsTable)
+		.where(eq(userEndorsementsTable.userId, locals.user.id));
+
 	return {
 		form,
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		isController: locals.user.membership === 'controller',
 		hasPublicProfile: !!rosterEntry,
-		staffBadges: (await getStaffBadges(locals.db)).get(locals.user.cid) ?? []
+		staffBadges: (await getStaffBadges(locals.db)).get(locals.user.cid) ?? [],
+		certifications: certifications.map((c) => c.certification),
+		endorsements: endorsements.map((e) => e.endorsement)
 	};
 };
 

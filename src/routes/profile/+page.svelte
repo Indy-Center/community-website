@@ -63,6 +63,8 @@
 		atcRating={user.data.vatsim.rating.short || null}
 		pilotRating={user.data.vatsim.pilotrating.short || null}
 		staffBadges={data.staffBadges}
+		certifications={data.certifications}
+		endorsements={data.endorsements}
 	/>
 	{#if data.hasPublicProfile}
 		<a

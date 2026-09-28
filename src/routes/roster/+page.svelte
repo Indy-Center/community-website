@@ -23,6 +23,10 @@
 
 	const { roster, controllers, roles, staffBadges } = data;
 
+	// Same chip shape as StaffBadges so every badge in a row reads as one set
+	const CHIP =
+		'inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs font-semibold text-white';
+
 	let searchTerm = $state('');
 	let sortField = $state<string>('initials');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
@@ -265,9 +269,7 @@
 					<div class="flex w-10 flex-shrink-0 justify-start">
 						{#if member.user?.operatingInitials}
 							<Tooltip text="Operating Initials">
-								<div
-									class="items-center justify-center rounded bg-indigo-600/80 px-2 py-1 font-mono text-xs font-semibold text-white"
-								>
+								<div class="{CHIP} bg-indigo-600/80">
 									{member.user.operatingInitials}
 								</div>
 							</Tooltip>
@@ -298,9 +300,7 @@
 
 						<!-- Rating -->
 						<Tooltip text="VATSIM Rating">
-							<div
-								class="items-center justify-center rounded-full bg-sky-600/90 px-2 py-1 text-xs font-semibold text-white"
-							>
+							<div class="{CHIP} bg-sky-600/90">
 								{member.data.rating_short}
 							</div>
 						</Tooltip>
@@ -312,9 +312,7 @@
 						{#if member.user?.certifications && member.user.certifications.length > 0}
 							{#each member.user.certifications as cert}
 								<Tooltip text={getCertificationDisplayName(cert.certification)}>
-									<div
-										class="items-center justify-center rounded bg-emerald-600/80 px-2 py-1 text-xs font-semibold text-white"
-									>
+									<div class="{CHIP} bg-emerald-600/80">
 										{cert.certification}
 									</div>
 								</Tooltip>
@@ -325,9 +323,7 @@
 						{#if member.user?.endorsements && member.user.endorsements.length > 0}
 							{#each member.user.endorsements as endorsement}
 								<Tooltip text={getEndorsementDisplayName(endorsement.endorsement)}>
-									<div
-										class="items-center justify-center rounded bg-purple-600/80 px-2 py-1 text-xs font-semibold text-white"
-									>
+									<div class="{CHIP} bg-purple-600/80">
 										{endorsement.endorsement}
 									</div>
 								</Tooltip>
@@ -336,9 +332,9 @@
 
 						<!-- Online Status -->
 						{#if onlineStatus.isOnline}
-							<div class="flex items-center justify-center gap-1 rounded bg-green-600/20 px-2 py-1">
-								<IconTransmissionTower class="h-3 w-3 text-green-400" />
-								<div class="font-mono text-xs font-medium text-green-400">
+							<div class="{CHIP} bg-green-600/80">
+								<IconTransmissionTower class="h-3 w-3" />
+								<div>
 									{onlineStatus.callsign} • {onlineStatus.frequency
 										? formatFrequency(onlineStatus.frequency)
 										: 'N/A'}
