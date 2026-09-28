@@ -6,6 +6,7 @@
 	import IconCog from '~icons/mdi/cog';
 	import IconCalendar from '~icons/mdi/calendar';
 	import IconMessage from '~icons/mdi/message';
+	import IconBadge from '~icons/mdi/badge-account-horizontal';
 
 	let {
 		user,
@@ -33,6 +34,11 @@
 			label: 'Roster',
 			href: '/roster',
 			icon: IconAccountGroup
+		},
+		{
+			label: 'Staff',
+			href: '/staff',
+			icon: IconBadge
 		}
 	];
 
