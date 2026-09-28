@@ -64,6 +64,13 @@
 			"when": 1790348267078,
 			"tag": "0008_staff_emails",
 			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "6",
+			"when": 1790368675076,
+			"tag": "0009_user_profile",
+			"breakpoints": true
 		}
 	]
 }

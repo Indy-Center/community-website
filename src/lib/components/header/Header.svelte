@@ -128,6 +128,14 @@
 
 							<div class="space-y-2">
 								<a
+									href="/profile"
+									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+									onclick={() => (showMobileMenu = false)}
+								>
+									<IconAccount class="h-4 w-4" />
+									<span>My Profile</span>
+								</a>
+								<a
 									href="/settings"
 									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
 									onclick={() => (showMobileMenu = false)}

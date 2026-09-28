@@ -3,7 +3,9 @@
 	import IconArrowUp from '~icons/mdi/arrow-up';
 	import IconArrowDown from '~icons/mdi/arrow-down';
 	import IconTransmissionTower from '~icons/mdi/transmission-tower';
+	import IconCog from '~icons/mdi/cog';
 	import Tooltip from '$lib/components/Tooltip.svelte';
+	import StaffBadges from '$lib/components/StaffBadges.svelte';
 	import type { VnasController } from '$lib/types/vnas.js';
 	import {
 		CERTIFICATIONS,
@@ -19,7 +21,7 @@
 
 	// Display names now handled by centralized configuration
 
-	const { roster, controllers, roles } = data;
+	const { roster, controllers, roles, staffBadges } = data;
 
 	let searchTerm = $state('');
 	let sortField = $state<string>('initials');
@@ -276,23 +278,22 @@
 					<div class="flex min-w-0 flex-wrap items-center justify-center gap-2">
 						<!-- Name -->
 						<div class="min-w-0 font-semibold text-white">
-							{#if isAdmin(roles)}
-								<a
-									href={`/admin/users/${member.user?.id}`}
-									class="block hover:text-sky-500 md:inline"
-								>
-									{member.user?.preferredName
-										? member.user.preferredName
-										: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
-								</a>
-							{:else}
-								<span class="block md:inline">
-									{member.user?.preferredName
-										? member.user.preferredName
-										: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
-								</span>
-							{/if}
+							<a href={`/profile/${member.data.cid}`} class="block hover:text-sky-500 md:inline">
+								{member.user?.preferredName
+									? member.user.preferredName
+									: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+							</a>
 							<span class="ml-1 text-sm font-normal text-gray-400">({member.data.cid})</span>
+							{#if isAdmin(roles) && member.user}
+								<a
+									href={`/admin/users/${member.user.id}`}
+									class="ml-1 inline-flex align-middle text-gray-500 hover:text-sky-500"
+									title="Manage user"
+									aria-label="Manage user"
+								>
+									<IconCog class="h-4 w-4" />
+								</a>
+							{/if}
 						</div>
 
 						<!-- Rating -->
@@ -303,6 +304,9 @@
 								{member.data.rating_short}
 							</div>
 						</Tooltip>
+
+						<!-- Staff -->
+						<StaffBadges badges={staffBadges[member.data.cid] ?? []} />
 
 						<!-- Certifications -->
 						{#if member.user?.certifications && member.user.certifications.length > 0}
