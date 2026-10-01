@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import IconMessage from '~icons/mdi/message';
+	import IconHandshake from '~icons/mdi/handshake';
 
 	let { children, data } = $props();
 
@@ -17,6 +18,12 @@
 			href: '/admin/feedback',
 			icon: IconMessage,
 			description: 'Review and manage controller feedback'
+		},
+		{
+			label: 'Manage Partners',
+			href: '/admin/partners',
+			icon: IconHandshake,
+			description: 'Add and edit partners shown on the partners page'
 		}
 	];
 
