@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import { usersTable } from '$lib/db/schema/users';
 import { eventsTable, eventPositionsTable } from '$lib/db/schema/events';
 import { feedbackTable } from '$lib/db/schema/feedback';
+import { partnersTable } from '$lib/db/schema/partners';
 import { count, eq, sql } from 'drizzle-orm';
 
 export const load = async ({ locals }) => {
@@ -38,6 +39,11 @@ export const load = async ({ locals }) => {
 		.from(feedbackTable)
 		.where(eq(feedbackTable.status, 'pending'));
 
+	const publishedPartners = await locals.db
+		.select({ count: count() })
+		.from(partnersTable)
+		.where(eq(partnersTable.isPublished, true));
+
 	return {
 		user: locals.user,
 		roles: locals.roles,
@@ -57,6 +63,9 @@ export const load = async ({ locals }) => {
 			feedback: {
 				total: totalFeedback[0]?.count || 0,
 				pending: pendingFeedback[0]?.count || 0
+			},
+			partners: {
+				published: publishedPartners[0]?.count || 0
 			}
 		}
 	};

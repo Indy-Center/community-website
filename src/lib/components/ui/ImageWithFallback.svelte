@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import IconCalendarEvent from '~icons/mdi/calendar-star';
 
 	interface Props {
@@ -7,9 +8,17 @@
 		class?: string;
 		fallbackClass?: string;
 		loading?: 'lazy' | 'eager';
+		fallbackIcon?: Component;
 	}
 
-	let { src, alt, class: className = '', fallbackClass = '', loading = 'lazy' }: Props = $props();
+	let {
+		src,
+		alt,
+		class: className = '',
+		fallbackClass = '',
+		loading = 'lazy',
+		fallbackIcon: FallbackIcon = IconCalendarEvent
+	}: Props = $props();
 
 	let imageLoaded = $state(false);
 	let imageError = $state(false);
@@ -42,7 +51,7 @@
 {#if showFallback}
 	<!-- Fallback content -->
 	<div class="flex items-center justify-center {fallbackClass} {className}">
-		<IconCalendarEvent class="h-8 w-8 text-slate-500" />
+		<FallbackIcon class="h-8 w-8 text-slate-500" />
 	</div>
 {:else}
 	<!-- Actual image -->

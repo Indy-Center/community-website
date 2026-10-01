@@ -6,6 +6,7 @@
 	import IconAccount from '~icons/mdi/account';
 	import IconShield from '~icons/mdi/shield';
 	import IconChartLine from '~icons/mdi/chart-line';
+	import IconHandshake from '~icons/mdi/handshake';
 
 	let { data } = $props();
 
@@ -30,6 +31,14 @@
 					? `${stats.feedback.pending} pending`
 					: `${stats.feedback.total} total`,
 			color: 'purple'
+		},
+		{
+			title: 'Partner Management',
+			description: 'Add, edit, and publish the partners shown on the partners page.',
+			href: '/admin/partners',
+			icon: IconHandshake,
+			badge: `${stats.partners.published} published`,
+			color: 'sky'
 		}
 	];
 
