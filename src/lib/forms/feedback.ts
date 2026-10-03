@@ -4,8 +4,8 @@ export const feedbackSchema = z.object({
 	controllerId: z.string().min(1, 'Please select a controller'),
 	// Pending -> Approved | Rejected
 	status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-	// Poor, Fair, Good, Excellent
-	rating: z.enum(['poor', 'fair', 'good', 'excellent']).default('' as 'poor'),
+	// Poor, Fair, Good, Very Good, Excellent
+	rating: z.enum(['poor', 'fair', 'good', 'very_good', 'excellent']).default('' as 'poor'),
 	// Free flow field like Indy Center, or CMH_LCE
 	position: z.string(),
 	// The submitters callsign (optional)

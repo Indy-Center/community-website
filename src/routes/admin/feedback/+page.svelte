@@ -45,6 +45,8 @@
 		switch (rating) {
 			case 'excellent':
 				return 'bg-green-600/20 text-green-300';
+			case 'very_good':
+				return 'bg-teal-600/20 text-teal-300';
 			case 'good':
 				return 'bg-blue-600/20 text-blue-300';
 			case 'fair':
@@ -121,7 +123,7 @@
 								{feedback.status}
 							</span>
 							<span class="rounded px-2 py-1 text-xs {getRatingColor(feedback.rating)}">
-								{feedback.rating}
+								{feedback.rating.replace('_', ' ')}
 							</span>
 						</div>
 					</div>
@@ -240,7 +242,7 @@
 								</div>
 								<div class="flex items-center space-x-2">
 									<span class="rounded px-2 py-1 text-xs {getRatingColor(feedback.rating)}">
-										{feedback.rating}
+										{feedback.rating.replace('_', ' ')}
 									</span>
 									<span
 										class="rounded border px-2 py-1 font-mono text-xs {getStatusColor(

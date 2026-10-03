@@ -7,6 +7,7 @@
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { feedbackSchema } from '$lib/forms/feedback';
 	import type { User } from '$lib/db/schema/users';
+	import StarRating from './StarRating.svelte';
 
 	const {
 		data,
@@ -102,19 +103,12 @@
 					>Overall Rating {#if $errors.rating}<span class="text-red-400">- {$errors.rating}</span
 						>{/if}</label
 				>
-				<select
+				<StarRating
 					name="rating"
 					bind:value={$form.rating}
-					class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-					aria-invalid={$errors.rating ? 'true' : undefined}
-					{...$constraints.rating}
-				>
-					<option selected value="">Select a Rating</option>
-					<option value="poor">Poor</option>
-					<option value="fair">Fair</option>
-					<option value="good">Good</option>
-					<option value="excellent">Excellent</option>
-				</select>
+					invalid={!!$errors.rating}
+					required={$constraints.rating?.required}
+				/>
 			</div>
 		</div>
 
