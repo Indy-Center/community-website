@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const feedbackSchema = z.object({
-	controllerId: z.string(),
+	controllerId: z.string().min(1, 'Please select a controller'),
 	// Pending -> Approved | Rejected
 	status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
 	// Poor, Fair, Good, Excellent

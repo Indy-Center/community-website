@@ -22,6 +22,12 @@ export const load = async ({ locals, params, url }) => {
 		return nameA.localeCompare(nameB);
 	});
 
+	// /feedback/<cid> links pre-select that controller so they can share their own feedback link
+	if (params.cid) {
+		const controller = controllers.find((c) => c.cid === params.cid);
+		if (controller) form.data.controllerId = controller.id;
+	}
+
 	return {
 		form,
 		controllers,

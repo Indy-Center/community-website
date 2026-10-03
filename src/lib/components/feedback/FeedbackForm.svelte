@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
+	import ControllerSearch from './ControllerSearch.svelte';
 
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { feedbackSchema } from '$lib/forms/feedback';
@@ -14,6 +17,14 @@
 	} = $props();
 
 	const { form, errors, enhance, constraints, message } = superForm(data);
+
+	// Keep the URL in sync as /feedback/<cid> so the link for the selected controller can be copied
+	$effect(() => {
+		const cid = controllers.find((c) => c.id === $form.controllerId)?.cid;
+		if (cid && page.url.pathname !== `/feedback/${cid}`) {
+			replaceState(`/feedback/${cid}`, page.state);
+		}
+	});
 </script>
 
 <form method="POST" use:enhance class="w-full max-w-5xl">
@@ -43,20 +54,12 @@
 							>- {$errors.controllerId}</span
 						>{/if}</label
 				>
-				<select
+				<ControllerSearch
 					name="controllerId"
+					users={controllers}
 					bind:value={$form.controllerId}
-					class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-					aria-invalid={$errors.controllerId ? 'true' : undefined}
-					{...$constraints.controllerId}
-				>
-					<option selected value="">Select Controller</option>
-					{#each controllers as controller}
-						<option value={controller.id}>
-							{controller.preferredName || `${controller.firstName} ${controller.lastName}`} ({controller.cid})
-						</option>
-					{/each}
-				</select>
+					invalid={!!$errors.controllerId}
+				/>
 			</div>
 
 			<!-- Position and Callsign -->
