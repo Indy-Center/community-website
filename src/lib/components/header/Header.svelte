@@ -14,6 +14,7 @@
 	import { isAdmin } from '$lib/utils/permissions';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
+	import Tooltip from '../Tooltip.svelte';
 
 	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
 
@@ -105,21 +106,33 @@
 							</div>
 
 							<div class="mb-3 flex flex-wrap gap-2">
-								{#if data.user.data.vatsim.rating.short}
-									<div
-										class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
+								{#if data.user.membership === 'controller' && data.user.data.vatsim.rating.short}
+									<Tooltip
+										text="ATC Rating: {data.user.data.vatsim.rating.long}"
+										position="bottom"
+										align="end"
 									>
-										<IconRating class="h-3 w-3" />
-										{data.user.data.vatsim.rating.short}
-									</div>
+										<div
+											class="flex items-center gap-1 rounded-md bg-sky-600/30 px-2 py-1 font-mono text-xs text-sky-200"
+										>
+											<IconRating class="h-3 w-3" />
+											{data.user.data.vatsim.rating.short}
+										</div>
+									</Tooltip>
 								{/if}
-								{#if data.user.data.vatsim.pilotrating.short}
-									<div
-										class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
+								{#if data.user.data.vatsim.pilotrating.id > 0}
+									<Tooltip
+										text="Pilot Rating: {data.user.data.vatsim.pilotrating.long}"
+										position="bottom"
+										align="end"
 									>
-										<IconAirplane class="h-3 w-3" />
-										{data.user.data.vatsim.pilotrating.short}
-									</div>
+										<div
+											class="flex items-center gap-1 rounded-md bg-pink-600/30 px-2 py-1 font-mono text-xs text-pink-200"
+										>
+											<IconAirplane class="h-3 w-3" />
+											{data.user.data.vatsim.pilotrating.short}
+										</div>
+									</Tooltip>
 								{/if}
 							</div>
 
