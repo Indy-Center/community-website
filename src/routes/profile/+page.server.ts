@@ -22,25 +22,43 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	// Approved feedback about this user, at every rating
-	const rows = await locals.db
-		.select({
-			id: feedbackTable.id,
-			rating: feedbackTable.rating,
-			position: feedbackTable.position,
-			callsign: feedbackTable.callsign,
-			feedback: feedbackTable.feedback,
-			createdAt: feedbackTable.createdAt,
-			submitterFirstName: submitter.firstName,
-			submitterLastName: submitter.lastName,
-			submitterPreferredName: submitter.preferredName
-		})
-		.from(feedbackTable)
-		.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
-		.where(
-			and(eq(feedbackTable.controllerId, locals.user.id), eq(feedbackTable.status, 'approved'))
-		)
-		.orderBy(desc(feedbackTable.createdAt));
+	const [rows, rosterEntry, certifications, endorsements, assignments, teamRows] =
+		await Promise.all([
+			// Approved feedback about this user, at every rating
+			locals.db
+				.select({
+					id: feedbackTable.id,
+					rating: feedbackTable.rating,
+					position: feedbackTable.position,
+					callsign: feedbackTable.callsign,
+					feedback: feedbackTable.feedback,
+					createdAt: feedbackTable.createdAt,
+					submitterFirstName: submitter.firstName,
+					submitterLastName: submitter.lastName,
+					submitterPreferredName: submitter.preferredName
+				})
+				.from(feedbackTable)
+				.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
+				.where(
+					and(eq(feedbackTable.controllerId, locals.user.id), eq(feedbackTable.status, 'approved'))
+				)
+				.orderBy(desc(feedbackTable.createdAt)),
+			// Only controllers on the roster have a public profile
+			locals.db.query.vatsimControllersTable.findFirst({
+				where: eq(vatsimControllersTable.cid, locals.user.cid),
+				columns: { cid: true, data: true }
+			}),
+			locals.db
+				.select({ certification: userCertificationsTable.certification })
+				.from(userCertificationsTable)
+				.where(eq(userCertificationsTable.userId, locals.user.id)),
+			locals.db
+				.select({ endorsement: userEndorsementsTable.endorsement })
+				.from(userEndorsementsTable)
+				.where(eq(userEndorsementsTable.userId, locals.user.id)),
+			locals.db.query.staffAssignmentsTable.findMany(),
+			locals.db.query.staffTeamMembersTable.findMany()
+		]);
 
 	// Pilots who gave their callsign are shown by their preferred name, or first name and
 	// last initial ("Tom M.") if they haven't set a custom one; the rest stay anonymous, and
@@ -73,28 +91,17 @@ export const load = async ({ locals, url }) => {
 		};
 	});
 
-	// Only controllers on the roster have a public profile
-	const rosterEntry = await locals.db.query.vatsimControllersTable.findFirst({
-		where: eq(vatsimControllersTable.cid, locals.user.cid),
-		columns: { cid: true }
-	});
-
-	const certifications = await locals.db
-		.select({ certification: userCertificationsTable.certification })
-		.from(userCertificationsTable)
-		.where(eq(userCertificationsTable.userId, locals.user.id));
-	const endorsements = await locals.db
-		.select({ endorsement: userEndorsementsTable.endorsement })
-		.from(userEndorsementsTable)
-		.where(eq(userEndorsementsTable.userId, locals.user.id));
-
 	return {
 		form,
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		isController: locals.user.membership === 'controller',
 		hasPublicProfile: !!rosterEntry,
-		staffBadges: (await getStaffBadges(locals.db)).get(locals.user.cid) ?? [],
+		// Manually assigned staff can be off the roster, so badges don't need a roster entry
+		staffBadges:
+			getStaffBadges(rosterEntry ? [rosterEntry] : [], assignments, teamRows).get(
+				locals.user.cid
+			) ?? [],
 		certifications: certifications.map((c) => c.certification),
 		endorsements: endorsements.map((e) => e.endorsement)
 	};
