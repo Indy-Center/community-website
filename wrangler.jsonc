@@ -21,6 +21,8 @@
 		"binding": "CF_VERSION_METADATA"
 	},
 	"vars": {
+		"AUTH_PROVIDER": "identity",
+		"IDENTITY_CLIENT_ID": "community-web",
 		"CONNECT_BASE_URL": "https://auth.vatsim.net",
 		"CONNECT_CALLBACK_URL": "https://flyindycenter.com/login/connect/callback",
 		"CONNECT_CLIENT_ID": 1653,
