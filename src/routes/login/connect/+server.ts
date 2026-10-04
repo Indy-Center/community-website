@@ -2,16 +2,23 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { generateCodeVerifier, generateState } from 'arctic';
 import { client } from '$lib/server/oauth';
 import { env } from '$env/dynamic/private';
+import { identityClient, identityEnabled, identityUrl } from '$lib/server/identity';
 
 export async function GET(event: RequestEvent): Promise<Response> {
 	const state = generateState();
 	const returnUrl = event.url.searchParams.get('returnUrl');
 
-	const url = client.createAuthorizationURL(`${env.CONNECT_BASE_URL}/oauth/authorize`, state, [
-		'full_name',
-		'vatsim_details',
-		'email'
-	]);
+	const url = identityEnabled()
+		? identityClient(event.url.origin).createAuthorizationURL(
+				identityUrl('/oauth/authorize'),
+				state,
+				[]
+			)
+		: client.createAuthorizationURL(`${env.CONNECT_BASE_URL}/oauth/authorize`, state, [
+				'full_name',
+				'vatsim_details',
+				'email'
+			]);
 
 	event.cookies.set('connect_oauth_state', state, {
 		path: '/',

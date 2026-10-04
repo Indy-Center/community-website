@@ -1,5 +1,5 @@
 import { userRolesTable } from '$lib/db/schema/roles';
-import type { User } from '$lib/db/schema/users';
+import type { SessionData, User } from '$lib/db/schema/users';
 import { userSessionsTable, usersTable } from '$lib/db/schema/users';
 import type { Database } from '$lib/server/db';
 import { sha256 } from '@oslojs/crypto/sha2';
@@ -12,19 +12,26 @@ export function generateSessionToken(): string {
 	return encodeBase32LowerCaseNoPadding(crypto.getRandomValues(new Uint8Array(20)));
 }
 
-export async function createSession(token: string, id: string, db: Database): Promise<Session> {
+export async function createSession(
+	token: string,
+	id: string,
+	db: Database,
+	data: SessionData | null = null
+): Promise<Session> {
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
 
 	const session = {
 		id: sessionId,
 		userId: id,
-		expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+		expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+		data
 	};
 
 	await db.insert(userSessionsTable).values({
 		id: session.id,
 		userId: session.userId,
-		expiresAt: session.expiresAt
+		expiresAt: session.expiresAt,
+		data: session.data
 	});
 
 	return session;
@@ -61,7 +68,8 @@ export async function validateSessionToken(
 	const session = {
 		id: existingSession.id,
 		userId: existingSession.userId,
-		expiresAt: existingSession.expiresAt
+		expiresAt: existingSession.expiresAt,
+		data: existingSession.data
 	};
 
 	// Session is Expired
@@ -87,6 +95,10 @@ export async function validateSessionToken(
 	const stringRoles = roles.map((role) => role.role);
 
 	return { session, user, roles: stringRoles };
+}
+
+export async function updateSessionData(sessionId: string, data: SessionData, db: Database) {
+	await db.update(userSessionsTable).set({ data }).where(eq(userSessionsTable.id, sessionId));
 }
 
 export async function invalidateSession(sessionId: string, db: Database) {
@@ -115,6 +127,7 @@ export type Session = {
 	id: string;
 	userId: string;
 	expiresAt: Date;
+	data: SessionData | null;
 };
 
 export type SessionValidationResult =

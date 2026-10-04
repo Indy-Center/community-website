@@ -25,10 +25,19 @@ export const usersTable = sqliteTable('users', {
 	data: text('data', { mode: 'json' }).$type<VatsimUserData>().notNull()
 });
 
+export type SessionData = {
+	// Access token from id.flyindycenter.com; absent on VATSIM Connect sessions
+	identityToken?: string;
+	// Roles identity last returned for that token, and when it was last asked
+	identityRoles?: string[];
+	identityCheckedAt?: number;
+};
+
 export const userSessionsTable = sqliteTable('user_sessions', {
 	id: text('id').primaryKey(),
 	userId: text('user_id').notNull(),
-	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
+	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+	data: text('data', { mode: 'json' }).$type<SessionData>()
 });
 
 export const userRelations = relations(usersTable, ({ many, one }) => ({
