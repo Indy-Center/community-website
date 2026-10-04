@@ -2,12 +2,17 @@ import * as Sentry from '@sentry/sveltekit';
 import { instrumentD1WithSentry } from '@sentry/cloudflare';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
-import { drizzle } from '$lib/server/db';
+import { drizzle, type Database } from '$lib/server/db';
 
+import { fetchUserinfo, identityEnabled, toSiteRoles } from '$lib/server/identity';
+import { logger } from '$lib/server/logger';
 import {
 	validateSessionToken,
 	deleteSessionTokenCookie,
-	setSessionTokenCookie
+	invalidateSession,
+	setSessionTokenCookie,
+	updateSessionData,
+	type Session
 } from '$lib/server/session';
 
 export const handle = sequence(
@@ -45,13 +50,59 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 		deleteSessionTokenCookie(event.cookies);
 		return await resolve(event);
 	}
+
+	// Identity sessions add identity's roles to the locally computed ones (which
+	// aren't pushed to identity yet).
+	let siteRoles = roles;
+	if (session.data?.identityToken && identityEnabled()) {
+		const identityRoles = await currentIdentityRoles(session, event.locals.db);
+		if (!identityRoles) {
+			await invalidateSession(session.id, event.locals.db);
+			Sentry.setUser(null);
+			deleteSessionTokenCookie(event.cookies);
+			return await resolve(event);
+		}
+		siteRoles = [...new Set([...roles, ...toSiteRoles(identityRoles)])];
+	}
+
 	Sentry.setUser({ id: user.id, cid: user.cid });
 	event.locals.user = user;
-	event.locals.roles = roles;
+	event.locals.roles = siteRoles;
 
 	setSessionTokenCookie(event.cookies, token, session.expiresAt);
 	event.locals.session = session;
 
 	return await resolve(event);
 }
+
+const IDENTITY_RECHECK_MS = 5 * 60 * 1000;
+
+// Asks identity for the user's roles at most every few minutes, keeping the
+// answer on the session. Returns null when identity rejects the token: the
+// user logged out or was disabled there. If identity can't be reached, the
+// last known roles stand.
+async function currentIdentityRoles(session: Session, db: Database): Promise<string[] | null> {
+	const data = session.data!;
+	const lastKnown = data.identityRoles ?? [];
+	if (Date.now() - (data.identityCheckedAt ?? 0) < IDENTITY_RECHECK_MS) {
+		return lastKnown;
+	}
+
+	try {
+		const claims = await fetchUserinfo(data.identityToken!);
+		if (!claims) {
+			return null;
+		}
+		await updateSessionData(
+			session.id,
+			{ ...data, identityRoles: claims.roles, identityCheckedAt: Date.now() },
+			db
+		);
+		return claims.roles;
+	} catch (error) {
+		logger.error('Identity userinfo check failed', error);
+		return lastKnown;
+	}
+}
+
 export const handleError = Sentry.handleErrorWithSentry();
