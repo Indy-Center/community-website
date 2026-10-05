@@ -6,6 +6,7 @@ import type { Database } from '$lib/server/db';
 import { logger } from './logger';
 import { ratingLabel } from '$lib/utils/feedbackRatings';
 import { statusLabel } from '$lib/utils/feedbackReview';
+import { LarryChannel, type LarryBinding, type LarryMessage } from './larry';
 
 export enum DiscordChannel {
 	TECH_TEAM_ALERTS,
@@ -40,6 +41,10 @@ function getDisplayName(user: User) {
 
 export async function sendDiscordEmbed(channel: DiscordChannel, embed: DiscordEmbed) {
 	const webhookUrl = DISCORD_CHANNELS[channel];
+	if (!webhookUrl) {
+		logger.warn(`No webhook configured for Discord channel ${DiscordChannel[channel]}`);
+		return;
+	}
 
 	await fetch(webhookUrl, {
 		method: 'POST',
@@ -52,6 +57,29 @@ export async function sendDiscordEmbed(channel: DiscordChannel, embed: DiscordEm
 	});
 }
 
+/**
+ * Sends through Larry (the indy-larry Worker) instead of a webhook. Never throws, so a Discord
+ * problem can't fail the action that triggered it. Returns whether the message went out.
+ */
+async function sendViaLarry(
+	larry: LarryBinding | undefined,
+	message: LarryMessage,
+	mode: 'send' | 'enqueue'
+) {
+	if (!larry) {
+		logger.warn(`LARRY binding is not set, skipping message to ${message.channel}`);
+		return false;
+	}
+
+	try {
+		await larry[mode](message);
+		return true;
+	} catch (error) {
+		logger.error(`Larry message to ${message.channel} failed`, error);
+		return false;
+	}
+}
+
 const STATUS_COLORS: Partial<Record<FeedbackStatus, number>> = {
 	approved: 0x5865f2,
 	follow_up: 0xf1c40f,
@@ -59,6 +87,7 @@ const STATUS_COLORS: Partial<Record<FeedbackStatus, number>> = {
 };
 
 export async function notifyDiscordOfFeedbackStatusChange(
+	larry: LarryBinding | undefined,
 	db: Database,
 	feedback: Feedback,
 	adminUser: User
@@ -122,11 +151,19 @@ export async function notifyDiscordOfFeedbackStatusChange(
 			timestamp: feedback.createdAt!.toISOString()
 		};
 
-		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, embed);
+		await sendViaLarry(
+			larry,
+			{ channel: LarryChannel.SENIOR_STAFF_ALERTS, embeds: [embed] },
+			'enqueue'
+		);
 	}
 }
 
-export async function notifyDiscordOfFeedback(db: Database, feedback: Feedback) {
+export async function notifyDiscordOfFeedback(
+	larry: LarryBinding | undefined,
+	db: Database,
+	feedback: Feedback
+) {
 	const submitter = await db.query.usersTable.findFirst({
 		where: eq(usersTable.id, feedback.submitterId)
 	});
@@ -162,7 +199,11 @@ export async function notifyDiscordOfFeedback(db: Database, feedback: Feedback) 
 			timestamp: feedback.createdAt!.toISOString()
 		};
 
-		await sendDiscordEmbed(DiscordChannel.SENIOR_STAFF_ALERTS, embed);
+		await sendViaLarry(
+			larry,
+			{ channel: LarryChannel.SENIOR_STAFF_ALERTS, embeds: [embed] },
+			'enqueue'
+		);
 	}
 }
 
@@ -178,14 +219,12 @@ function fieldValue(value: string) {
  *
  * Never throws, so a Discord problem can't fail publishing. Returns whether the post went out.
  */
-export async function announcePublishedFeedback(db: Database, feedback: Feedback) {
+export async function announcePublishedFeedback(
+	larry: LarryBinding | undefined,
+	db: Database,
+	feedback: Feedback
+) {
 	if (feedback.publishMode !== 'identified') return false;
-
-	const webhookUrl = env.DISCORD_WEBHOOK_FEEDBACK;
-	if (!webhookUrl) {
-		logger.warn('DISCORD_WEBHOOK_FEEDBACK is not set, skipping feedback announcement');
-		return false;
-	}
 
 	try {
 		const controller = await db.query.usersTable.findFirst({
@@ -225,23 +264,15 @@ export async function announcePublishedFeedback(db: Database, feedback: Feedback
 			fields.push({ name: 'Comments', value: fieldValue(comments), inline: false });
 		}
 
-		const response = await fetch(webhookUrl, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
+		return await sendViaLarry(
+			larry,
+			{
+				channel: LarryChannel.FEEDBACK,
 				content: 'New feedback received!',
 				embeds: [{ color: 0x2ecc71, fields }]
-			})
-		});
-
-		if (!response.ok) {
-			logger.error(`Feedback announcement failed: ${response.status} ${await response.text()}`);
-			return false;
-		}
-
-		return true;
+			},
+			'send'
+		);
 	} catch (error) {
 		logger.error('Feedback announcement failed', error);
 		return false;

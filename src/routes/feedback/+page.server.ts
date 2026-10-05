@@ -60,7 +60,7 @@ export const actions = {
 			})
 			.returning();
 
-		await notifyDiscordOfFeedback(locals.db, feedback);
+		await notifyDiscordOfFeedback(locals.larry, locals.db, feedback);
 
 		form.message = 'Feedback submitted successfully!';
 		return { form };

@@ -39,6 +39,7 @@
 	"observability": {
 		"enabled": true
 	},
+	"services": [{ "binding": "LARRY", "service": "indy-larry" }],
 	"d1_databases": [
 		{
 			"binding": "DB",
