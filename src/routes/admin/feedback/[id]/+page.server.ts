@@ -159,7 +159,7 @@ async function changeStatus(
 			});
 		}
 
-		await notifyDiscordOfFeedbackStatusChange(locals.db, feedback, locals.user);
+		await notifyDiscordOfFeedbackStatusChange(locals.larry, locals.db, feedback, locals.user);
 		return { success: true };
 	} catch (err) {
 		logger.error(`Failed to move feedback ${id} to ${status}`, err);
@@ -331,7 +331,9 @@ async function publishFeedback(
 		.where(eq(feedbackTable.id, id))
 		.returning();
 
-	const posted = identified ? await announcePublishedFeedback(locals.db, feedback) : null;
+	const posted = identified
+		? await announcePublishedFeedback(locals.larry, locals.db, feedback)
+		: null;
 
 	await logFeedbackEvent(locals.db, {
 		feedbackId: id,

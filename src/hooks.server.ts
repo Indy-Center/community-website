@@ -44,6 +44,7 @@ function colorScheme({ event, resolve }: Parameters<Handle>[0]) {
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.db = drizzle(instrumentD1WithSentry(event.platform?.env.DB!));
+	event.locals.larry = event.platform?.env.LARRY;
 
 	return await resolve(event);
 }

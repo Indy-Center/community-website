@@ -31,6 +31,7 @@ declare global {
 		}
 		interface Locals {
 			db: Database;
+			larry?: LarryBinding;
 			user?: UserWithRelations;
 			session?: Session;
 			roles: string[];
