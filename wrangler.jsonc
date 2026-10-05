@@ -39,6 +39,8 @@
 	"observability": {
 		"enabled": true
 	},
+	// Indy Larry's send Worker, for booking reminder DMs
+	"services": [{ "binding": "LARRY", "service": "indy-larry" }],
 	"d1_databases": [
 		{
 			"binding": "DB",

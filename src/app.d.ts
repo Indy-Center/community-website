@@ -9,6 +9,10 @@ declare global {
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
+			// Indy Larry's send Worker (Indy-Center/indy-larry, worker/); only the call we make is typed
+			LARRY?: {
+				enqueueDirect(request: { userId: string; embeds: object[] }): Promise<void>;
+			};
 		}
 	}
 	namespace App {

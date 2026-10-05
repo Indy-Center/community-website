@@ -20,6 +20,20 @@ export async function fetchRoster(
 	return data;
 }
 
+// Discord IDs come back as bare JSON numbers too big for a double, so they're quoted before
+// parsing to keep every digit
+export async function fetchRosterDiscordIds(artcc: string = FACILITY_ID) {
+	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}/roster/both`;
+	const text = await fetch(url).then((res) => res.text());
+	const { data } = JSON.parse(text.replace(/"discord_id":(\d+)/g, '"discord_id":"$1"')) as {
+		data: { cid: number; discord_id: string | null }[];
+	};
+
+	return new Map(
+		data.filter((member) => member.discord_id).map((member) => [member.cid, member.discord_id!])
+	);
+}
+
 export async function checkTransferChecklist(cid: string, artcc: string = FACILITY_ID) {
 	logger.debug('Checking VATUSA eligibility', { cid });
 
