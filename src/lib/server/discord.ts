@@ -142,7 +142,7 @@ export async function notifyDiscordOfFeedbackStatusChange(
 
 		const embed = {
 			title: '🎯 Feedback Status Changed',
-			description: feedback.feedback,
+			description: feedback.feedback ?? undefined,
 			color: STATUS_COLORS[feedback.status] ?? 0x5865f2,
 			fields,
 			footer: {
@@ -174,7 +174,7 @@ export async function notifyDiscordOfFeedback(
 	if (submitter && controller) {
 		const embed = {
 			title: '🎯 New Controller Feedback',
-			description: feedback.feedback,
+			description: feedback.feedback ?? undefined,
 			color: 0x5865f2,
 			fields: [
 				{
