@@ -2,6 +2,7 @@
 
 import type { Database } from '$lib/server/db';
 import type { Session } from '$lib/server/session';
+import type { LarryBinding } from '$lib/server/larry';
 import type { UserWithRelations } from '$lib/user';
 
 // for information about these interfaces
@@ -9,6 +10,7 @@ declare global {
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
+			LARRY: LarryBinding;
 		}
 	}
 	namespace App {
@@ -19,6 +21,7 @@ declare global {
 		}
 		interface Locals {
 			db: Database;
+			larry?: LarryBinding;
 			user?: UserWithRelations;
 			session?: Session;
 			roles: string[];

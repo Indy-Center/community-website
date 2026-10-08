@@ -26,6 +26,7 @@
 		"@date-fns/utc": "^2.1.1",
 		"@iconify/json": "^2.2.379",
 		"@indy-center/adapter-cloudflare": "^7.2.8-indy.3",
+		"@indy-center/indy-larry-worker": "^1.2.0",
 		"@libsql/client": "^0.15.14",
 		"@sentry/cloudflare": "^10.12.0",
 		"@sveltejs/kit": "^2.31.0",

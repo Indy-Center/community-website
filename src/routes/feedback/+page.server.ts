@@ -52,14 +52,15 @@ export const actions = {
 				submitterId: locals.user.id,
 				controllerId: form.data.controllerId,
 				rating: form.data.rating,
-				status: form.data.status,
+				// Every submission starts as new feedback; staff move it through review
+				status: 'pending',
 				position: form.data.position,
 				callsign: form.data.callsign,
 				feedback: form.data.feedback
 			})
 			.returning();
 
-		await notifyDiscordOfFeedback(locals.db, feedback);
+		await notifyDiscordOfFeedback(locals.larry, locals.db, feedback);
 
 		form.message = 'Feedback submitted successfully!';
 		return { form };

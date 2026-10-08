@@ -27,7 +27,7 @@
 			icon: IconMessage,
 			badge:
 				stats.feedback.pending > 0
-					? `${stats.feedback.pending} pending`
+					? `${stats.feedback.pending} new`
 					: `${stats.feedback.total} total`,
 			color: 'purple'
 		}
