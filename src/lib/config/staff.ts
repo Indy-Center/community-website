@@ -25,9 +25,9 @@ export const STAFF_POSITIONS: StaffPosition[] = [
 	{ key: 'ATM', title: 'Air Traffic Manager' },
 	{ key: 'DATM', title: 'Deputy Air Traffic Manager' },
 	{ key: 'TA', title: 'Training Administrator' },
-	{ key: 'EC', title: 'Events Coordinator' },
+	{ key: 'EC', title: 'Events Team Manager' },
 	{ key: 'FE', title: 'Facility Engineer' },
-	{ key: 'WM', title: 'Webmaster' }
+	{ key: 'WM', title: 'Tech Team Manager' }
 ];
 
 export const STAFF_TEAMS: StaffTeam[] = [
