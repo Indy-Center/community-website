@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { logger } from '$lib/server/logger';
 import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
@@ -128,6 +129,48 @@ describe('/partners', () => {
 		expect(data).toEqual({ state: 'unavailable' });
 	});
 
+	it("says partners couldn't be loaded when the CMS answers with something that isn't a partners document and no copy is kept", async () => {
+		const s = site({ cms: fakeCms({ '/api/community/partners': { nope: true } }) });
+
+		const data = await run(load, s.event('/partners'));
+
+		expect(data).toEqual({ state: 'unavailable' });
+	});
+
+	describe("a response that isn't a partners document", () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** Every line the site's logger writes at warn or error, from here on. */
+		function logged() {
+			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+			const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+			return () => [...warn.mock.calls, ...error.mock.calls];
+		}
+
+		it('is logged once when the kept copy is served instead', async () => {
+			const s = site();
+			await run(load, s.event('/partners'));
+			s.clock.now += 6 * 60_000;
+			s.cms.documents['/api/community/partners'] = { nope: true };
+			const lines = logged();
+
+			await run(load, s.event('/partners'));
+
+			expect(lines()).toHaveLength(1);
+		});
+
+		it('is logged once when no copy is kept', async () => {
+			const s = site({ cms: fakeCms({ '/api/community/partners': { nope: true } }) });
+			const lines = logged();
+
+			await run(load, s.event('/partners'));
+
+			expect(lines()).toHaveLength(1);
+		});
+	});
+
 	describe('the kept copy', () => {
 		const MINUTE = 60_000;
 		const DAY = 24 * 60 * MINUTE;
@@ -168,6 +211,37 @@ describe('/partners', () => {
 
 			expect(fresh.state).toBe('listed');
 			expect(data).toEqual(fresh);
+		});
+
+		it("is served, and not replaced, when the CMS answers with something that isn't a partners document", async () => {
+			const s = site();
+			const fresh = await run(load, s.event('/partners'));
+			s.clock.now += 6 * MINUTE;
+			s.cms.documents['/api/community/partners'] = { nope: true };
+
+			expect(await run(load, s.event('/partners'))).toEqual(fresh);
+
+			s.clock.now += 6 * MINUTE;
+
+			expect(await run(load, s.event('/partners'))).toEqual(fresh);
+			expect(s.cms.asked('/api/community/partners')).toBe(3);
+		});
+
+		it('is replaced by a new partners document', async () => {
+			const s = site();
+			await run(load, s.event('/partners'));
+			const renamed = structuredClone(partners);
+			renamed.categories[0].partners[0].name = 'Renamed Scenery Co.';
+			s.clock.now += 6 * MINUTE;
+			s.cms.documents['/api/community/partners'] = renamed;
+			const updated = await run(load, s.event('/partners'));
+			s.clock.now += 6 * MINUTE;
+			s.cms.down();
+
+			const data = await run(load, s.event('/partners'));
+
+			expect(JSON.stringify(updated)).toContain('Renamed Scenery Co.');
+			expect(data).toEqual(updated);
 		});
 
 		it('is not served once it is over seven days old', async () => {

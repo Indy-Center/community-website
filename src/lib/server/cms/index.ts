@@ -1,3 +1,5 @@
+import { logger } from '$lib/server/logger';
+import { partnersDocument } from './schema';
 import type { PartnersDocument } from './types';
 
 /**
@@ -5,9 +7,10 @@ import type { PartnersDocument } from './types';
  * indy-library's client (`src/lib/server/cms/index.ts` there); copy changes across by hand.
  *
  * The document is kept for a few minutes (`FRESH_MS`) so pages are quick and the CMS is not asked
- * on every request. When the CMS cannot be reached, answers with an error, or takes too long, the
- * last good copy is served instead for as long as `KEEP_MS`, so a CMS outage does not take the
- * partners page down. Only with no copy at all does a read fail, with `CmsUnavailableError`.
+ * on every request. When the CMS cannot be reached, answers with an error, takes too long, or answers
+ * with something that is not the document asked for, the last good copy is served instead for as
+ * long as `KEEP_MS`, so a CMS outage does not take the partners page down. Only a document of the
+ * right shape is ever kept. Only with no copy at all does a read fail, with `CmsUnavailableError`.
  *
  * The document includes member perks. It is kept server-side only; pages read it through
  * `readPartners` (`$lib/server/partners`), which decides what each visitor is sent.
@@ -56,13 +59,14 @@ export function createCms(options: CmsOptions): Cms {
 	const now = options.now ?? Date.now;
 	const timeoutMs = options.timeoutMs ?? CMS_TIMEOUT_MS;
 
-	async function read(path: string): Promise<unknown> {
+	/** Reads `path`, keeping the body only once `parse` accepts it; `parse` throws on anything else. */
+	async function read<T>(path: string, parse: (body: unknown) => T): Promise<T> {
 		const kept = await store.get(path).catch((err) => {
 			console.error('[community-website] reading a kept copy failed', path, err);
 			return undefined;
 		});
 		const age = kept ? now() - kept.fetchedAt : Infinity;
-		if (kept && age < FRESH_MS) return kept.body;
+		if (kept && age < FRESH_MS) return kept.body as T;
 
 		try {
 			const response = await options.fetch(new URL(path, baseUrl), {
@@ -70,7 +74,7 @@ export function createCms(options: CmsOptions): Cms {
 				signal: AbortSignal.timeout(timeoutMs)
 			});
 			if (!response.ok) throw new Error(`The CMS answered ${response.status}`);
-			const body: unknown = await response.json();
+			const body = parse(await response.json());
 
 			await store.put(path, { fetchedAt: now(), body }).catch((err) => {
 				console.error('[community-website] keeping a copy failed', path, err);
@@ -78,8 +82,8 @@ export function createCms(options: CmsOptions): Cms {
 			return body;
 		} catch (err) {
 			if (kept && age < KEEP_MS) {
-				console.warn('[community-website] CMS read failed; serving the kept copy', path, err);
-				return kept.body;
+				logger.warn(`CMS read failed for ${path}; serving the kept copy`, err);
+				return kept.body as T;
 			}
 			throw new CmsUnavailableError(path, err);
 		}
@@ -87,7 +91,7 @@ export function createCms(options: CmsOptions): Cms {
 
 	return {
 		async partners() {
-			return (await read('/api/community/partners')) as PartnersDocument;
+			return read('/api/community/partners', (body) => partnersDocument.parse(body));
 		}
 	};
 }
