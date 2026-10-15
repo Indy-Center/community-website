@@ -4,6 +4,9 @@ import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
 
+const MINUTE = 60_000;
+const DAY = 24 * 60 * MINUTE;
+
 describe('/partners', () => {
 	it('lists each partner category in order, with a card per partner and whether it has a member perk', async () => {
 		const data = await run(load, site().event('/partners'));
@@ -201,7 +204,7 @@ describe('/partners', () => {
 		it('is logged once when the kept copy is served instead', async () => {
 			const s = site();
 			await run(load, s.event('/partners'));
-			s.clock.now += 6 * 60_000;
+			s.clock.now += 6 * MINUTE;
 			s.cms.documents['/api/community/partners'] = { nope: true };
 			const lines = logged();
 
@@ -221,9 +224,6 @@ describe('/partners', () => {
 	});
 
 	describe('the kept copy', () => {
-		const MINUTE = 60_000;
-		const DAY = 24 * 60 * MINUTE;
-
 		it('is served for five minutes without asking the CMS again', async () => {
 			const s = site();
 			await run(load, s.event('/partners'));
