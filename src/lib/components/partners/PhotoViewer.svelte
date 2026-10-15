@@ -5,6 +5,7 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { Image } from '$lib/server/cms/types';
+	import PartnerImage from './PartnerImage.svelte';
 	import IconClose from '~icons/mdi/close';
 	import IconPrevious from '~icons/mdi/chevron-left';
 	import IconNext from '~icons/mdi/chevron-right';
@@ -76,11 +77,8 @@
 			aria-hidden="true"
 			onclick={() => (index = null)}
 		></button>
-		<img
-			src={photo.url}
-			alt={photo.alt}
-			width={photo.width}
-			height={photo.height}
+		<PartnerImage
+			image={photo}
 			class="relative max-h-full w-auto max-w-full rounded object-contain"
 		/>
 		<button

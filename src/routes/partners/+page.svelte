@@ -1,7 +1,8 @@
 <script lang="ts">
 	import Panel from '$lib/components/Panel.svelte';
 	import Badge from '$lib/components/Badge.svelte';
-	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
+	import SocialLink from '$lib/components/partners/SocialLink.svelte';
+	import PartnerImage from '$lib/components/partners/PartnerImage.svelte';
 	import IconHandshake from '~icons/mdi/handshake';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
 	import IconImages from '~icons/mdi/image-multiple';
@@ -67,11 +68,9 @@
 					>
 						<div class="flex items-center gap-4">
 							<div class="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-900/60">
-								<img
-									src={partner.logo.url}
-									alt=""
-									width={partner.logo.width}
-									height={partner.logo.height}
+								<PartnerImage
+									image={partner.logo}
+									decorative
 									loading="lazy"
 									class="h-full w-full object-contain p-1.5"
 								/>
@@ -83,14 +82,7 @@
 								{#if partner.socialLinks.length}
 									<div class="mt-1 flex flex-wrap gap-2 text-slate-400">
 										{#each partner.socialLinks as link}
-											<a
-												href={link.url}
-												class="hover:text-white"
-												aria-label="{partner.name} on {platformName(link.platform)}"
-												title={platformName(link.platform)}
-											>
-												<SocialIcon platform={link.platform} class="h-4 w-4" />
-											</a>
+											<SocialLink partnerName={partner.name} {link} variant="card" />
 										{/each}
 									</div>
 								{/if}

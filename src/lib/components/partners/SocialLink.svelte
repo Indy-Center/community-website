@@ -1,3 +1,8 @@
+<!--
+	A partner's Social link: the platform's icon, linking to the partner's address there, named
+	"<partner> on <platform>" for screen readers. `card` is the small one on the partners list;
+	`bar` is the square button under a partner's banner.
+-->
 <script lang="ts" module>
 	import type { Component } from 'svelte';
 	import type { SocialPlatform } from '$lib/server/cms/types';
@@ -23,17 +28,35 @@
 		web: { name: 'Website', icon: IconWeb }
 	};
 
-	/** What a screen reader should call a social link's platform. */
-	export function platformName(platform: SocialPlatform) {
-		return platforms[platform].name;
-	}
+	const variants = {
+		card: { link: 'hover:text-white', icon: 'h-4 w-4' },
+		bar: {
+			link: 'flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/60 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white',
+			icon: 'h-5 w-5'
+		}
+	};
 </script>
 
 <script lang="ts">
-	let { platform, class: className = 'h-5 w-5' }: { platform: SocialPlatform; class?: string } =
-		$props();
+	let {
+		partnerName,
+		link,
+		variant
+	}: {
+		partnerName: string;
+		link: { platform: SocialPlatform; url: string };
+		variant: keyof typeof variants;
+	} = $props();
 
-	const Icon = $derived(platforms[platform].icon);
+	const platform = $derived(platforms[link.platform]);
+	const Icon = $derived(platform.icon);
 </script>
 
-<Icon class={className} aria-hidden="true" />
+<a
+	href={link.url}
+	aria-label="{partnerName} on {platform.name}"
+	title={platform.name}
+	class={variants[variant].link}
+>
+	<Icon class={variants[variant].icon} aria-hidden="true" />
+</a>
