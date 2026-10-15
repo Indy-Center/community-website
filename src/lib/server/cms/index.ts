@@ -87,7 +87,7 @@ export function createCms(options: CmsOptions): Cms {
 
 	return {
 		async partners() {
-			return (await read('/api/partners')) as PartnersDocument;
+			return (await read('/api/community/partners')) as PartnersDocument;
 		}
 	};
 }

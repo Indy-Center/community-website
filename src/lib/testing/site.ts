@@ -9,7 +9,7 @@ export const TEST_CMS_TIMEOUT_MS = 20;
 
 /** The CMS's documents by path, as the fake CMS serves them. */
 export function cmsDocuments(): Record<string, unknown> {
-	return { '/api/partners': partners };
+	return { '/api/community/partners': partners };
 }
 
 /**

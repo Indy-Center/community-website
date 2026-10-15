@@ -50,7 +50,7 @@ describe('/partners', () => {
 	});
 
 	it('says Coming Soon when no partner is published', async () => {
-		const cms = fakeCms({ '/api/partners': { categories: [] } });
+		const cms = fakeCms({ '/api/community/partners': { categories: [] } });
 		const data = await run(load, site({ cms }).event('/partners'));
 
 		expect(data).toEqual({ state: 'coming-soon' });
@@ -75,12 +75,12 @@ describe('/partners', () => {
 			s.clock.now += 4 * MINUTE;
 			await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/partners')).toBe(1);
+			expect(s.cms.asked('/api/community/partners')).toBe(1);
 
 			s.clock.now += 2 * MINUTE;
 			await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/partners')).toBe(2);
+			expect(s.cms.asked('/api/community/partners')).toBe(2);
 		});
 
 		it('is served when the CMS is down', async () => {
@@ -91,7 +91,7 @@ describe('/partners', () => {
 
 			const data = await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/partners')).toBe(2);
+			expect(s.cms.asked('/api/community/partners')).toBe(2);
 			expect(data).toEqual(fresh);
 		});
 
@@ -103,6 +103,7 @@ describe('/partners', () => {
 
 			const data = await run(load, s.event('/partners'));
 
+			expect(fresh.state).toBe('listed');
 			expect(data).toEqual(fresh);
 		});
 

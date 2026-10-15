@@ -42,8 +42,8 @@ A lightweight Cloudflare Worker (`task-runner`) with a single `process-roster` e
 ## Vars and secrets for the CMS
 
 Partners are edited in the CMS (Payload, at `cms.flyindycenter.com`) and read
-from its `GET /api/partners` by `src/lib/server/cms/`, the only place that
-talks to it.
+from its `GET /api/community/partners` by `src/lib/server/cms/`, the only
+place that talks to it.
 
 | Name                  | Kind       | What                                                                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
