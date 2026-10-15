@@ -37,11 +37,11 @@
 			{/each}
 		</div>
 	{:else}
-		{@const one = memberPerks.count === 1}
+		{@const onePerk = memberPerks.count === 1}
 		<div class="space-y-3">
 			<p class="leading-relaxed text-amber-50/90">
-				Indy Center members get {one ? 'a perk' : `${memberPerks.count} perks`} from {partnerName}.
-				Join Indy Center to get {one ? 'it' : 'them'}.
+				Indy Center members get {onePerk ? 'a perk' : `${memberPerks.count} perks`} from {partnerName}.
+				Join Indy Center to get {onePerk ? 'it' : 'them'}.
 			</p>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
 				<a
@@ -74,7 +74,7 @@
 	{@const partner = data.partner}
 	{@const hasPerks = partner.memberPerks.count > 0}
 	<!-- The right column: the member perk panel above the photos. -->
-	{@const hasSide = partner.gallery.length > 0 || hasPerks}
+	{@const hasRightColumn = partner.gallery.length > 0 || hasPerks}
 
 	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
 		<div class="relative">
@@ -137,7 +137,7 @@
 	</div>
 
 	<div class="grid gap-8 lg:grid-cols-3">
-		<div class={hasSide ? 'lg:col-span-2' : 'lg:col-span-3'}>
+		<div class={hasRightColumn ? 'lg:col-span-2' : 'lg:col-span-3'}>
 			<Panel title="About" icon={IconText}>
 				<div class="space-y-4 p-4 leading-relaxed text-slate-300 sm:p-6">
 					{#each partner.paragraphs as paragraph, i (i)}
@@ -147,7 +147,7 @@
 			</Panel>
 		</div>
 
-		{#if hasSide}
+		{#if hasRightColumn}
 			<!-- On phones this column dissolves into the grid, and the perk panel moves above About so
 			     it isn't buried under a long description. -->
 			<div class="contents lg:block lg:space-y-8">
