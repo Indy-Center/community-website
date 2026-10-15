@@ -111,6 +111,31 @@ describe('/partners/[slug]', () => {
 		});
 	});
 
+	it("passes through the alt text editors wrote for the partner's logo, banner and photos", async () => {
+		const document = structuredClone(partners);
+		const partner = document.categories[0].partners[0];
+		partner.logo.alt = 'Example Scenery Co. logo, a runway under a sun';
+		partner.banner!.alt = 'Aerial view of Example Field at dusk';
+		partner.gallery[0].thumbnail.alt = 'KXMP terminal from the apron';
+		partner.gallery[0].large.alt = 'KXMP terminal from the apron, full size';
+		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+
+		const data = await run(load, partnerPage('example-scenery', { s }));
+
+		expect(data).toMatchObject({
+			partner: {
+				logo: { alt: 'Example Scenery Co. logo, a runway under a sun' },
+				banner: { alt: 'Aerial view of Example Field at dusk' },
+				gallery: [
+					{
+						thumbnail: { alt: 'KXMP terminal from the apron' },
+						large: { alt: 'KXMP terminal from the apron, full size' }
+					}
+				]
+			}
+		});
+	});
+
 	it('shows a partner with no call to action', async () => {
 		const document = structuredClone(partners);
 		document.categories[0].partners[1].callsToAction = [];

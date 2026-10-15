@@ -106,6 +106,21 @@ describe('/partners', () => {
 		expect(data.categories[1]).toEqual(listed.categories[1]);
 	});
 
+	it("passes through the alt text editors wrote for each partner's logo", async () => {
+		const document = structuredClone(partners);
+		document.categories[0].partners[0].logo.alt = 'Example Scenery Co. logo, a runway under a sun';
+		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+
+		const data = await run(load, s.event('/partners'));
+
+		expect(data).toMatchObject({
+			categories: [
+				{ partners: [{ logo: { alt: 'Example Scenery Co. logo, a runway under a sun' } }, {}] },
+				{}
+			]
+		});
+	});
+
 	it('sends the CMS the community credential', async () => {
 		const s = site();
 		await run(load, s.event('/partners'));
