@@ -3,6 +3,7 @@
 	the photos, and Escape or a tap outside the photo closes it.
 -->
 <script lang="ts">
+	import type { Attachment } from 'svelte/attachments';
 	import type { Image } from '$lib/server/cms/types';
 	import IconClose from '~icons/mdi/close';
 	import IconPrevious from '~icons/mdi/chevron-left';
@@ -10,16 +11,41 @@
 
 	let { photos, index = $bindable() }: { photos: Image[]; index: number | null } = $props();
 
-	let closeButton = $state<HTMLButtonElement>();
+	let dialog = $state<HTMLDivElement>();
 	const photo = $derived(index === null ? null : photos[index]);
 
-	$effect(() => {
-		if (photo) closeButton?.focus();
-	});
+	/**
+	 * Runs when the viewer opens: moves focus to Close, and on closing hands it back to whatever
+	 * opened the viewer. Stepping between photos keeps the dialog mounted, so focus stays put.
+	 */
+	const moveFocus: Attachment<HTMLElement> = (node) => {
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		node.querySelector<HTMLButtonElement>('button[data-close]')?.focus();
+		return () => opener?.focus();
+	};
 
 	function step(by: number) {
 		if (index === null) return;
 		index = (index + by + photos.length) % photos.length;
+	}
+
+	/** Keeps Tab and Shift+Tab cycling through the viewer's buttons while it is open. */
+	function trapTab(e: KeyboardEvent) {
+		if (!dialog) return;
+		const buttons = [...dialog.querySelectorAll<HTMLElement>('button:not([tabindex="-1"])')];
+		const first = buttons[0];
+		const last = buttons[buttons.length - 1];
+		const active = document.activeElement;
+		if (!dialog.contains(active)) {
+			e.preventDefault();
+			first.focus();
+		} else if (e.shiftKey && active === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && active === last) {
+			e.preventDefault();
+			first.focus();
+		}
 	}
 </script>
 
@@ -29,11 +55,14 @@
 		if (e.key === 'Escape') index = null;
 		else if (e.key === 'ArrowLeft') step(-1);
 		else if (e.key === 'ArrowRight') step(1);
+		else if (e.key === 'Tab') trapTab(e);
 	}}
 />
 
 {#if photo && index !== null}
 	<div
+		bind:this={dialog}
+		{@attach moveFocus}
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 sm:p-16"
 		role="dialog"
 		aria-modal="true"
@@ -55,7 +84,7 @@
 			class="relative max-h-full w-auto max-w-full rounded object-contain"
 		/>
 		<button
-			bind:this={closeButton}
+			data-close
 			type="button"
 			aria-label="Close"
 			class="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
