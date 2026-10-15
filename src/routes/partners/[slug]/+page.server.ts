@@ -2,6 +2,9 @@ import { error } from '@sveltejs/kit';
 import { readPartners } from '$lib/server/partners';
 import type { PageServerLoad } from './$types';
 
+/** A partner's member perks as this page's visitor may see them. */
+export type { VisibleMemberPerks } from '$lib/server/partners';
+
 /**
  * One published partner's page, with its partner category's name. An unknown or unpublished slug
  * is a 404; with the CMS down and no copy kept, the page says partners couldn't be loaded, as

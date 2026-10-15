@@ -11,10 +11,9 @@
 	import IconImages from '~icons/mdi/image-multiple';
 	import IconStar from '~icons/mdi/star-four-points';
 	import IconLock from '~icons/mdi/lock-outline';
+	import type { VisibleMemberPerks } from './+page.server';
 
 	let { data } = $props();
-
-	type MemberPerks = Extract<typeof data, { state: 'found' }>['partner']['memberPerks'];
 
 	/** The photo open full screen, if any. */
 	let openPhoto = $state<number | null>(null);
@@ -22,7 +21,7 @@
 
 <!-- Signed in: each perk's text and its amber button. A guest's data holds only the count, so
      they get the invitation to join instead. -->
-{#snippet perkBody(partnerName: string, memberPerks: MemberPerks)}
+{#snippet perkBody(partnerName: string, memberPerks: VisibleMemberPerks)}
 	{#if memberPerks.signedIn}
 		<div class="space-y-4">
 			{#each memberPerks.perks as perk, i (i)}
@@ -37,11 +36,11 @@
 			{/each}
 		</div>
 	{:else}
-		{@const one = memberPerks.count === 1}
+		{@const onePerk = memberPerks.count === 1}
 		<div class="space-y-3">
 			<p class="leading-relaxed text-amber-50/90">
-				Indy Center members get {one ? 'a perk' : `${memberPerks.count} perks`} from {partnerName}.
-				Join Indy Center to get {one ? 'it' : 'them'}.
+				Indy Center members get {onePerk ? 'a perk' : `${memberPerks.count} perks`} from {partnerName}.
+				Join Indy Center to get {onePerk ? 'it' : 'them'}.
 			</p>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
 				<a
@@ -74,7 +73,7 @@
 	{@const partner = data.partner}
 	{@const hasPerks = partner.memberPerks.count > 0}
 	<!-- The right column: the member perk panel above the photos. -->
-	{@const hasSide = partner.gallery.length > 0 || hasPerks}
+	{@const hasRightColumn = partner.gallery.length > 0 || hasPerks}
 
 	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
 		<div class="relative">
@@ -116,12 +115,13 @@
 			class="flex flex-col gap-4 border-t border-slate-700/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
 		>
 			<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-				{#each partner.callsToAction as cta, i (i)}
+				{#each partner.callsToAction as callToAction, i (i)}
 					<a
-						href={cta.url}
+						href={callToAction.url}
 						class="rounded-lg px-4 py-3 text-center text-sm font-semibold transition-colors {i === 0
 							? 'bg-sky-600 text-white hover:bg-sky-500'
-							: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}">{cta.label}</a
+							: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}"
+						>{callToAction.label}</a
 					>
 				{/each}
 			</div>
@@ -136,7 +136,7 @@
 	</div>
 
 	<div class="grid gap-8 lg:grid-cols-3">
-		<div class={hasSide ? 'lg:col-span-2' : 'lg:col-span-3'}>
+		<div class={hasRightColumn ? 'lg:col-span-2' : 'lg:col-span-3'}>
 			<Panel title="About" icon={IconText}>
 				<div class="space-y-4 p-4 leading-relaxed text-slate-300 sm:p-6">
 					{#each partner.paragraphs as paragraph, i (i)}
@@ -146,7 +146,7 @@
 			</Panel>
 		</div>
 
-		{#if hasSide}
+		{#if hasRightColumn}
 			<!-- On phones this column dissolves into the grid, and the perk panel moves above About so
 			     it isn't buried under a long description. -->
 			<div class="contents lg:block lg:space-y-8">

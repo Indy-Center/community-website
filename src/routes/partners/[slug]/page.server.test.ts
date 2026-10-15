@@ -3,9 +3,12 @@ import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run, type Site, type Visitor } from '$lib/testing/site';
 import { load } from './+page.server';
 
-/** A request for `slug`'s page, from a guest unless `as` says otherwise, to a fresh site or `s`. */
-function partnerPage(slug: string, { as = 'guest', s = site() }: { as?: Visitor; s?: Site } = {}) {
-	return s.event(`/partners/${slug}`, { params: { slug }, as });
+/** A request for `slug`'s page, from a guest unless `as` says otherwise, to a fresh site or `on`. */
+function partnerPage(
+	slug: string,
+	{ as = 'guest', on = site() }: { as?: Visitor; on?: Site } = {}
+) {
+	return on.event(`/partners/${slug}`, { params: { slug }, as });
 }
 
 describe('/partners/[slug]', () => {
@@ -104,7 +107,7 @@ describe('/partners/[slug]', () => {
 			'First paragraph,\nstill the first.\r\n\r\nSecond.\n  \n\n\nThird.\n\n';
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(load, partnerPage('pretend-streamer', { s }));
+		const data = await run(load, partnerPage('pretend-streamer', { on: s }));
 
 		expect(data).toMatchObject({
 			partner: { paragraphs: ['First paragraph,\nstill the first.', 'Second.', 'Third.'] }
@@ -116,7 +119,7 @@ describe('/partners/[slug]', () => {
 		document.categories[0].partners[1].callsToAction = [];
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(load, partnerPage('sample-tools', { s }));
+		const data = await run(load, partnerPage('sample-tools', { on: s }));
 
 		expect(data).toMatchObject({
 			state: 'found',
@@ -128,7 +131,7 @@ describe('/partners/[slug]', () => {
 		const s = site();
 		s.cms.down();
 
-		const data = await run(load, partnerPage('example-scenery', { s }));
+		const data = await run(load, partnerPage('example-scenery', { on: s }));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});
