@@ -105,11 +105,13 @@
 							</div>
 						{/if}
 						<div class="mt-4 flex flex-wrap items-center gap-3">
-							<a
-								href={partner.callToAction.url}
-								class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-								>{partner.callToAction.label}</a
-							>
+							{#if partner.callToAction}
+								<a
+									href={partner.callToAction.url}
+									class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+									>{partner.callToAction.label}</a
+								>
+							{/if}
 							{#if partner.photoCount > 0}
 								<span class="ml-auto flex items-center gap-1 text-xs text-slate-500">
 									<IconImages class="h-4 w-4" aria-hidden="true" />

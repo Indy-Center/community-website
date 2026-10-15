@@ -12,8 +12,8 @@ import type { PartnersDocument } from './types';
  * long as `KEEP_MS`, so a CMS outage does not take the partners page down. Only a document of the
  * right shape is ever kept. Only with no copy at all does a read fail, with `CmsUnavailableError`.
  *
- * The document includes member perks. It is kept server-side only; the page loads decide what
- * each visitor is sent.
+ * The document includes member perks. It is kept server-side only; pages read it through
+ * `readPartners` (`$lib/server/partners`), which decides what each visitor is sent.
  */
 export type Cms = {
 	/** Every published partner, grouped by partner category, in order. */
