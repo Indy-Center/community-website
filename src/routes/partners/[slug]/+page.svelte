@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Panel from '$lib/components/Panel.svelte';
 	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
@@ -6,12 +7,55 @@
 	import IconArrowLeft from '~icons/mdi/arrow-left';
 	import IconText from '~icons/mdi/text-long';
 	import IconImages from '~icons/mdi/image-multiple';
+	import IconStar from '~icons/mdi/star-four-points';
+	import IconLock from '~icons/mdi/lock-outline';
 
 	let { data } = $props();
+
+	type MemberPerks = Extract<typeof data, { state: 'found' }>['partner']['memberPerks'];
 
 	/** The photo open full screen, if any. */
 	let openPhoto = $state<number | null>(null);
 </script>
+
+<!-- Signed in: each perk's text and its amber button. A guest's data holds only the count, so
+     they get the invitation to join instead. -->
+{#snippet perkBody(partnerName: string, memberPerks: MemberPerks)}
+	{#if memberPerks.signedIn}
+		<div class="space-y-4">
+			{#each memberPerks.perks as perk, i (i)}
+				<div class="space-y-3">
+					<p class="leading-relaxed text-amber-50/90">{perk.text}</p>
+					<a
+						href={perk.url}
+						class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+						><IconStar class="h-4 w-4" aria-hidden="true" />{perk.label}</a
+					>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		{@const one = memberPerks.count === 1}
+		<div class="space-y-3">
+			<p class="leading-relaxed text-amber-50/90">
+				Indy Center members get {one ? 'a perk' : `${memberPerks.count} perks`} from {partnerName}.
+				Join Indy Center to get {one ? 'it' : 'them'}.
+			</p>
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+				<a
+					href="/visit/become-community-member"
+					class="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/60 px-4 py-3 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/10"
+					><IconLock class="h-4 w-4" aria-hidden="true" />Join Indy Center</a
+				>
+				<a
+					href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
+					class="text-center text-sm text-amber-200/80 hover:text-amber-100"
+					>Already a member? Sign in</a
+				>
+			</div>
+		</div>
+	{/if}
+{/snippet}
 
 <svelte:head>
 	<title>Indy Center | {data.state === 'found' ? data.partner.name : 'Partners'}</title>
@@ -26,8 +70,11 @@
 
 {#if data.state === 'found'}
 	{@const partner = data.partner}
-	<!-- The right column. Member perks will join the photos here. -->
-	{@const hasSide = partner.gallery.length > 0}
+	{@const hasPerks = partner.memberPerks.signedIn
+		? partner.memberPerks.perks.length > 0
+		: partner.memberPerks.count > 0}
+	<!-- The right column: the member perk panel above the photos. -->
+	{@const hasSide = partner.gallery.length > 0 || hasPerks}
 
 	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
 		<div class="relative">
@@ -100,6 +147,15 @@
 	</div>
 
 	<div class="grid gap-8 lg:grid-cols-3">
+		{#if hasPerks}
+			<!-- On phones the perk comes before About, so it isn't buried under a long description. -->
+			<div class="lg:hidden">
+				<Panel title="Member perk" icon={IconStar}>
+					<div class="p-4">{@render perkBody(partner.name, partner.memberPerks)}</div>
+				</Panel>
+			</div>
+		{/if}
+
 		<div class={hasSide ? 'lg:col-span-2' : 'lg:col-span-3'}>
 			<Panel title="About" icon={IconText}>
 				<div class="space-y-4 p-4 leading-relaxed text-slate-300 sm:p-6">
@@ -112,6 +168,14 @@
 
 		{#if hasSide}
 			<div class="space-y-8">
+				{#if hasPerks}
+					<div class="hidden lg:block">
+						<Panel title="Member perk" icon={IconStar}>
+							<div class="p-4">{@render perkBody(partner.name, partner.memberPerks)}</div>
+						</Panel>
+					</div>
+				{/if}
+
 				{#if partner.gallery.length}
 					<Panel title="Photos" icon={IconImages}>
 						{@const featured = partner.gallery[0].large}
