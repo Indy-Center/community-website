@@ -6,7 +6,6 @@ import {
 	type StaffTeamSection
 } from '$lib/config/staff';
 import type { StaffBadgeKey } from '$lib/config/staffBadges';
-import type { Database } from '$lib/server/db';
 import type { VatusaRosterMember } from '$lib/types/vatusa';
 
 // Who holds each staff position and team section. Shared by the staff page, the roster,
@@ -55,14 +54,13 @@ export function getSectionMembers(
 	return [...cids];
 }
 
-// Staff badge keys (position keys and team section keys) for every staff member, by CID
-export async function getStaffBadges(db: Database, roster?: RosterEntry[]) {
-	const [rosterEntries, assignments, teamRows] = await Promise.all([
-		roster ?? db.query.vatsimControllersTable.findMany(),
-		db.query.staffAssignmentsTable.findMany(),
-		db.query.staffTeamMembersTable.findMany()
-	]);
-
+// Staff badge keys (position keys and team section keys) for every staff member in the
+// given roster, by CID. Callers fetch the rows; pass just the members you need badges for.
+export function getStaffBadges(
+	rosterEntries: RosterEntry[],
+	assignments: Assignment[],
+	teamRows: TeamRow[]
+) {
 	const badges = new Map<string, StaffBadgeKey[]>();
 	const add = (cid: string, key: StaffBadgeKey) =>
 		badges.set(cid, [...(badges.get(cid) ?? []), key]);

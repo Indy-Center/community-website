@@ -6,10 +6,14 @@ import { getStaffBadges } from '$lib/server/staff';
 // Public profile. Like the public roster, only controllers on the roster have one, and
 // only public fields are sent (no email, raw VATSIM data, or feedback).
 export const load = async ({ locals, params }) => {
-	const controller = await locals.db.query.vatsimControllersTable.findFirst({
-		where: eq(vatsimControllersTable.cid, params.cid),
-		with: { user: { with: { certifications: true, endorsements: true } } }
-	});
+	const [controller, assignments, teamRows] = await Promise.all([
+		locals.db.query.vatsimControllersTable.findFirst({
+			where: eq(vatsimControllersTable.cid, params.cid),
+			with: { user: { with: { certifications: true, endorsements: true } } }
+		}),
+		locals.db.query.staffAssignmentsTable.findMany(),
+		locals.db.query.staffTeamMembersTable.findMany()
+	]);
 
 	if (!controller) {
 		error(404, 'Controller not found');
@@ -40,7 +44,7 @@ export const load = async ({ locals, params }) => {
 			atcRating: user?.data.vatsim.rating.short ?? roster.rating_short ?? null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
-			staffBadges: (await getStaffBadges(locals.db)).get(controller.cid) ?? [],
+			staffBadges: getStaffBadges([controller], assignments, teamRows).get(controller.cid) ?? [],
 			certifications: user?.certifications.map((c) => c.certification) ?? [],
 			endorsements: user?.endorsements.map((e) => e.endorsement) ?? []
 		},
