@@ -6,7 +6,7 @@
 -->
 <script lang="ts" module>
 	import type { Component } from 'svelte';
-	import type { SocialPlatform } from '$lib/server/cms/types';
+	import type { SocialPlatform } from '$lib/cms/types';
 	import IconTwitch from '~icons/simple-icons/twitch';
 	import IconYoutube from '~icons/simple-icons/youtube';
 	import IconDiscord from '~icons/simple-icons/discord';

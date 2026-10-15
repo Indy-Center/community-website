@@ -1,5 +1,5 @@
 import { CmsUnavailableError } from '$lib/server/cms';
-import type { Category, Partner, PartnersDocument } from '$lib/server/cms/types';
+import type { Category, Partner, PartnersDocument } from '$lib/cms/types';
 import { logger } from '$lib/server/logger';
 
 /**

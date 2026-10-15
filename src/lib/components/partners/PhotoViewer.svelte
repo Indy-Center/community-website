@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
-	import type { Image } from '$lib/server/cms/types';
+	import type { Image } from '$lib/cms/types';
 	import PartnerImage from './PartnerImage.svelte';
 	import IconClose from '~icons/mdi/close';
 	import IconPrevious from '~icons/mdi/chevron-left';

@@ -57,7 +57,7 @@ The partners document is kept in the Workers Cache API (in memory under
 - With no copy at all and the CMS down, `/partners` and each partner's page say
   partners couldn't be loaded.
 
-The document's shape is the contract in `src/lib/server/cms/types.ts`, copied
+The document's shape is the contract in `src/lib/cms/types.ts`, copied
 by hand from the payload repo. When the CMS changes it, copy it again and update
 the test fixtures with it.
 

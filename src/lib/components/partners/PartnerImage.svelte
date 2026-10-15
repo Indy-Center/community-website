@@ -3,7 +3,7 @@
 	come from `class`; width and height only reserve space while it loads.
 -->
 <script lang="ts">
-	import type { Image } from '$lib/server/cms/types';
+	import type { Image } from '$lib/cms/types';
 
 	let {
 		image,

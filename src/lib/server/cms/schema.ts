@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { logger } from '$lib/server/logger';
-import { socialPlatforms, type PartnersDocument, type SocialPlatform } from './types';
+import { socialPlatforms, type PartnersDocument, type SocialPlatform } from '$lib/cms/types';
 
 /**
  * The partners document's shape, checked before a response is kept, so a CMS answer that is not a

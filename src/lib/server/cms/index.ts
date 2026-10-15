@@ -1,6 +1,6 @@
 import { logger } from '$lib/server/logger';
 import { partnersDocument } from './schema';
-import type { PartnersDocument } from './types';
+import type { PartnersDocument } from '$lib/cms/types';
 
 /**
  * Everything the site reads from the CMS, and the only place that talks to it. Follows

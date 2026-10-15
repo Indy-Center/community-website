@@ -1,7 +1,7 @@
-import type { Image, PartnersDocument } from '$lib/server/cms/types';
+import type { Image, PartnersDocument } from '$lib/cms/types';
 
 /**
- * What the CMS serves, shaped exactly like the contract in `$lib/server/cms/types`. Typed against
+ * What the CMS serves, shaped exactly like the contract in `$lib/cms/types`. Typed against
  * it, so a change to the contract that the fixtures do not follow fails `npm run check`.
  *
  * Every partner here is made up. The repository is public: never paste a real partner's details
