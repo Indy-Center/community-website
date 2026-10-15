@@ -18,6 +18,8 @@ community-website/
 - `src/routes/events/` — events listing.
 - `src/routes/feedback/` — member feedback submission.
 - `src/routes/visit/` — visiting controller request form.
+- `src/routes/partners/` — partner cards, from the CMS.
+- `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
 - `src/routes/admin/` — admin tooling; role-gated.
 - `src/routes/settings/` — member profile/settings.
 - `src/routes/triggers/process-roster/` — internal HTTP trigger; refreshes roster data from VATSIM. Called by the task runner, not exposed publicly.
@@ -25,6 +27,7 @@ community-website/
 - `src/lib/server/membership.ts` — lazy membership sync logic (runs in `waitUntil` on authed requests).
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
 - `src/lib/server/discord.ts` — Discord webhook helpers.
+- `src/lib/server/partners.ts` — reads the partners document for the partners pages, or null when the CMS is down and no copy is kept.
 
 ### `task-runners/`
 
@@ -60,8 +63,8 @@ The partners document is kept in the Workers Cache API (in memory under
   the site within that.
 - **Kept for 7 days**: when the CMS fails, answers with an error, or takes over
   5 seconds, the last good copy is served instead.
-- With no copy at all and the CMS down, `/partners` says partners couldn't be
-  loaded.
+- With no copy at all and the CMS down, `/partners` and each partner's page say
+  partners couldn't be loaded.
 
 The document's shape is the contract in `src/lib/server/cms/types.ts`, copied
 by hand from the payload repo. When the CMS changes it, copy it again and update
