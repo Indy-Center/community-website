@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { signInHref } from '$lib/utils/signIn';
 	import Panel from '$lib/components/Panel.svelte';
 	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
@@ -48,7 +49,7 @@
 					><IconLock class="h-4 w-4" aria-hidden="true" />Join Indy Center</a
 				>
 				<a
-					href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
+					href={signInHref(page.url.pathname)}
 					class="text-center text-sm text-amber-200/80 hover:text-amber-100"
 					>Already a member? Sign in</a
 				>

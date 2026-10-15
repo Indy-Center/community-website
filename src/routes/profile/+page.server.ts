@@ -4,6 +4,7 @@ import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { averageRating } from '$lib/utils/feedbackRatings';
+import { signInHref } from '$lib/utils/signIn';
 import { getStaffBadges } from '$lib/server/staff';
 import { profileSchema } from '$lib/forms/profile';
 import { redirect } from '@sveltejs/kit';
@@ -17,7 +18,7 @@ const submitter = alias(usersTable, 'submitter');
 
 export const load = async ({ locals, url }) => {
 	if (!locals.user) {
-		return redirect(302, `/login/connect?returnUrl=${encodeURIComponent(url.pathname)}`);
+		return redirect(302, signInHref(url.pathname));
 	}
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));

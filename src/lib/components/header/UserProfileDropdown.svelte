@@ -10,6 +10,7 @@
 	import IconTools from '~icons/mdi/tools';
 	import IconAdmin from '~icons/mdi/shield-account';
 	import { isAdmin } from '$lib/utils/permissions';
+	import { signInHref } from '$lib/utils/signIn';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
 	import Tooltip from '../Tooltip.svelte';
@@ -157,7 +158,7 @@
 	{:else}
 		<!-- Login Button for non-authenticated users -->
 		<a
-			href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
+			href={signInHref(page.url.pathname)}
 			class="flex cursor-pointer items-center space-x-1.5 rounded-md bg-sky-400/30 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-200 hover:bg-sky-500/40 hover:text-gray-100"
 		>
 			<IconAccount class="h-5 w-5" />
