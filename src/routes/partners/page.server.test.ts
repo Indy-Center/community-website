@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { logger } from '$lib/server/logger';
 import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
@@ -114,6 +115,40 @@ describe('/partners', () => {
 		const data = await run(load, s.event('/partners'));
 
 		expect(data).toEqual({ state: 'unavailable' });
+	});
+
+	describe("a response that isn't a partners document", () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** Every line the site's logger writes at warn or error, from here on. */
+		function logged() {
+			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+			const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+			return () => [...warn.mock.calls, ...error.mock.calls];
+		}
+
+		it('is logged once when the kept copy is served instead', async () => {
+			const s = site();
+			await run(load, s.event('/partners'));
+			s.clock.now += 6 * 60_000;
+			s.cms.documents['/api/community/partners'] = { nope: true };
+			const lines = logged();
+
+			await run(load, s.event('/partners'));
+
+			expect(lines()).toHaveLength(1);
+		});
+
+		it('is logged once when no copy is kept', async () => {
+			const s = site({ cms: fakeCms({ '/api/community/partners': { nope: true } }) });
+			const lines = logged();
+
+			await run(load, s.event('/partners'));
+
+			expect(lines()).toHaveLength(1);
+		});
 	});
 
 	describe('the kept copy', () => {

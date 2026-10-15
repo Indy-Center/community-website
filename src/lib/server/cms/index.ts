@@ -1,3 +1,4 @@
+import { logger } from '$lib/server/logger';
 import { partnersDocument } from './schema';
 import type { PartnersDocument } from './types';
 
@@ -81,7 +82,7 @@ export function createCms(options: CmsOptions): Cms {
 			return body;
 		} catch (err) {
 			if (kept && age < KEEP_MS) {
-				console.warn('[community-website] CMS read failed; serving the kept copy', path, err);
+				logger.warn(`CMS read failed for ${path}; serving the kept copy`, err);
 				return kept.body as T;
 			}
 			throw new CmsUnavailableError(path, err);
