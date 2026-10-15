@@ -62,7 +62,7 @@ export function createCms(options: CmsOptions): Cms {
 	/** Reads `path`, keeping the body only once `parse` accepts it; `parse` throws on anything else. */
 	async function read<T>(path: string, parse: (body: unknown) => T): Promise<T> {
 		const kept = await store.get(path).catch((err) => {
-			console.error('[community-website] reading a kept copy failed', path, err);
+			logger.error(`Reading the kept copy of ${path} failed`, err);
 			return undefined;
 		});
 		const age = kept ? now() - kept.fetchedAt : Infinity;
@@ -77,7 +77,7 @@ export function createCms(options: CmsOptions): Cms {
 			const body = parse(await response.json());
 
 			await store.put(path, { fetchedAt: now(), body }).catch((err) => {
-				console.error('[community-website] keeping a copy failed', path, err);
+				logger.error(`Keeping a copy of ${path} failed`, err);
 			});
 			return body;
 		} catch (err) {
