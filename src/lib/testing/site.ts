@@ -85,6 +85,7 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 
 	return {
 		cms,
+		store,
 		clock,
 		event(
 			href: string,

@@ -293,6 +293,42 @@ describe('/partners', () => {
 			expect(data).toEqual(updated);
 		});
 
+		describe("that isn't a partners document, as one kept by an earlier version of the site may not be", () => {
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			/** A site whose kept copy, fetched just now, is not a partners document. */
+			async function siteWithBadCopy() {
+				const s = site();
+				await s.store.put('/api/community/partners', {
+					fetchedAt: s.clock.now,
+					body: { nope: true }
+				});
+				return s;
+			}
+
+			it('is not served, and the CMS is asked instead', async () => {
+				const s = await siteWithBadCopy();
+
+				const data = await run(load, s.event('/partners'));
+
+				expect(s.cms.asked('/api/community/partners')).toBe(1);
+				expect(data).toEqual(await run(load, site().event('/partners')));
+			});
+
+			it('counts as no copy when the CMS is down', async () => {
+				vi.spyOn(logger, 'error').mockImplementation(() => {});
+				const s = await siteWithBadCopy();
+				s.clock.now += 6 * MINUTE;
+				s.cms.down();
+
+				const data = await run(load, s.event('/partners'));
+
+				expect(data).toEqual({ state: 'unavailable' });
+			});
+		});
+
 		it('is not served once it is over seven days old', async () => {
 			const s = site();
 			await run(load, s.event('/partners'));

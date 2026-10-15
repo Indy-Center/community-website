@@ -10,7 +10,7 @@ import type { PartnersDocument } from './types';
  * on every request. When the CMS cannot be reached, answers with an error, takes too long, or answers
  * with something that is not the document asked for, the last good copy is served instead for as
  * long as `KEEP_MS`, so a CMS outage does not take the partners page down. Only a document of the
- * right shape is ever kept. Only with no copy at all does a read fail, with `CmsUnavailableError`.
+ * right shape is ever kept, and a kept copy is checked again before it is served. Only with no copy at all does a read fail, with `CmsUnavailableError`.
  *
  * The document includes member perks. It is kept server-side only; pages read it through
  * `readPartners` (`$lib/server/partners`), which decides what each visitor is sent.
@@ -59,14 +59,29 @@ export function createCms(options: CmsOptions): Cms {
 	const now = options.now ?? Date.now;
 	const timeoutMs = options.timeoutMs ?? CMS_TIMEOUT_MS;
 
-	/** Reads `path`, keeping the body only once `parse` accepts it; `parse` throws on anything else. */
-	async function read<T>(path: string, parse: (body: unknown) => T): Promise<T> {
+	/**
+	 * The kept copy of `path`, checked with `parse` as a fetched body is, or undefined when there is
+	 * none or it fails the check (one kept by an earlier version of the site, say).
+	 */
+	async function keptCopy<T>(path: string, parse: (body: unknown) => T) {
 		const kept = await store.get(path).catch((err) => {
 			logger.error(`Reading the kept copy of ${path} failed`, err);
 			return undefined;
 		});
+		if (!kept) return undefined;
+		try {
+			return { fetchedAt: kept.fetchedAt, body: parse(kept.body) };
+		} catch (err) {
+			logger.warn(`The kept copy of ${path} is not the document asked for; ignoring it`, err);
+			return undefined;
+		}
+	}
+
+	/** Reads `path`, keeping the body only once `parse` accepts it; `parse` throws on anything else. */
+	async function read<T>(path: string, parse: (body: unknown) => T): Promise<T> {
+		const kept = await keptCopy(path, parse);
 		const age = kept ? now() - kept.fetchedAt : Infinity;
-		if (kept && age < FRESH_MS) return kept.body as T;
+		if (kept && age < FRESH_MS) return kept.body;
 
 		try {
 			const response = await options.fetch(new URL(path, baseUrl), {
@@ -83,7 +98,7 @@ export function createCms(options: CmsOptions): Cms {
 		} catch (err) {
 			if (kept && age < KEEP_MS) {
 				logger.warn(`CMS read failed for ${path}; serving the kept copy`, err);
-				return kept.body as T;
+				return kept.body;
 			}
 			throw new CmsUnavailableError(path, err);
 		}
