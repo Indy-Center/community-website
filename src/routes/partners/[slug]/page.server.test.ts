@@ -111,6 +111,19 @@ describe('/partners/[slug]', () => {
 		});
 	});
 
+	it('shows a partner with no call to action', async () => {
+		const document = structuredClone(partners);
+		document.categories[0].partners[1].callsToAction = [];
+		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+
+		const data = await run(load, partnerPage('sample-tools', { s }));
+
+		expect(data).toMatchObject({
+			state: 'found',
+			partner: { slug: 'sample-tools', callsToAction: [] }
+		});
+	});
+
 	it("says partners couldn't be loaded when the CMS is down and no copy is kept", async () => {
 		const s = site();
 		s.cms.down();

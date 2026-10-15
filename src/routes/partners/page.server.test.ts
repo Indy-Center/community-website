@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
 
@@ -82,6 +83,26 @@ describe('/partners', () => {
 
 		expect(data).not.toContain('SECRET-PERK-1');
 		expect(data).not.toContain('https://scenery.example.test/claim');
+	});
+
+	it('lists a partner with no call to action, with no call to action on its card', async () => {
+		const document = structuredClone(partners);
+		document.categories[0].partners[1].callsToAction = [];
+		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+
+		const data = await run(load, s.event('/partners'));
+		const listed = await run(load, site().event('/partners'));
+
+		expect(data).toMatchObject({
+			state: 'listed',
+			categories: [
+				{ partners: [{ slug: 'example-scenery' }, { slug: 'sample-tools', callToAction: null }] },
+				{ partners: [{ slug: 'pretend-streamer' }] }
+			]
+		});
+		if (data.state !== 'listed' || listed.state !== 'listed') throw new Error('not listed');
+		expect(data.categories[0].partners[0]).toEqual(listed.categories[0].partners[0]);
+		expect(data.categories[1]).toEqual(listed.categories[1]);
 	});
 
 	it('sends the CMS the community credential', async () => {
