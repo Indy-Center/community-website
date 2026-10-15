@@ -61,8 +61,10 @@ The partners document is kept in the Workers Cache API (in memory under
 
 - **Fresh for 5 minutes**: served without asking the CMS, so an edit shows on
   the site within that.
-- **Kept for 7 days**: when the CMS fails, answers with an error, or takes over
-  5 seconds, the last good copy is served instead.
+- **Kept for 7 days**: when the CMS fails, answers with an error, takes over
+  5 seconds, or answers with something that isn't a partners document, the last
+  good copy is served instead. A response is only kept once it has the
+  document's shape (`src/lib/server/cms/schema.ts`).
 - With no copy at all and the CMS down, `/partners` and each partner's page say
   partners couldn't be loaded.
 
