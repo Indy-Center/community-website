@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { partners } from '$lib/testing/fixtures';
-import { fakeCms, site, run, type Visitor } from '$lib/testing/site';
+import { fakeCms, site, run, type Site, type Visitor } from '$lib/testing/site';
 import { load } from './+page.server';
 
-function partnerPage(slug: string, as: Visitor = 'guest') {
-	return site().event(`/partners/${slug}`, { slug }, as);
+/** A request for `slug`'s page, from a guest unless `as` says otherwise, to a fresh site or `s`. */
+function partnerPage(slug: string, { as = 'guest', s = site() }: { as?: Visitor; s?: Site } = {}) {
+	return s.event(`/partners/${slug}`, { params: { slug }, as });
 }
 
 describe('/partners/[slug]', () => {
@@ -64,7 +65,7 @@ describe('/partners/[slug]', () => {
 	});
 
 	it('gives a signed-in user each member perk in full, and how many there are', async () => {
-		const data = await run(load, partnerPage('example-scenery', 'signed-in'));
+		const data = await run(load, partnerPage('example-scenery', { as: 'signed-in' }));
 
 		expect(data).toMatchObject({
 			partner: {
@@ -103,10 +104,7 @@ describe('/partners/[slug]', () => {
 			'First paragraph,\nstill the first.\r\n\r\nSecond.\n  \n\n\nThird.\n\n';
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(
-			load,
-			s.event('/partners/pretend-streamer', { slug: 'pretend-streamer' })
-		);
+		const data = await run(load, partnerPage('pretend-streamer', { s }));
 
 		expect(data).toMatchObject({
 			partner: { paragraphs: ['First paragraph,\nstill the first.', 'Second.', 'Third.'] }
@@ -117,7 +115,7 @@ describe('/partners/[slug]', () => {
 		const s = site();
 		s.cms.down();
 
-		const data = await run(load, s.event('/partners/example-scenery', { slug: 'example-scenery' }));
+		const data = await run(load, partnerPage('example-scenery', { s }));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});

@@ -75,8 +75,8 @@ function signedInLocals() {
 
 /**
  * One running site: a fake CMS, the kept copies (shared across requests, as the Cache API is), and
- * a clock tests can move. `event()` builds what one request's page load receives, from a guest
- * unless `as` says otherwise.
+ * a clock tests can move. `event()` builds what one request's page load receives, with the
+ * route's `params`, from a guest unless `as` says otherwise.
  */
 export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 	const cms = opts.cms ?? fakeCms();
@@ -86,7 +86,10 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 	return {
 		cms,
 		clock,
-		event(href: string, params: Record<string, string> = {}, as: Visitor = 'guest') {
+		event(
+			href: string,
+			{ params = {}, as = 'guest' }: { params?: Record<string, string>; as?: Visitor } = {}
+		) {
 			return {
 				url: new URL(href, 'https://flyindycenter.com'),
 				params,
@@ -106,6 +109,8 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 		}
 	};
 }
+
+export type Site = ReturnType<typeof site>;
 
 /** Calls a page's server load with a hand-built event. */
 export function run<L extends (event: never) => unknown>(load: L, event: unknown): ReturnType<L> {
