@@ -108,7 +108,7 @@ describe('/partners/[slug]', () => {
 		const document = structuredClone(partners);
 		document.categories[1].partners[0].description =
 			'First paragraph,\nstill the first.\r\n\r\nSecond.\n  \n\n\nThird.\n\n';
-		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+		const s = site({ cms: fakeCms(document) });
 
 		const data = await run(load, partnerPage('pretend-streamer', { site: s }));
 
@@ -124,7 +124,7 @@ describe('/partners/[slug]', () => {
 		partner.banner!.alt = 'Aerial view of Example Field at dusk';
 		partner.gallery[0].thumbnail.alt = 'KXMP terminal from the apron';
 		partner.gallery[0].large.alt = 'KXMP terminal from the apron, full size';
-		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+		const s = site({ cms: fakeCms(document) });
 
 		const data = await run(load, partnerPage('example-scenery', { site: s }));
 
@@ -145,7 +145,7 @@ describe('/partners/[slug]', () => {
 	it('shows a partner with no call to action', async () => {
 		const document = structuredClone(partners);
 		document.categories[0].partners[1].callsToAction = [];
-		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+		const s = site({ cms: fakeCms(document) });
 
 		const data = await run(load, partnerPage('sample-tools', { site: s }));
 

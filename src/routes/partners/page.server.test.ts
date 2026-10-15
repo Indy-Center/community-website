@@ -92,7 +92,7 @@ describe('/partners', () => {
 	it('lists a partner with no call to action, with no call to action on its card', async () => {
 		const document = structuredClone(partners);
 		document.categories[0].partners[1].callsToAction = [];
-		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+		const s = site({ cms: fakeCms(document) });
 
 		const data = await run(load, s.event('/partners'));
 		const listed = await run(load, site().event('/partners'));
@@ -112,7 +112,7 @@ describe('/partners', () => {
 	it("passes through the alt text editors wrote for each partner's logo", async () => {
 		const document = structuredClone(partners);
 		document.categories[0].partners[0].logo.alt = 'Example Scenery Co. logo, a runway under a sun';
-		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
+		const s = site({ cms: fakeCms(document) });
 
 		const data = await run(load, s.event('/partners'));
 
@@ -134,7 +134,7 @@ describe('/partners', () => {
 			const document = structuredClone(partners);
 			const links: unknown[] = document.categories[0].partners[1].socialLinks;
 			links.unshift({ platform: 'myspace', url: 'https://myspace.example.test/sample-tools' });
-			return site({ cms: fakeCms({ '/api/community/partners': document }) });
+			return site({ cms: fakeCms(document) });
 		}
 
 		it('is left out, and the rest of the partners document is listed', async () => {
@@ -162,11 +162,12 @@ describe('/partners', () => {
 		const s = site();
 		await run(load, s.event('/partners'));
 
+		expect(s.cms.requests).toEqual(['/api/community/partners']);
 		expect(s.cms.authorizations).toEqual(['Bearer test-token']);
 	});
 
 	it('says Coming Soon when no partner is published', async () => {
-		const cms = fakeCms({ '/api/community/partners': { categories: [] } });
+		const cms = fakeCms({ categories: [] });
 		const data = await run(load, site({ cms }).event('/partners'));
 
 		expect(data).toEqual({ state: 'coming-soon' });
@@ -182,7 +183,7 @@ describe('/partners', () => {
 	});
 
 	it("says partners couldn't be loaded when the CMS answers with something that isn't a partners document and no copy is kept", async () => {
-		const s = site({ cms: fakeCms({ '/api/community/partners': { nope: true } }) });
+		const s = site({ cms: fakeCms({ nope: true }) });
 
 		const data = await run(load, s.event('/partners'));
 
@@ -205,7 +206,7 @@ describe('/partners', () => {
 			const s = site();
 			await run(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
-			s.cms.documents['/api/community/partners'] = { nope: true };
+			s.cms.serve({ nope: true });
 			const lines = logged();
 
 			await run(load, s.event('/partners'));
@@ -214,7 +215,7 @@ describe('/partners', () => {
 		});
 
 		it('is logged once when no copy is kept', async () => {
-			const s = site({ cms: fakeCms({ '/api/community/partners': { nope: true } }) });
+			const s = site({ cms: fakeCms({ nope: true }) });
 			const lines = logged();
 
 			await run(load, s.event('/partners'));
@@ -230,12 +231,12 @@ describe('/partners', () => {
 			s.clock.now += 4 * MINUTE;
 			await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/community/partners')).toBe(1);
+			expect(s.cms.requests).toHaveLength(1);
 
 			s.clock.now += 2 * MINUTE;
 			await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/community/partners')).toBe(2);
+			expect(s.cms.requests).toHaveLength(2);
 		});
 
 		it('is served when the CMS is down', async () => {
@@ -246,7 +247,7 @@ describe('/partners', () => {
 
 			const data = await run(load, s.event('/partners'));
 
-			expect(s.cms.asked('/api/community/partners')).toBe(2);
+			expect(s.cms.requests).toHaveLength(2);
 			expect(data).toEqual(fresh);
 		});
 
@@ -266,14 +267,14 @@ describe('/partners', () => {
 			const s = site();
 			const fresh = await run(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
-			s.cms.documents['/api/community/partners'] = { nope: true };
+			s.cms.serve({ nope: true });
 
 			expect(await run(load, s.event('/partners'))).toEqual(fresh);
 
 			s.clock.now += 6 * MINUTE;
 
 			expect(await run(load, s.event('/partners'))).toEqual(fresh);
-			expect(s.cms.asked('/api/community/partners')).toBe(3);
+			expect(s.cms.requests).toHaveLength(3);
 		});
 
 		it('is replaced by a new partners document', async () => {
@@ -282,7 +283,7 @@ describe('/partners', () => {
 			const renamed = structuredClone(partners);
 			renamed.categories[0].partners[0].name = 'Renamed Scenery Co.';
 			s.clock.now += 6 * MINUTE;
-			s.cms.documents['/api/community/partners'] = renamed;
+			s.cms.serve(renamed);
 			const updated = await run(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
 			s.cms.down();
@@ -301,7 +302,7 @@ describe('/partners', () => {
 			/** A site whose kept copy, fetched just now, is not a partners document. */
 			async function siteWithBadCopy() {
 				const s = site();
-				await s.store.put('/api/community/partners', {
+				await s.store.put({
 					fetchedAt: s.clock.now,
 					body: { nope: true }
 				});
@@ -313,7 +314,7 @@ describe('/partners', () => {
 
 				const data = await run(load, s.event('/partners'));
 
-				expect(s.cms.asked('/api/community/partners')).toBe(1);
+				expect(s.cms.requests).toHaveLength(1);
 				expect(data).toEqual(await run(load, site().event('/partners')));
 			});
 

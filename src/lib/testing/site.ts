@@ -1,4 +1,4 @@
-import { createCms, memoryStore } from '$lib/server/cms';
+import { createCms, memoryStore, PARTNERS_PATH } from '$lib/server/cms';
 import { partners } from './fixtures';
 
 export const CMS_URL = 'https://cms.example.test';
@@ -7,17 +7,13 @@ export const TOKEN = 'test-token';
 /** How long tests let the CMS take before treating it as down. */
 export const TEST_CMS_TIMEOUT_MS = 20;
 
-/** The CMS's documents by path, as the fake CMS serves them. */
-export function cmsDocuments(): Record<string, unknown> {
-	return { '/api/community/partners': partners };
-}
-
 /**
- * A stand-in for the CMS's HTTP API: serves `documents` by path, 404s anything else, and records
- * every request. `down()` makes every request fail, as an outage would; `hang()` makes every
- * request wait until it is given up on, as a CMS too slow to answer would.
+ * A stand-in for the CMS's HTTP API: serves `document` at the partners path, 404s anything else,
+ * and records every request. `serve()` changes what it serves; `down()` makes every request fail,
+ * as an outage would; `hang()` makes every request wait until it is given up on, as a CMS too slow
+ * to answer would.
  */
-export function fakeCms(documents = cmsDocuments()) {
+export function fakeCms(document: unknown = partners) {
 	const requests: string[] = [];
 	const authorizations: (string | null)[] = [];
 	let state: 'up' | 'down' | 'hanging' = 'up';
@@ -32,24 +28,22 @@ export function fakeCms(documents = cmsDocuments()) {
 				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
 			});
 		}
-		if (!(url.pathname in documents)) return new Response('Not found', { status: 404 });
-		return Response.json(documents[url.pathname]);
+		if (url.pathname !== PARTNERS_PATH) return new Response('Not found', { status: 404 });
+		return Response.json(document);
 	}) as typeof globalThis.fetch;
 
 	return {
 		fetch,
-		documents,
 		requests,
 		authorizations,
+		serve(next: unknown) {
+			document = next;
+		},
 		down() {
 			state = 'down';
 		},
 		hang() {
 			state = 'hanging';
-		},
-		/** How many times `path` was asked for. */
-		asked(path: string) {
-			return requests.filter((r) => r === path).length;
 		}
 	};
 }

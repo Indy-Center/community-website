@@ -3,8 +3,9 @@ import { partnersDocument } from './schema';
 import type { PartnersDocument } from '$lib/cms/types';
 
 /**
- * Everything the site reads from the CMS, and the only place that talks to it. Follows
- * indy-library's client (`src/lib/server/cms/index.ts` there); copy changes across by hand.
+ * Everything the site reads from the CMS, and the only place that talks to it. Modelled on
+ * indy-library's client (`src/lib/server/cms/index.ts` there), but reads only the partners
+ * document, the one thing the site needs.
  *
  * The document is kept for a few minutes (`FRESH_MS`) so pages are quick and the CMS is not asked
  * on every request. When the CMS cannot be reached, answers with an error, takes too long, or answers
@@ -23,18 +24,21 @@ export type Cms = {
 /** A document as it was fetched, and when. */
 export type KeptCopy = { fetchedAt: number; body: unknown };
 
-/** Where copies are kept. The Workers Cache API in production, a Map in tests and `vite dev`. */
+/** Where the copy is kept. The Workers Cache API in production, memory in tests and `vite dev`. */
 export type CopyStore = {
-	get(key: string): Promise<KeptCopy | undefined>;
-	put(key: string, copy: KeptCopy): Promise<void>;
+	get(): Promise<KeptCopy | undefined>;
+	put(copy: KeptCopy): Promise<void>;
 };
 
 export class CmsUnavailableError extends Error {
-	constructor(path: string, cause: unknown) {
-		super(`The CMS could not be read for ${path}, and no copy is kept`, { cause });
+	constructor(cause: unknown) {
+		super('The CMS could not be read for the partners document, and no copy is kept', { cause });
 		this.name = 'CmsUnavailableError';
 	}
 }
+
+/** Where the CMS serves the partners document. */
+export const PARTNERS_PATH = '/api/community/partners';
 
 /** How long a copy is served without asking the CMS: published edits show within this. */
 export const FRESH_MS = 5 * 60_000;
@@ -60,91 +64,89 @@ export function createCms(options: CmsOptions): Cms {
 	const timeoutMs = options.timeoutMs ?? CMS_TIMEOUT_MS;
 
 	/**
-	 * The kept copy of `path`, checked with `parse` as a fetched body is, or undefined when there is
-	 * none or it fails the check (one kept by an earlier version of the site, say).
+	 * The kept copy, checked as a fetched body is, or undefined when there is none or it fails the
+	 * check (one kept by an earlier version of the site, say).
 	 */
-	async function keptCopy<T>(path: string, parse: (body: unknown) => T) {
-		const kept = await store.get(path).catch((err) => {
-			logger.error(`Reading the kept copy of ${path} failed`, err);
+	async function keptCopy() {
+		const kept = await store.get().catch((err) => {
+			logger.error('Reading the kept copy of the partners document failed', err);
 			return undefined;
 		});
 		if (!kept) return undefined;
 		try {
-			return { fetchedAt: kept.fetchedAt, body: parse(kept.body) };
+			return { fetchedAt: kept.fetchedAt, body: partnersDocument.parse(kept.body) };
 		} catch (err) {
-			logger.warn(`The kept copy of ${path} is not the document asked for; ignoring it`, err);
+			logger.warn('The kept copy is not a partners document; ignoring it', err);
 			return undefined;
-		}
-	}
-
-	/** Reads `path`, keeping the body only once `parse` accepts it; `parse` throws on anything else. */
-	async function read<T>(path: string, parse: (body: unknown) => T): Promise<T> {
-		const kept = await keptCopy(path, parse);
-		const age = kept ? now() - kept.fetchedAt : Infinity;
-		if (kept && age < FRESH_MS) return kept.body;
-
-		try {
-			const response = await options.fetch(new URL(path, baseUrl), {
-				headers: { Accept: 'application/json', Authorization: `Bearer ${token ?? ''}` },
-				signal: AbortSignal.timeout(timeoutMs)
-			});
-			if (!response.ok) throw new Error(`The CMS answered ${response.status}`);
-			const body = parse(await response.json());
-
-			await store.put(path, { fetchedAt: now(), body }).catch((err) => {
-				logger.error(`Keeping a copy of ${path} failed`, err);
-			});
-			return body;
-		} catch (err) {
-			if (kept && age < KEEP_MS) {
-				logger.warn(`CMS read failed for ${path}; serving the kept copy`, err);
-				return kept.body;
-			}
-			throw new CmsUnavailableError(path, err);
 		}
 	}
 
 	return {
 		async partners() {
-			return read('/api/community/partners', (body) => partnersDocument.parse(body));
+			const kept = await keptCopy();
+			const age = kept ? now() - kept.fetchedAt : Infinity;
+			if (kept && age < FRESH_MS) return kept.body;
+
+			try {
+				const response = await options.fetch(new URL(PARTNERS_PATH, baseUrl), {
+					headers: { Accept: 'application/json', Authorization: `Bearer ${token ?? ''}` },
+					signal: AbortSignal.timeout(timeoutMs)
+				});
+				if (!response.ok) throw new Error(`The CMS answered ${response.status}`);
+				const body = partnersDocument.parse(await response.json());
+
+				await store.put({ fetchedAt: now(), body }).catch((err) => {
+					logger.error('Keeping a copy of the partners document failed', err);
+				});
+				return body;
+			} catch (err) {
+				if (kept && age < KEEP_MS) {
+					logger.warn(
+						'Reading the partners document from the CMS failed; serving the kept copy',
+						err
+					);
+					return kept.body;
+				}
+				throw new CmsUnavailableError(err);
+			}
 		}
 	};
 }
 
-/** Copies kept in memory: for tests, and for `vite dev`, whose Cache API keeps nothing. */
+/** The copy kept in memory: for tests, and for `vite dev`, whose Cache API keeps nothing. */
 export function memoryStore(): CopyStore {
-	const copies = new Map<string, KeptCopy>();
+	let kept: KeptCopy | undefined;
 	return {
-		async get(key) {
-			return copies.get(key);
+		async get() {
+			return kept;
 		},
-		async put(key, copy) {
-			copies.set(key, copy);
+		async put(copy) {
+			kept = copy;
 		}
 	};
 }
 
 /**
- * The host the kept copies are filed under in the Cache API. Invented on purpose: no request from
- * outside can ever be for this host, so nothing kept here (member perks included) can be served to
- * a browser from Cloudflare's cache.
+ * Where the copy is filed in the Cache API. The host is invented on purpose: no request from
+ * outside can ever be for it, so the copy (member perks included) can never be served to a browser
+ * from Cloudflare's cache.
  */
-const CACHE_HOST = 'https://community-website-copies.internal';
+const CACHE_KEY = 'https://community-website-copies.internal' + PARTNERS_PATH;
 
 /**
- * Copies kept in the Workers Cache API, so every isolate in a data centre shares them. The entry
+ * The copy kept in the Workers Cache API, so every isolate in a data centre shares it. The entry
  * lives for `KEEP_MS`; whether it is fresh is decided from its own `fetchedAt`, not by the cache,
  * which is what lets a stale copy be served when the CMS fails.
  */
 export function cacheApiStore(cache: Cache): CopyStore {
 	return {
-		async get(key) {
-			const response = await cache.match(CACHE_HOST + key);
+		async get() {
+			const response = await cache.match(CACHE_KEY);
 			return response ? ((await response.json()) as KeptCopy) : undefined;
 		},
-		async put(key, copy) {
+		async put(copy) {
 			await cache.put(
-				CACHE_HOST + key,
+				CACHE_KEY,
 				new Response(JSON.stringify(copy), {
 					headers: {
 						'Content-Type': 'application/json',
