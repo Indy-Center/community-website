@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { signInHref } from '$lib/utils/signIn';
 	import Panel from '$lib/components/Panel.svelte';
-	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
+	import SocialLink from '$lib/components/partners/SocialLink.svelte';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
 	import PhotoViewer from '$lib/components/partners/PhotoViewer.svelte';
 	import PartnerImage from '$lib/components/partners/PartnerImage.svelte';
@@ -128,14 +128,7 @@
 			{#if partner.socialLinks.length}
 				<div class="flex flex-wrap gap-2">
 					{#each partner.socialLinks as link, i (i)}
-						<a
-							href={link.url}
-							aria-label="{partner.name} on {platformName(link.platform)}"
-							title={platformName(link.platform)}
-							class="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/60 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
-						>
-							<SocialIcon platform={link.platform} />
-						</a>
+						<SocialLink partnerName={partner.name} {link} variant="bar" />
 					{/each}
 				</div>
 			{/if}
