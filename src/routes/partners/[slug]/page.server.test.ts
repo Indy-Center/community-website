@@ -63,13 +63,14 @@ describe('/partners/[slug]', () => {
 		expect(data).toMatchObject({ state: 'found', categoryName: 'Creators' });
 	});
 
-	it('gives a signed-in user each member perk in full', async () => {
+	it('gives a signed-in user each member perk in full, and how many there are', async () => {
 		const data = await run(load, partnerPage('example-scenery', 'signed-in'));
 
 		expect(data).toMatchObject({
 			partner: {
 				memberPerks: {
 					signedIn: true,
+					count: 1,
 					perks: [
 						{
 							label: 'Claim discount',

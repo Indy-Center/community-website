@@ -70,9 +70,7 @@
 
 {#if data.state === 'found'}
 	{@const partner = data.partner}
-	{@const hasPerks = partner.memberPerks.signedIn
-		? partner.memberPerks.perks.length > 0
-		: partner.memberPerks.count > 0}
+	{@const hasPerks = partner.memberPerks.count > 0}
 	<!-- The right column: the member perk panel above the photos. -->
 	{@const hasSide = partner.gallery.length > 0 || hasPerks}
 

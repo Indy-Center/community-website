@@ -6,7 +6,7 @@ import type { PageServerLoad } from './$types';
  * One published partner's page, with its partner category's name. An unknown or unpublished slug
  * is a 404; with the CMS down and no copy kept, the page says partners couldn't be loaded, as
  * `/partners` does. Member perks go in full to anyone signed in to the site, whatever their
- * membership (decision 0002); a guest gets only how many there are, so a perk's text and URL never
+ * membership (decision 0002); both shapes say how many there are, and a guest gets only that, so a perk's text and URL never
  * reach their browser.
  */
 export const load = (async ({ locals, params }) => {
@@ -30,7 +30,11 @@ export const load = (async ({ locals, params }) => {
 				socialLinks: partner.socialLinks,
 				gallery: partner.gallery,
 				memberPerks: locals.user
-					? { signedIn: true as const, perks: partner.memberPerks }
+					? {
+							signedIn: true as const,
+							count: partner.memberPerks.length,
+							perks: partner.memberPerks
+						}
 					: { signedIn: false as const, count: partner.memberPerks.length }
 			}
 		};
