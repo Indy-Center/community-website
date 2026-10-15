@@ -13,7 +13,9 @@ import { socialPlatforms, type PartnersDocument, type SocialPlatform } from '$li
 
 const image = z.object({ url: z.string(), alt: z.string(), width: z.number(), height: z.number() });
 
-const link = z.object({ label: z.string(), url: z.string() });
+const callToAction = z.object({ label: z.string(), url: z.string() });
+
+const memberPerk = z.object({ label: z.string(), url: z.string(), text: z.string() });
 
 /**
  * Whether the site has an icon for this Social link's platform. A link on any other platform is
@@ -41,8 +43,8 @@ const partner = z
 		description: z.string(),
 		logo: image,
 		banner: image.nullable(),
-		callsToAction: z.array(link),
-		memberPerks: z.array(link.extend({ text: z.string() })),
+		callsToAction: z.array(callToAction),
+		memberPerks: z.array(memberPerk),
 		socialLinks: z.array(z.object({ platform: z.string(), url: z.string() })),
 		gallery: z.array(z.object({ thumbnail: image, large: image }))
 	})
