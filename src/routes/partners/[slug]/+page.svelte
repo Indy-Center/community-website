@@ -116,12 +116,13 @@
 			class="flex flex-col gap-4 border-t border-slate-700/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
 		>
 			<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-				{#each partner.callsToAction as cta, i (i)}
+				{#each partner.callsToAction as callToAction, i (i)}
 					<a
-						href={cta.url}
+						href={callToAction.url}
 						class="rounded-lg px-4 py-3 text-center text-sm font-semibold transition-colors {i === 0
 							? 'bg-sky-600 text-white hover:bg-sky-500'
-							: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}">{cta.label}</a
+							: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}"
+						>{callToAction.label}</a
 					>
 				{/each}
 			</div>
