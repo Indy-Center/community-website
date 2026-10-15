@@ -21,7 +21,7 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
 - `src/lib/server/discord.ts` — Discord webhook helpers.
-- `src/lib/server/partners.ts` — reads the partners document for the partners pages, or null when the CMS is down and no copy is kept.
+- `src/lib/server/partners.ts` — reads the partners document as the visitor may see it (member perks in full if signed in, only a count for a guest), or null when the CMS is down and no copy is kept. Every page that shows partners reads through it.
 
 ## Bindings
 
