@@ -146,15 +146,6 @@
 	</div>
 
 	<div class="grid gap-8 lg:grid-cols-3">
-		{#if hasPerks}
-			<!-- On phones the perk comes before About, so it isn't buried under a long description. -->
-			<div class="lg:hidden">
-				<Panel title="Member perk" icon={IconStar}>
-					<div class="p-4">{@render perkBody(partner.name, partner.memberPerks)}</div>
-				</Panel>
-			</div>
-		{/if}
-
 		<div class={hasSide ? 'lg:col-span-2' : 'lg:col-span-3'}>
 			<Panel title="About" icon={IconText}>
 				<div class="space-y-4 p-4 leading-relaxed text-slate-300 sm:p-6">
@@ -166,10 +157,15 @@
 		</div>
 
 		{#if hasSide}
-			<div class="space-y-8">
+			<!-- On phones this column dissolves into the grid, and the perk panel moves above About so
+			     it isn't buried under a long description. -->
+			<div class="contents lg:block lg:space-y-8">
 				{#if hasPerks}
-					<div class="hidden lg:block">
-						<Panel title="Member perk" icon={IconStar}>
+					<div class="max-lg:order-first">
+						<Panel
+							title={partner.memberPerks.count === 1 ? 'Member perk' : 'Member perks'}
+							icon={IconStar}
+						>
 							<div class="p-4">{@render perkBody(partner.name, partner.memberPerks)}</div>
 						</Panel>
 					</div>
