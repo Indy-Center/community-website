@@ -9,6 +9,12 @@
 	import IconMessage from '~icons/mdi/message';
 
 	const notFound = $derived(page.status === 404);
+	/** What a load said was missing, e.g. "Partner not found"; SvelteKit's own 404 says "Not Found". */
+	const missing = $derived(
+		notFound && page.error?.message && page.error.message !== 'Not Found'
+			? page.error.message
+			: null
+	);
 
 	const HELPFUL_LINKS = [
 		{ label: 'Events', href: '/events', icon: IconCalendar },
@@ -18,7 +24,7 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | {notFound ? 'Page Not Found' : 'Error'}</title>
+	<title>Indy Center | {notFound ? (missing ?? 'Page Not Found') : 'Error'}</title>
 </svelte:head>
 
 <div class="flex flex-1 flex-col items-center justify-center py-16 text-center">
@@ -39,7 +45,7 @@
 	</p>
 
 	<h1 class="mt-4 text-2xl font-bold text-white md:text-3xl">
-		{notFound ? 'Radar contact lost' : 'Something went wrong'}
+		{notFound ? (missing ?? 'Radar contact lost') : 'Something went wrong'}
 	</h1>
 
 	<p class="mt-3 max-w-md leading-relaxed text-slate-400">
