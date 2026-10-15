@@ -159,6 +159,26 @@ describe('/partners', () => {
 		expect(s.cms.authorizations).toEqual(['Bearer test-token']);
 	});
 
+	it('leaves out a partner category with no partners', async () => {
+		const document = structuredClone(partners);
+		document.categories.splice(1, 0, { id: 'cat-empty', name: 'Empty', blurb: '', partners: [] });
+		const s = site({ cms: fakeCms(document) });
+
+		const data = await callLoad(load, s.event('/partners'));
+
+		expect(data).toEqual(await callLoad(load, site().event('/partners')));
+	});
+
+	it('says Coming Soon when every partner category is empty', async () => {
+		const empty = { id: 'cat-empty', name: 'Empty', blurb: '', partners: [] };
+		const data = await callLoad(
+			load,
+			site({ cms: fakeCms({ categories: [empty] }) }).event('/partners')
+		);
+
+		expect(data).toEqual({ state: 'coming-soon' });
+	});
+
 	it('says Coming Soon when no partner is published', async () => {
 		const cms = fakeCms({ categories: [] });
 		const data = await callLoad(load, site({ cms }).event('/partners'));

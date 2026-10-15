@@ -25,8 +25,9 @@ export type VisiblePartnersDocument = {
 /**
  * The partners document as the visitor in `locals` may see it, or null when the CMS is unavailable
  * and no copy is kept. Every page reads partners through here, so member perks are hidden from a
- * guest without the page having to remember. Pages show a "couldn't be loaded" panel for null
- * rather than an error page; any other failure still throws.
+ * guest without the page having to remember. A partner category with no partners is left out,
+ * should the CMS ever send one. Pages show a "couldn't be loaded" panel for null rather than an
+ * error page; any other failure still throws.
  */
 export async function readPartners(
 	locals: Pick<App.Locals, 'cms' | 'user'>
@@ -42,14 +43,16 @@ export async function readPartners(
 
 	const signedIn = Boolean(locals.user);
 	return {
-		categories: document.categories.map((category) => ({
-			...category,
-			partners: category.partners.map(({ memberPerks, ...partner }) => ({
-				...partner,
-				memberPerks: signedIn
-					? { signedIn: true as const, count: memberPerks.length, perks: memberPerks }
-					: { signedIn: false as const, count: memberPerks.length }
+		categories: document.categories
+			.filter((category) => category.partners.length > 0)
+			.map((category) => ({
+				...category,
+				partners: category.partners.map(({ memberPerks, ...partner }) => ({
+					...partner,
+					memberPerks: signedIn
+						? { signedIn: true as const, count: memberPerks.length, perks: memberPerks }
+						: { signedIn: false as const, count: memberPerks.length }
+				}))
 			}))
-		}))
 	};
 }
