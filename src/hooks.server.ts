@@ -40,9 +40,11 @@ async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 
 // Kept copies under `vite dev`, whose Cache API keeps nothing. Never used on Cloudflare.
 const devCopies = memoryStore();
+let warnedNoToken = false;
 
 async function cmsHandle({ event, resolve }: Parameters<Handle>[0]) {
-	if (!env.COMMUNITY_API_TOKEN) {
+	if (!env.COMMUNITY_API_TOKEN && !warnedNoToken) {
+		warnedNoToken = true;
 		logger.warn('COMMUNITY_API_TOKEN is not set; the CMS will refuse every read');
 	}
 	const cache = event.platform?.caches?.default;
