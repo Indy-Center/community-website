@@ -1,6 +1,5 @@
 import { logger } from '$lib/server/logger';
-import { partnersDocument } from './schema';
-import type { PartnersDocument } from '$lib/cms/types';
+import { partnersDocument, type ReadPartnersDocument } from './schema';
 
 /**
  * Everything the site reads from the CMS, and the only place that talks to it. Modelled on
@@ -18,7 +17,7 @@ import type { PartnersDocument } from '$lib/cms/types';
  */
 export type Cms = {
 	/** Every published partner, grouped by partner category, in order. */
-	partners(): Promise<PartnersDocument>;
+	partners(): Promise<ReadPartnersDocument>;
 };
 
 /** A document as it was fetched, and when. */

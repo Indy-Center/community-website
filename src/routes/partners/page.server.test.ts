@@ -124,38 +124,31 @@ describe('/partners', () => {
 		});
 	});
 
-	describe('a Social link on a platform the site does not know', () => {
-		afterEach(() => {
-			vi.restoreAllMocks();
+	it('lists a Social link on a platform the site has no icon for as one to another site', async () => {
+		const document = structuredClone(partners);
+		const links: unknown[] = document.categories[0].partners[1].socialLinks;
+		links.unshift({ platform: 'myspace', url: 'https://myspace.example.test/sample-tools' });
+		const s = site({ cms: fakeCms(document) });
+
+		const data = await callLoad(load, s.event('/partners'));
+
+		expect(data).toMatchObject({
+			categories: [
+				{
+					partners: [
+						{},
+						{
+							socialLinks: [
+								{ platform: 'other', url: 'https://myspace.example.test/sample-tools' },
+								{ platform: 'github', url: 'https://github.example.test/sample-tools' }
+							]
+						}
+					]
+				},
+				{}
+			]
 		});
-
-		/** The example site, with Sample Tools also on a platform the site has no icon for. */
-		function siteWithUnknownPlatform() {
-			const document = structuredClone(partners);
-			const links: unknown[] = document.categories[0].partners[1].socialLinks;
-			links.unshift({ platform: 'myspace', url: 'https://myspace.example.test/sample-tools' });
-			return site({ cms: fakeCms(document) });
-		}
-
-		it('is left out, and the rest of the partners document is listed', async () => {
-			vi.spyOn(logger, 'warn').mockImplementation(() => {});
-
-			const data = await callLoad(load, siteWithUnknownPlatform().event('/partners'));
-			const listed = await callLoad(load, site().event('/partners'));
-
-			expect(data).toEqual(listed);
-		});
-
-		it('is logged once', async () => {
-			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
-			const s = siteWithUnknownPlatform();
-
-			await callLoad(load, s.event('/partners'));
-			await callLoad(load, s.event('/partners'));
-
-			expect(warn).toHaveBeenCalledTimes(1);
-			expect(String(warn.mock.calls[0][0])).toContain('myspace');
-		});
+		expect(await callLoad(load, s.event('/partners'))).toEqual(data);
 	});
 
 	it('sends the CMS the community credential', async () => {

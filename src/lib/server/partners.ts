@@ -1,6 +1,10 @@
+import type { Partner } from '$lib/cms/types';
 import { CmsUnavailableError } from '$lib/server/cms';
-import type { Category, Partner, PartnersDocument } from '$lib/cms/types';
+import type { ReadPartnersDocument } from '$lib/server/cms/schema';
 import { logger } from '$lib/server/logger';
+
+type ReadCategory = ReadPartnersDocument['categories'][number];
+type ReadPartner = ReadCategory['partners'][number];
 
 /**
  * A partner's member perks as one visitor may see them. Anyone signed in gets them in full,
@@ -13,8 +17,8 @@ export type VisibleMemberPerks =
 
 /** The partners document as one visitor may see it: member perks in their shape, nothing else changed. */
 export type VisiblePartnersDocument = {
-	categories: (Omit<Category, 'partners'> & {
-		partners: (Omit<Partner, 'memberPerks'> & { memberPerks: VisibleMemberPerks })[];
+	categories: (Omit<ReadCategory, 'partners'> & {
+		partners: (Omit<ReadPartner, 'memberPerks'> & { memberPerks: VisibleMemberPerks })[];
 	})[];
 };
 
@@ -27,7 +31,7 @@ export type VisiblePartnersDocument = {
 export async function readPartners(
 	locals: Pick<App.Locals, 'cms' | 'user'>
 ): Promise<VisiblePartnersDocument | null> {
-	let document: PartnersDocument;
+	let document: ReadPartnersDocument;
 	try {
 		document = await locals.cms.partners();
 	} catch (err) {

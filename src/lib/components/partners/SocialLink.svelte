@@ -1,12 +1,15 @@
 <!--
 	A partner's Social link: the platform's icon, linking to the partner's address there, named
-	"<partner> on <platform>" for screen readers. `card` is the small icon on the partners list;
+	"<partner> on <platform>" for screen readers. A link on a platform the site has no icon for
+	(`other`) gets a plain link icon and is named for its site, "<partner> on example.com".
+	`card` is the small icon on the partners list;
 	`bar` is the square button under a partner's banner. Both are 44px square so they can be tapped
 	on a phone.
 -->
 <script lang="ts" module>
 	import type { Component } from 'svelte';
 	import type { SocialPlatform } from '$lib/cms/types';
+	import type { SocialLink } from '$lib/partners';
 	import IconTwitch from '~icons/simple-icons/twitch';
 	import IconYoutube from '~icons/simple-icons/youtube';
 	import IconDiscord from '~icons/simple-icons/discord';
@@ -16,6 +19,7 @@
 	import IconFacebook from '~icons/simple-icons/facebook';
 	import IconGithub from '~icons/simple-icons/github';
 	import IconWeb from '~icons/mdi/web';
+	import IconLink from '~icons/mdi/link-variant';
 
 	const platforms: Record<SocialPlatform, { name: string; icon: Component }> = {
 		twitch: { name: 'Twitch', icon: IconTwitch },
@@ -28,6 +32,15 @@
 		github: { name: 'GitHub', icon: IconGithub },
 		web: { name: 'Website', icon: IconWeb }
 	};
+
+	/** The site a link on an `other` platform goes to, such as "example.com". */
+	function siteName(url: string) {
+		try {
+			return new URL(url).hostname.replace(/^www\./, '');
+		} catch {
+			return 'another site';
+		}
+	}
 
 	const variants = {
 		card: {
@@ -48,11 +61,15 @@
 		variant
 	}: {
 		partnerName: string;
-		link: { platform: SocialPlatform; url: string };
+		link: SocialLink;
 		variant: keyof typeof variants;
 	} = $props();
 
-	const platform = $derived(platforms[link.platform]);
+	const platform = $derived(
+		link.platform === 'other'
+			? { name: siteName(link.url), icon: IconLink }
+			: platforms[link.platform]
+	);
 	const Icon = $derived(platform.icon);
 </script>
 
