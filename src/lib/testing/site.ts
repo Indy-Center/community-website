@@ -55,8 +55,28 @@ export function fakeCms(documents = cmsDocuments()) {
 }
 
 /**
+ * Who a request comes from: a guest, or someone signed in to the site's existing session, which
+ * `hooks.server.ts` marks by setting `locals.user` and `locals.session`.
+ */
+export type Visitor = 'guest' | 'signed-in';
+
+/** A signed-in user and session, as `authHandle` leaves them in `locals`. */
+function signedInLocals() {
+	return {
+		user: { id: 'user-1', cid: 1234567 },
+		session: {
+			id: 'session-1',
+			userId: 'user-1',
+			expiresAt: new Date('2026-11-14T12:00:00Z'),
+			data: null
+		}
+	};
+}
+
+/**
  * One running site: a fake CMS, the kept copies (shared across requests, as the Cache API is), and
- * a clock tests can move. `event()` builds what one request's page load receives.
+ * a clock tests can move. `event()` builds what one request's page load receives, from a guest
+ * unless `as` says otherwise.
  */
 export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 	const cms = opts.cms ?? fakeCms();
@@ -66,11 +86,12 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 	return {
 		cms,
 		clock,
-		event(href: string, params: Record<string, string> = {}) {
+		event(href: string, params: Record<string, string> = {}, as: Visitor = 'guest') {
 			return {
 				url: new URL(href, 'https://flyindycenter.com'),
 				params,
 				locals: {
+					...(as === 'signed-in' ? signedInLocals() : {}),
 					roles: [],
 					cms: createCms({
 						baseUrl: CMS_URL,
