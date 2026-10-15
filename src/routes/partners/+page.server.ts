@@ -24,7 +24,8 @@ export const load = (async ({ locals }) => {
 				tagline: partner.tagline,
 				logo: partner.logo,
 				socialLinks: partner.socialLinks,
-				callToAction: partner.callsToAction[0],
+				// A partner can reach us with none; its card then has no button rather than breaking the page.
+				callToAction: partner.callsToAction[0] ?? null,
 				photoCount: partner.gallery.length,
 				// Only whether there is one: perk text and URLs never reach a card.
 				hasMemberPerk: partner.memberPerks.length > 0
