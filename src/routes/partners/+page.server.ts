@@ -7,9 +7,9 @@ import type { PageServerLoad } from './$types';
  * couldn't be loaded rather than showing an error page.
  */
 export const load = (async ({ locals }) => {
-	const document = await readPartners(locals.cms);
-	if (!document) return { state: 'unavailable' as const };
-	const { categories } = document;
+	const partners = await readPartners(locals.cms);
+	if (!partners) return { state: 'unavailable' as const };
+	const { categories } = partners;
 	if (categories.length === 0) return { state: 'coming-soon' as const };
 
 	return {

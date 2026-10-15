@@ -10,10 +10,10 @@ import type { PageServerLoad } from './$types';
  * reach their browser.
  */
 export const load = (async ({ locals, params }) => {
-	const document = await readPartners(locals.cms);
-	if (!document) return { state: 'unavailable' as const };
+	const partners = await readPartners(locals.cms);
+	if (!partners) return { state: 'unavailable' as const };
 
-	for (const category of document.categories) {
+	for (const category of partners.categories) {
 		const partner = category.partners.find((p) => p.slug === params.slug);
 		if (!partner) continue;
 		return {
