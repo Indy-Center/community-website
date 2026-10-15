@@ -5,6 +5,7 @@
 	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
 	import PhotoViewer from '$lib/components/partners/PhotoViewer.svelte';
+	import PartnerImage from '$lib/components/partners/PartnerImage.svelte';
 	import IconArrowLeft from '~icons/mdi/arrow-left';
 	import IconText from '~icons/mdi/text-long';
 	import IconImages from '~icons/mdi/image-multiple';
@@ -78,11 +79,9 @@
 	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
 		<div class="relative">
 			{#if partner.banner}
-				<img
-					src={partner.banner.url}
-					alt=""
-					width={partner.banner.width}
-					height={partner.banner.height}
+				<PartnerImage
+					image={partner.banner}
+					decorative
 					class="absolute inset-0 h-full w-full object-cover"
 				/>
 			{:else}
@@ -95,11 +94,9 @@
 			></div>
 			<div class="relative flex items-end gap-3 px-4 pt-32 pb-4 sm:gap-4 sm:px-6 sm:pt-40 lg:pt-48">
 				<div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-900/80 sm:h-20 sm:w-20">
-					<img
-						src={partner.logo.url}
-						alt=""
-						width={partner.logo.width}
-						height={partner.logo.height}
+					<PartnerImage
+						image={partner.logo}
+						decorative
 						class="h-full w-full object-contain p-1.5"
 					/>
 				</div>
@@ -181,13 +178,7 @@
 								aria-label="Open photo 1 of {partner.gallery.length}"
 								onclick={() => (openPhoto = 0)}
 							>
-								<img
-									src={featured.url}
-									alt={featured.alt}
-									width={featured.width}
-									height={featured.height}
-									class="aspect-[4/3] w-full object-cover"
-								/>
+								<PartnerImage image={featured} class="aspect-[4/3] w-full object-cover" />
 							</button>
 							{#if partner.gallery.length > 1}
 								<div class="grid grid-cols-4 gap-2">
@@ -198,11 +189,8 @@
 											aria-label="Open photo {i + 2} of {partner.gallery.length}"
 											onclick={() => (openPhoto = i + 1)}
 										>
-											<img
-												src={photo.thumbnail.url}
-												alt={photo.thumbnail.alt}
-												width={photo.thumbnail.width}
-												height={photo.thumbnail.height}
+											<PartnerImage
+												image={photo.thumbnail}
 												loading="lazy"
 												class="aspect-square w-full object-cover"
 											/>
