@@ -1,5 +1,4 @@
-import { CmsUnavailableError } from '$lib/server/cms';
-import { logger } from '$lib/server/logger';
+import { readPartners } from '$lib/server/partners';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -8,14 +7,9 @@ import type { PageServerLoad } from './$types';
  * couldn't be loaded rather than showing an error page.
  */
 export const load = (async ({ locals }) => {
-	let categories;
-	try {
-		({ categories } = await locals.cms.partners());
-	} catch (err) {
-		if (!(err instanceof CmsUnavailableError)) throw err;
-		logger.error('Partners could not be loaded', err);
-		return { state: 'unavailable' as const };
-	}
+	const document = await readPartners(locals.cms);
+	if (!document) return { state: 'unavailable' as const };
+	const { categories } = document;
 	if (categories.length === 0) return { state: 'coming-soon' as const };
 
 	return {

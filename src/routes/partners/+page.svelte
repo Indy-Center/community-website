@@ -3,7 +3,7 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import SocialIcon, { platformName } from '$lib/components/partners/SocialIcon.svelte';
 	import IconHandshake from '~icons/mdi/handshake';
-	import IconCloudOff from '~icons/mdi/cloud-off-outline';
+	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
 	import IconImages from '~icons/mdi/image-multiple';
 	import IconStar from '~icons/mdi/star-four-points';
 
@@ -135,11 +135,5 @@
 		</Panel>
 	</div>
 {:else}
-	<div class="mx-auto max-w-4xl">
-		<Panel title="Unavailable" icon={IconCloudOff} mode="dark">
-			<div class="p-8">
-				<p class="leading-relaxed text-slate-300">Partners couldn't be loaded, try again later.</p>
-			</div>
-		</Panel>
-	</div>
+	<PartnersUnavailable />
 {/if}
