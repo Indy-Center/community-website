@@ -41,13 +41,20 @@ export type Partner = {
 
 export type Image = { url: string; alt: string; width: number; height: number };
 
-export type SocialPlatform =
-	| 'twitch'
-	| 'youtube'
-	| 'discord'
-	| 'x'
-	| 'instagram'
-	| 'tiktok'
-	| 'facebook'
-	| 'github'
-	| 'web';
+/**
+ * Every platform a Social link can be on. The one list: `SocialPlatform`, the schema and the icons
+ * in `SocialLink.svelte` all come from it.
+ */
+export const socialPlatforms = [
+	'twitch',
+	'youtube',
+	'discord',
+	'x',
+	'instagram',
+	'tiktok',
+	'facebook',
+	'github',
+	'web'
+] as const;
+
+export type SocialPlatform = (typeof socialPlatforms)[number];
