@@ -27,7 +27,13 @@ export const load = (async ({ locals }) => {
 			partners: category.partners.map((partner) => ({
 				slug: partner.slug,
 				name: partner.name,
-				tagline: partner.tagline
+				tagline: partner.tagline,
+				logo: partner.logo,
+				socialLinks: partner.socialLinks,
+				callToAction: partner.callsToAction[0],
+				photoCount: partner.gallery.length,
+				// Only whether there is one: perk text and URLs never reach a card.
+				hasMemberPerk: partner.memberPerks.length > 0
 			}))
 		}))
 	};

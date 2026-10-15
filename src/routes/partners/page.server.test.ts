@@ -3,7 +3,7 @@ import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
 
 describe('/partners', () => {
-	it('lists each partner category in order, with a card per partner', async () => {
+	it('lists each partner category in order, with a card per partner and whether it has a member perk', async () => {
 		const data = await run(load, site().event('/partners'));
 
 		expect(data).toEqual({
@@ -17,12 +17,34 @@ describe('/partners', () => {
 						{
 							slug: 'example-scenery',
 							name: 'Example Scenery Co.',
-							tagline: 'Hand-built airports for the Example region.'
+							tagline: 'Hand-built airports for the Example region.',
+							logo: {
+								url: 'https://cms.example.test/media/example-scenery-logo.png',
+								alt: 'example-scenery-logo.png',
+								width: 256,
+								height: 256
+							},
+							socialLinks: [{ platform: 'discord', url: 'https://discord.example.test/scenery' }],
+							callToAction: { label: 'Visit website', url: 'https://scenery.example.test' },
+							photoCount: 1,
+							hasMemberPerk: true
 						},
 						{
 							slug: 'sample-tools',
 							name: 'Sample Tools',
-							tagline: 'Little utilities for controllers.'
+							tagline: 'Little utilities for controllers.',
+							logo: {
+								url: 'https://cms.example.test/media/sample-tools-logo.svg',
+								alt: 'sample-tools-logo.svg',
+								width: 256,
+								height: 256
+							},
+							socialLinks: [
+								{ platform: 'github', url: 'https://github.example.test/sample-tools' }
+							],
+							callToAction: { label: 'Get the tools', url: 'https://tools.example.test' },
+							photoCount: 0,
+							hasMemberPerk: false
 						}
 					]
 				},
@@ -34,12 +56,32 @@ describe('/partners', () => {
 						{
 							slug: 'pretend-streamer',
 							name: 'Pretend Streamer',
-							tagline: 'Weekly group flights into Example Field.'
+							tagline: 'Weekly group flights into Example Field.',
+							logo: {
+								url: 'https://cms.example.test/media/pretend-streamer-logo.webp',
+								alt: 'pretend-streamer-logo.webp',
+								width: 256,
+								height: 256
+							},
+							socialLinks: [
+								{ platform: 'twitch', url: 'https://twitch.example.test/pretend' },
+								{ platform: 'youtube', url: 'https://youtube.example.test/pretend' }
+							],
+							callToAction: { label: 'Watch live', url: 'https://twitch.example.test/pretend' },
+							photoCount: 0,
+							hasMemberPerk: false
 						}
 					]
 				}
 			]
 		});
+	});
+
+	it("never sends a member perk's text or URL", async () => {
+		const data = JSON.stringify(await run(load, site().event('/partners')));
+
+		expect(data).not.toContain('SECRET-PERK-1');
+		expect(data).not.toContain('https://scenery.example.test/claim');
 	});
 
 	it('sends the CMS the community credential', async () => {
