@@ -7,13 +7,10 @@
 
 	let {
 		image,
-		decorative = false,
 		loading,
 		class: className
 	}: {
 		image: Image;
-		/** Hides the image from screen readers when the text beside it already says the same. */
-		decorative?: boolean;
 		loading?: 'lazy' | 'eager';
 		class?: string;
 	} = $props();
@@ -21,7 +18,7 @@
 
 <img
 	src={image.url}
-	alt={decorative ? '' : image.alt}
+	alt={image.alt}
 	width={image.width}
 	height={image.height}
 	{loading}

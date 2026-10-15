@@ -70,7 +70,6 @@
 							<div class="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-900/60">
 								<PartnerImage
 									image={partner.logo}
-									decorative
 									loading="lazy"
 									class="h-full w-full object-contain p-1.5"
 								/>
