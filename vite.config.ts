@@ -17,5 +17,8 @@ export default defineConfig(({ command, mode }) => ({
 		Icons({
 			compiler: 'svelte'
 		})
-	]
+	],
+	test: {
+		include: ['src/**/*.{test,spec}.{js,ts}']
+	}
 }));

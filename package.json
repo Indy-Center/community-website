@@ -12,6 +12,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check .",
+		"test": "vitest run",
 		"populate-analytics": "node scripts/populate-analytics.js",
 		"db:migrate": "npx wrangler d1 migrations apply website-db --remote",
 		"db:migrate:local": "npx wrangler d1 migrations apply website-db --local",
@@ -48,6 +49,7 @@
 		"ulid": "^3.0.1",
 		"unplugin-icons": "^22.2.0",
 		"vite": "^7.0.4",
+		"vitest": "^3.2.7",
 		"winston": "^3.17.0",
 		"wrangler": "^4.33.1",
 		"zod": "4.0.10"
