@@ -2,6 +2,9 @@ import * as Sentry from '@sentry/sveltekit';
 import { instrumentD1WithSentry } from '@sentry/cloudflare';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import { cacheApiStore, createCms, memoryStore } from '$lib/server/cms';
 import { drizzle, type Database } from '$lib/server/db';
 
 import { fetchUserinfo, identityEnabled, toSiteRoles } from '$lib/server/identity';
@@ -25,11 +28,30 @@ export const handle = sequence(
 	}),
 	Sentry.sentryHandle(),
 	dbHandle,
+	cmsHandle,
 	authHandle
 );
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.db = drizzle(instrumentD1WithSentry(event.platform?.env.DB!));
+
+	return await resolve(event);
+}
+
+// Kept copies under `vite dev`, whose Cache API keeps nothing. Never used on Cloudflare.
+const devCopies = memoryStore();
+
+async function cmsHandle({ event, resolve }: Parameters<Handle>[0]) {
+	if (!env.COMMUNITY_API_TOKEN) {
+		logger.warn('COMMUNITY_API_TOKEN is not set; the CMS will refuse every read');
+	}
+	const cache = event.platform?.caches?.default;
+	event.locals.cms = createCms({
+		baseUrl: env.CMS_URL ?? 'https://cms.flyindycenter.com',
+		token: env.COMMUNITY_API_TOKEN,
+		fetch: (input, init) => fetch(input, init),
+		store: dev || !cache ? devCopies : cacheApiStore(cache)
+	});
 
 	return await resolve(event);
 }
