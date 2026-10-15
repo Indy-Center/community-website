@@ -39,6 +39,42 @@ A lightweight Cloudflare Worker (`task-runner`) with a single `process-roster` e
 | `ASSETS`              | Assets           | Static files from the SvelteKit build             |
 | `CF_VERSION_METADATA` | Version metadata | Build version tracking                            |
 
+## Vars and secrets for the CMS
+
+Partners are edited in the CMS (Payload, at `cms.flyindycenter.com`) and read
+from its `GET /api/partners` by `src/lib/server/cms/`, the only place that
+talks to it.
+
+| Name                  | Kind       | What                                                                                                                     |
+| --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `CMS_URL`             | Var        | The CMS's origin. `https://cms.flyindycenter.com` in `wrangler.jsonc`, and the default when unset.                       |
+| `COMMUNITY_API_TOKEN` | **Secret** | The CMS's server credential for the partners document, sent as a bearer token. `wrangler secret put COMMUNITY_API_TOKEN` |
+
+Without `COMMUNITY_API_TOKEN` the CMS refuses every read, and only copies
+already kept are served.
+
+The partners document is kept in the Workers Cache API (in memory under
+`vite dev`):
+
+- **Fresh for 5 minutes**: served without asking the CMS, so an edit shows on
+  the site within that.
+- **Kept for 7 days**: when the CMS fails, answers with an error, or takes over
+  5 seconds, the last good copy is served instead.
+- With no copy at all and the CMS down, `/partners` says partners couldn't be
+  loaded.
+
+The document's shape is the contract in `src/lib/server/cms/types.ts`, copied
+by hand from the payload repo. When the CMS changes it, copy it again and update
+the test fixtures with it.
+
+Locally, set both in `.env`. To read partners from a payload dev server
+running alongside:
+
+```bash
+CMS_URL=http://localhost:3000
+COMMUNITY_API_TOKEN=   # the same value as COMMUNITY_API_TOKEN in payload's .env
+```
+
 ## Local development
 
 ```bash
@@ -49,6 +85,18 @@ npm run dev            # http://localhost:5173
 ```
 
 `adapter-cloudflare` proxies the `IDENTITY` and `DB` bindings via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally. You will need the `identity` Worker running locally if you want auth to function end-to-end.
+
+## Tests
+
+```bash
+npm test   # vitest
+```
+
+Tests call a page's server load with a hand-built event and a fake CMS behind
+`fetch` that serves fixtures shaped exactly like the contract
+(`src/lib/testing/`). They assert what each page is sent, including when the
+CMS is down. The fixtures' content is made up: this repository is public, so
+never put a real partner's details or member perk in a test.
 
 ## Deployment
 
