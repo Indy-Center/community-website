@@ -1,19 +1,13 @@
 # community-website
 
-SvelteKit app deployed to `flyindycenter.com`. Handles the public-facing community site — controller roster, events, feedback, visit requests, and admin tooling. Authentication runs through the `identity` Worker via RPC service binding; session state is stored in a D1 database.
+SvelteKit app deployed to `flyindycenter.com`. Handles the public-facing community site — controller roster, events, feedback, visit requests, and admin tooling. Sign-in goes through the identity server (`id.flyindycenter.com`) over OAuth, or VATSIM Connect when `AUTH_PROVIDER` isn't `identity`; the site keeps its own sessions in a D1 database.
 
 ## Project layout
 
-```
-community-website/
-├── website/          — SvelteKit app (flyindycenter.com)
-└── task-runners/     — Cron Worker that fires internal triggers
-```
+One SvelteKit app at the repository root, deployed as the `community-website` Worker. `src/worker.ts` is its entry point: it serves the site and runs the roster refresh on a cron every 5 minutes.
 
-### `website/`
-
-- `src/hooks.server.ts` — auth gate; reads `fic_session` cookie, validates against identity RPC, populates `locals.user`, `locals.session`, `locals.roles`.
-- `src/routes/login`, `src/routes/logout` — VATSIM Connect OAuth flow.
+- `src/hooks.server.ts` — auth gate; reads the `session` cookie, validates it against D1, populates `locals.user`, `locals.session`, `locals.roles` (for identity sessions, roles are refreshed from the identity server at most every 5 minutes). Also gives each request its CMS client, `locals.cms`.
+- `src/routes/login`, `src/routes/logout` — sign-in and sign-out; `src/routes/login/connect/` starts the OAuth flow, `src/routes/login/identity/callback/` and `src/routes/login/connect/callback/` finish it.
 - `src/routes/roster/` — controller roster page.
 - `src/routes/events/` — events listing.
 - `src/routes/feedback/` — member feedback submission.
@@ -22,22 +16,17 @@ community-website/
 - `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
 - `src/routes/admin/` — admin tooling; role-gated.
 - `src/routes/settings/` — member profile/settings.
-- `src/routes/triggers/process-roster/` — internal HTTP trigger; refreshes roster data from VATSIM. Called by the task runner, not exposed publicly.
-- `src/lib/server/identity.ts` — typed RPC client wrapper for the `IDENTITY` service binding.
-- `src/lib/server/membership.ts` — lazy membership sync logic (runs in `waitUntil` on authed requests).
+- `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster from VATUSA, syncs memberships, renews controllers' certifications.
+- `src/lib/server/identity.ts` — OAuth client for the identity server, and its userinfo lookup.
+- `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
 - `src/lib/server/discord.ts` — Discord webhook helpers.
 - `src/lib/server/partners.ts` — reads the partners document for the partners pages, or null when the CMS is down and no copy is kept.
-
-### `task-runners/`
-
-A lightweight Cloudflare Worker (`task-runner`) with a single `process-roster` environment. Fires every 5 minutes, calls `POST /triggers/process-roster` on the `community-website` Worker via service binding, and returns.
 
 ## Bindings
 
 | Binding               | Type             | Purpose                                           |
 | --------------------- | ---------------- | ------------------------------------------------- |
-| `IDENTITY`            | Service          | RPC calls to the identity Worker                  |
 | `DB`                  | D1               | Website-local data (sessions, roster cache, etc.) |
 | `ASSETS`              | Assets           | Static files from the SvelteKit build             |
 | `CF_VERSION_METADATA` | Version metadata | Build version tracking                            |
@@ -80,14 +69,22 @@ COMMUNITY_API_TOKEN=   # the same value as COMMUNITY_API_TOKEN in payload's .env
 
 ## Local development
 
+From the repository root:
+
 ```bash
-cd website
 npm install
-cp .env.example .env   # fill in VATSIM OAuth credentials and any secrets
-npm run dev            # http://localhost:5173
+touch .env    # then add the secrets below that you need
+npm run dev   # applies local D1 migrations, then serves http://localhost:5173
 ```
 
-`adapter-cloudflare` proxies the `IDENTITY` and `DB` bindings via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally. You will need the `identity` Worker running locally if you want auth to function end-to-end.
+There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set these in `.env` for the features you're working on:
+
+- `IDENTITY_CLIENT_SECRET` — sign-in through the identity server (`IDENTITY_URL` points it at another one). `CONNECT_CLIENT_SECRET` instead when `AUTH_PROVIDER` isn't `identity`.
+- `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
+- `VATUSA_API_KEY` — VATUSA roster and API calls.
+- `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
+
+`adapter-cloudflare` proxies the `DB` binding via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally.
 
 ## Tests
 
@@ -103,21 +100,15 @@ never put a real partner's details or member perk in a test.
 
 ## Deployment
 
-Pushing to `main` deploys automatically. Manual deploy:
+Pushing to `main` deploys automatically. Manual deploy, which applies the remote D1 migrations first:
 
 ```bash
-cd website
-npm run build && wrangler deploy
+npm run build && npm run deploy
 ```
 
-The task runner deploys separately:
+The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-```bash
-cd task-runners
-wrangler deploy --env process-roster
-```
-
-Production secrets (OAuth credentials, Sentry DSN, etc.) live in Cloudflare — set each with `wrangler secret put`.
+Production secrets (OAuth client secrets, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`.
 
 ## Disclaimer
 
