@@ -3,12 +3,15 @@ import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run, type Site, type Visitor } from '$lib/testing/site';
 import { load } from './+page.server';
 
-/** A request for `slug`'s page, from a guest unless `as` says otherwise, to a fresh site or `on`. */
+/**
+ * A request for `slug`'s page, from a guest unless `as` says otherwise, to `site` or, without one,
+ * a fresh site.
+ */
 function partnerPage(
 	slug: string,
-	{ as = 'guest', on = site() }: { as?: Visitor; on?: Site } = {}
+	{ as = 'guest', site: s = site() }: { as?: Visitor; site?: Site } = {}
 ) {
-	return on.event(`/partners/${slug}`, { params: { slug }, as });
+	return s.event(`/partners/${slug}`, { params: { slug }, as });
 }
 
 describe('/partners/[slug]', () => {
@@ -107,7 +110,7 @@ describe('/partners/[slug]', () => {
 			'First paragraph,\nstill the first.\r\n\r\nSecond.\n  \n\n\nThird.\n\n';
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(load, partnerPage('pretend-streamer', { on: s }));
+		const data = await run(load, partnerPage('pretend-streamer', { site: s }));
 
 		expect(data).toMatchObject({
 			partner: { paragraphs: ['First paragraph,\nstill the first.', 'Second.', 'Third.'] }
@@ -123,7 +126,7 @@ describe('/partners/[slug]', () => {
 		partner.gallery[0].large.alt = 'KXMP terminal from the apron, full size';
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(load, partnerPage('example-scenery', { on: s }));
+		const data = await run(load, partnerPage('example-scenery', { site: s }));
 
 		expect(data).toMatchObject({
 			partner: {
@@ -144,7 +147,7 @@ describe('/partners/[slug]', () => {
 		document.categories[0].partners[1].callsToAction = [];
 		const s = site({ cms: fakeCms({ '/api/community/partners': document }) });
 
-		const data = await run(load, partnerPage('sample-tools', { on: s }));
+		const data = await run(load, partnerPage('sample-tools', { site: s }));
 
 		expect(data).toMatchObject({
 			state: 'found',
@@ -156,7 +159,7 @@ describe('/partners/[slug]', () => {
 		const s = site();
 		s.cms.down();
 
-		const data = await run(load, partnerPage('example-scenery', { on: s }));
+		const data = await run(load, partnerPage('example-scenery', { site: s }));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});
