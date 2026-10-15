@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { partners } from '$lib/testing/fixtures';
-import { fakeCms, site, run, type Site, type Visitor } from '$lib/testing/site';
+import { callLoad, fakeCms, site, type Site, type Visitor } from '$lib/testing/site';
 import { load } from './+page.server';
 
 /**
@@ -16,7 +16,7 @@ function partnerPage(
 
 describe('/partners/[slug]', () => {
 	it('shows the partner with its partner category name', async () => {
-		const data = await run(load, partnerPage('example-scenery'));
+		const data = await callLoad(load, partnerPage('example-scenery'));
 
 		expect(data).toEqual({
 			state: 'found',
@@ -65,13 +65,13 @@ describe('/partners/[slug]', () => {
 	});
 
 	it("names the partner's own partner category", async () => {
-		const data = await run(load, partnerPage('pretend-streamer'));
+		const data = await callLoad(load, partnerPage('pretend-streamer'));
 
 		expect(data).toMatchObject({ state: 'found', categoryName: 'Creators' });
 	});
 
 	it('gives a signed-in user each member perk in full, and how many there are', async () => {
-		const data = await run(load, partnerPage('example-scenery', { as: 'signed-in' }));
+		const data = await callLoad(load, partnerPage('example-scenery', { as: 'signed-in' }));
 
 		expect(data).toMatchObject({
 			partner: {
@@ -91,13 +91,13 @@ describe('/partners/[slug]', () => {
 	});
 
 	it('tells a guest only how many member perks there are', async () => {
-		const data = await run(load, partnerPage('example-scenery'));
+		const data = await callLoad(load, partnerPage('example-scenery'));
 
 		expect(data).toMatchObject({ partner: { memberPerks: { signedIn: false, count: 1 } } });
 	});
 
 	it("never puts a member perk's label, text or URL in a guest's data", async () => {
-		const data = JSON.stringify(await run(load, partnerPage('example-scenery')));
+		const data = JSON.stringify(await callLoad(load, partnerPage('example-scenery')));
 
 		expect(data).not.toContain('SECRET-PERK-1');
 		expect(data).not.toContain('Claim discount');
@@ -110,7 +110,7 @@ describe('/partners/[slug]', () => {
 			'First paragraph,\nstill the first.\r\n\r\nSecond.\n  \n\n\nThird.\n\n';
 		const s = site({ cms: fakeCms(document) });
 
-		const data = await run(load, partnerPage('pretend-streamer', { site: s }));
+		const data = await callLoad(load, partnerPage('pretend-streamer', { site: s }));
 
 		expect(data).toMatchObject({
 			partner: { paragraphs: ['First paragraph,\nstill the first.', 'Second.', 'Third.'] }
@@ -126,7 +126,7 @@ describe('/partners/[slug]', () => {
 		partner.gallery[0].large.alt = 'KXMP terminal from the apron, full size';
 		const s = site({ cms: fakeCms(document) });
 
-		const data = await run(load, partnerPage('example-scenery', { site: s }));
+		const data = await callLoad(load, partnerPage('example-scenery', { site: s }));
 
 		expect(data).toMatchObject({
 			partner: {
@@ -147,7 +147,7 @@ describe('/partners/[slug]', () => {
 		document.categories[0].partners[1].callsToAction = [];
 		const s = site({ cms: fakeCms(document) });
 
-		const data = await run(load, partnerPage('sample-tools', { site: s }));
+		const data = await callLoad(load, partnerPage('sample-tools', { site: s }));
 
 		expect(data).toMatchObject({
 			state: 'found',
@@ -159,13 +159,13 @@ describe('/partners/[slug]', () => {
 		const s = site();
 		s.cms.down();
 
-		const data = await run(load, partnerPage('example-scenery', { site: s }));
+		const data = await callLoad(load, partnerPage('example-scenery', { site: s }));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});
 
 	it("says Partner not found for a slug that isn't published", async () => {
-		await expect(run(load, partnerPage('no-such-partner'))).rejects.toMatchObject({
+		await expect(callLoad(load, partnerPage('no-such-partner'))).rejects.toMatchObject({
 			status: 404,
 			body: { message: 'Partner not found' }
 		});

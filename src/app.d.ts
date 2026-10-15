@@ -33,7 +33,7 @@ declare global {
 			user?: UserWithRelations;
 			session?: Session;
 			roles: string[];
-			/** The partners document, read from the CMS and kept for a few minutes. */
+			/** The CMS client, which reads the partners document and keeps a copy of it. */
 			cms: Cms;
 		}
 	}

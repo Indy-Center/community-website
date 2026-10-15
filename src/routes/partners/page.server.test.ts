@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { logger } from '$lib/server/logger';
 import { partners } from '$lib/testing/fixtures';
-import { fakeCms, site, run } from '$lib/testing/site';
+import { callLoad, fakeCms, site } from '$lib/testing/site';
 import { load } from './+page.server';
 
 const MINUTE = 60_000;
@@ -9,7 +9,7 @@ const DAY = 24 * 60 * MINUTE;
 
 describe('/partners', () => {
 	it('lists each partner category in order, with a card per partner and whether it has a member perk', async () => {
-		const data = await run(load, site().event('/partners'));
+		const data = await callLoad(load, site().event('/partners'));
 
 		expect(data).toEqual({
 			state: 'listed',
@@ -83,7 +83,7 @@ describe('/partners', () => {
 	});
 
 	it("never sends a member perk's text or URL", async () => {
-		const data = JSON.stringify(await run(load, site().event('/partners')));
+		const data = JSON.stringify(await callLoad(load, site().event('/partners')));
 
 		expect(data).not.toContain('SECRET-PERK-1');
 		expect(data).not.toContain('https://scenery.example.test/claim');
@@ -94,8 +94,8 @@ describe('/partners', () => {
 		document.categories[0].partners[1].callsToAction = [];
 		const s = site({ cms: fakeCms(document) });
 
-		const data = await run(load, s.event('/partners'));
-		const listed = await run(load, site().event('/partners'));
+		const data = await callLoad(load, s.event('/partners'));
+		const listed = await callLoad(load, site().event('/partners'));
 
 		expect(data).toMatchObject({
 			state: 'listed',
@@ -114,7 +114,7 @@ describe('/partners', () => {
 		document.categories[0].partners[0].logo.alt = 'Example Scenery Co. logo, a runway under a sun';
 		const s = site({ cms: fakeCms(document) });
 
-		const data = await run(load, s.event('/partners'));
+		const data = await callLoad(load, s.event('/partners'));
 
 		expect(data).toMatchObject({
 			categories: [
@@ -140,8 +140,8 @@ describe('/partners', () => {
 		it('is left out, and the rest of the partners document is listed', async () => {
 			vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
-			const data = await run(load, siteWithUnknownPlatform().event('/partners'));
-			const listed = await run(load, site().event('/partners'));
+			const data = await callLoad(load, siteWithUnknownPlatform().event('/partners'));
+			const listed = await callLoad(load, site().event('/partners'));
 
 			expect(data).toEqual(listed);
 		});
@@ -150,8 +150,8 @@ describe('/partners', () => {
 			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 			const s = siteWithUnknownPlatform();
 
-			await run(load, s.event('/partners'));
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 
 			expect(warn).toHaveBeenCalledTimes(1);
 			expect(String(warn.mock.calls[0][0])).toContain('myspace');
@@ -160,7 +160,7 @@ describe('/partners', () => {
 
 	it('sends the CMS the community credential', async () => {
 		const s = site();
-		await run(load, s.event('/partners'));
+		await callLoad(load, s.event('/partners'));
 
 		expect(s.cms.requests).toEqual(['/api/community/partners']);
 		expect(s.cms.authorizations).toEqual(['Bearer test-token']);
@@ -168,7 +168,7 @@ describe('/partners', () => {
 
 	it('says Coming Soon when no partner is published', async () => {
 		const cms = fakeCms({ categories: [] });
-		const data = await run(load, site({ cms }).event('/partners'));
+		const data = await callLoad(load, site({ cms }).event('/partners'));
 
 		expect(data).toEqual({ state: 'coming-soon' });
 	});
@@ -177,7 +177,7 @@ describe('/partners', () => {
 		const s = site();
 		s.cms.down();
 
-		const data = await run(load, s.event('/partners'));
+		const data = await callLoad(load, s.event('/partners'));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});
@@ -185,7 +185,7 @@ describe('/partners', () => {
 	it("says partners couldn't be loaded when the CMS answers with something that isn't a partners document and no copy is kept", async () => {
 		const s = site({ cms: fakeCms({ nope: true }) });
 
-		const data = await run(load, s.event('/partners'));
+		const data = await callLoad(load, s.event('/partners'));
 
 		expect(data).toEqual({ state: 'unavailable' });
 	});
@@ -204,12 +204,12 @@ describe('/partners', () => {
 
 		it('is logged once when the kept copy is served instead', async () => {
 			const s = site();
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
 			s.cms.serve({ nope: true });
 			const lines = logged();
 
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 
 			expect(lines()).toHaveLength(1);
 		});
@@ -218,7 +218,7 @@ describe('/partners', () => {
 			const s = site({ cms: fakeCms({ nope: true }) });
 			const lines = logged();
 
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 
 			expect(lines()).toHaveLength(1);
 		});
@@ -227,25 +227,25 @@ describe('/partners', () => {
 	describe('the kept copy', () => {
 		it('is served for five minutes without asking the CMS again', async () => {
 			const s = site();
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 			s.clock.now += 4 * MINUTE;
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 
 			expect(s.cms.requests).toHaveLength(1);
 
 			s.clock.now += 2 * MINUTE;
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 
 			expect(s.cms.requests).toHaveLength(2);
 		});
 
 		it('is served when the CMS is down', async () => {
 			const s = site();
-			const fresh = await run(load, s.event('/partners'));
+			const fresh = await callLoad(load, s.event('/partners'));
 			s.clock.now += 6 * DAY;
 			s.cms.down();
 
-			const data = await run(load, s.event('/partners'));
+			const data = await callLoad(load, s.event('/partners'));
 
 			expect(s.cms.requests).toHaveLength(2);
 			expect(data).toEqual(fresh);
@@ -253,11 +253,11 @@ describe('/partners', () => {
 
 		it('is served when the CMS takes too long to answer', async () => {
 			const s = site();
-			const fresh = await run(load, s.event('/partners'));
+			const fresh = await callLoad(load, s.event('/partners'));
 			s.clock.now += 10 * MINUTE;
 			s.cms.hang();
 
-			const data = await run(load, s.event('/partners'));
+			const data = await callLoad(load, s.event('/partners'));
 
 			expect(fresh.state).toBe('listed');
 			expect(data).toEqual(fresh);
@@ -265,30 +265,30 @@ describe('/partners', () => {
 
 		it("is served, and not replaced, when the CMS answers with something that isn't a partners document", async () => {
 			const s = site();
-			const fresh = await run(load, s.event('/partners'));
+			const fresh = await callLoad(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
 			s.cms.serve({ nope: true });
 
-			expect(await run(load, s.event('/partners'))).toEqual(fresh);
+			expect(await callLoad(load, s.event('/partners'))).toEqual(fresh);
 
 			s.clock.now += 6 * MINUTE;
 
-			expect(await run(load, s.event('/partners'))).toEqual(fresh);
+			expect(await callLoad(load, s.event('/partners'))).toEqual(fresh);
 			expect(s.cms.requests).toHaveLength(3);
 		});
 
 		it('is replaced by a new partners document', async () => {
 			const s = site();
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 			const renamed = structuredClone(partners);
 			renamed.categories[0].partners[0].name = 'Renamed Scenery Co.';
 			s.clock.now += 6 * MINUTE;
 			s.cms.serve(renamed);
-			const updated = await run(load, s.event('/partners'));
+			const updated = await callLoad(load, s.event('/partners'));
 			s.clock.now += 6 * MINUTE;
 			s.cms.down();
 
-			const data = await run(load, s.event('/partners'));
+			const data = await callLoad(load, s.event('/partners'));
 
 			expect(JSON.stringify(updated)).toContain('Renamed Scenery Co.');
 			expect(data).toEqual(updated);
@@ -312,10 +312,10 @@ describe('/partners', () => {
 			it('is not served, and the CMS is asked instead', async () => {
 				const s = await siteWithBadCopy();
 
-				const data = await run(load, s.event('/partners'));
+				const data = await callLoad(load, s.event('/partners'));
 
 				expect(s.cms.requests).toHaveLength(1);
-				expect(data).toEqual(await run(load, site().event('/partners')));
+				expect(data).toEqual(await callLoad(load, site().event('/partners')));
 			});
 
 			it('counts as no copy when the CMS is down', async () => {
@@ -324,7 +324,7 @@ describe('/partners', () => {
 				s.clock.now += 6 * MINUTE;
 				s.cms.down();
 
-				const data = await run(load, s.event('/partners'));
+				const data = await callLoad(load, s.event('/partners'));
 
 				expect(data).toEqual({ state: 'unavailable' });
 			});
@@ -332,11 +332,11 @@ describe('/partners', () => {
 
 		it('is not served once it is over seven days old', async () => {
 			const s = site();
-			await run(load, s.event('/partners'));
+			await callLoad(load, s.event('/partners'));
 			s.clock.now += 7 * DAY + MINUTE;
 			s.cms.down();
 
-			const data = await run(load, s.event('/partners'));
+			const data = await callLoad(load, s.event('/partners'));
 
 			expect(data).toEqual({ state: 'unavailable' });
 		});

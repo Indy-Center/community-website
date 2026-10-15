@@ -108,6 +108,9 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 export type Site = ReturnType<typeof site>;
 
 /** Calls a page's server load with a hand-built event. */
-export function run<L extends (event: never) => unknown>(load: L, event: unknown): ReturnType<L> {
+export function callLoad<L extends (event: never) => unknown>(
+	load: L,
+	event: unknown
+): ReturnType<L> {
 	return load(event as Parameters<L>[0]) as ReturnType<L>;
 }
