@@ -7,7 +7,7 @@ import type { PageServerLoad } from './$types';
  * couldn't be loaded rather than showing an error page.
  */
 export const load = (async ({ locals }) => {
-	const partners = await readPartners(locals.cms);
+	const partners = await readPartners(locals);
 	if (!partners) return { state: 'unavailable' as const };
 	const { categories } = partners;
 	if (categories.length === 0) return { state: 'coming-soon' as const };
@@ -26,8 +26,8 @@ export const load = (async ({ locals }) => {
 				socialLinks: partner.socialLinks,
 				callToAction: partner.callsToAction[0],
 				photoCount: partner.gallery.length,
-				// Only whether there is one: perk text and URLs never reach a card.
-				hasMemberPerk: partner.memberPerks.length > 0
+				// Only whether there is one: a card never shows perk text, even to those signed in.
+				hasMemberPerk: partner.memberPerks.count > 0
 			}))
 		}))
 	};
