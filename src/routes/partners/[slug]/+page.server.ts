@@ -5,7 +5,9 @@ import type { PageServerLoad } from './$types';
 /**
  * One published partner's page, with its partner category's name. An unknown or unpublished slug
  * is a 404; with the CMS down and no copy kept, the page says partners couldn't be loaded, as
- * `/partners` does. Member perks are not sent.
+ * `/partners` does. Member perks go in full to anyone signed in to the site, whatever their
+ * membership (decision 0002); a guest gets only how many there are, so a perk's text and URL never
+ * reach their browser.
  */
 export const load = (async ({ locals, params }) => {
 	const document = await readPartners(locals.cms);
@@ -26,7 +28,10 @@ export const load = (async ({ locals, params }) => {
 				banner: partner.banner,
 				callsToAction: partner.callsToAction,
 				socialLinks: partner.socialLinks,
-				gallery: partner.gallery
+				gallery: partner.gallery,
+				memberPerks: locals.user
+					? { signedIn: true as const, perks: partner.memberPerks }
+					: { signedIn: false as const, count: partner.memberPerks.length }
 			}
 		};
 	}

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { partners } from '$lib/testing/fixtures';
-import { fakeCms, site, run } from '$lib/testing/site';
+import { fakeCms, site, run, type Visitor } from '$lib/testing/site';
 import { load } from './+page.server';
 
-function partnerPage(slug: string) {
-	return site().event(`/partners/${slug}`, { slug });
+function partnerPage(slug: string, as: Visitor = 'guest') {
+	return site().event(`/partners/${slug}`, { slug }, as);
 }
 
 describe('/partners/[slug]', () => {
@@ -51,7 +51,8 @@ describe('/partners/[slug]', () => {
 							height: 900
 						}
 					}
-				]
+				],
+				memberPerks: { signedIn: false, count: 1 }
 			}
 		});
 	});
@@ -62,7 +63,32 @@ describe('/partners/[slug]', () => {
 		expect(data).toMatchObject({ state: 'found', categoryName: 'Creators' });
 	});
 
-	it('never sends a member perk yet', async () => {
+	it('gives a signed-in user each member perk in full', async () => {
+		const data = await run(load, partnerPage('example-scenery', 'signed-in'));
+
+		expect(data).toMatchObject({
+			partner: {
+				memberPerks: {
+					signedIn: true,
+					perks: [
+						{
+							label: 'Claim discount',
+							url: 'https://scenery.example.test/claim',
+							text: 'SECRET-PERK-1: 20% off with code EXAMPLE20.'
+						}
+					]
+				}
+			}
+		});
+	});
+
+	it('tells a guest only how many member perks there are', async () => {
+		const data = await run(load, partnerPage('example-scenery'));
+
+		expect(data).toMatchObject({ partner: { memberPerks: { signedIn: false, count: 1 } } });
+	});
+
+	it("never puts a member perk's label, text or URL in a guest's data", async () => {
 		const data = JSON.stringify(await run(load, partnerPage('example-scenery')));
 
 		expect(data).not.toContain('SECRET-PERK-1');
