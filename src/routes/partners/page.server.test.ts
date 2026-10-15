@@ -121,6 +121,40 @@ describe('/partners', () => {
 		});
 	});
 
+	describe('a Social link on a platform the site does not know', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** The example site, with Sample Tools also on a platform the site has no icon for. */
+		function siteWithUnknownPlatform() {
+			const document = structuredClone(partners);
+			const links: unknown[] = document.categories[0].partners[1].socialLinks;
+			links.unshift({ platform: 'myspace', url: 'https://myspace.example.test/sample-tools' });
+			return site({ cms: fakeCms({ '/api/community/partners': document }) });
+		}
+
+		it('is left out, and the rest of the partners document is listed', async () => {
+			vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+			const data = await run(load, siteWithUnknownPlatform().event('/partners'));
+			const listed = await run(load, site().event('/partners'));
+
+			expect(data).toEqual(listed);
+		});
+
+		it('is logged once', async () => {
+			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+			const s = siteWithUnknownPlatform();
+
+			await run(load, s.event('/partners'));
+			await run(load, s.event('/partners'));
+
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(String(warn.mock.calls[0][0])).toContain('myspace');
+		});
+	});
+
 	it('sends the CMS the community credential', async () => {
 		const s = site();
 		await run(load, s.event('/partners'));
