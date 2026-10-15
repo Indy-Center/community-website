@@ -11,10 +11,9 @@
 	import IconImages from '~icons/mdi/image-multiple';
 	import IconStar from '~icons/mdi/star-four-points';
 	import IconLock from '~icons/mdi/lock-outline';
+	import type { VisibleMemberPerks } from './+page.server';
 
 	let { data } = $props();
-
-	type MemberPerks = Extract<typeof data, { state: 'found' }>['partner']['memberPerks'];
 
 	/** The photo open full screen, if any. */
 	let openPhoto = $state<number | null>(null);
@@ -22,7 +21,7 @@
 
 <!-- Signed in: each perk's text and its amber button. A guest's data holds only the count, so
      they get the invitation to join instead. -->
-{#snippet perkBody(partnerName: string, memberPerks: MemberPerks)}
+{#snippet perkBody(partnerName: string, memberPerks: VisibleMemberPerks)}
 	{#if memberPerks.signedIn}
 		<div class="space-y-4">
 			{#each memberPerks.perks as perk, i (i)}
