@@ -79,7 +79,7 @@
 									<a href="/partners/{partner.slug}" class="hover:text-sky-300">{partner.name}</a>
 								</h3>
 								{#if partner.socialLinks.length}
-									<div class="mt-1 flex flex-wrap gap-2 text-slate-400">
+									<div class="-ml-3.5 flex flex-wrap text-slate-400">
 										{#each partner.socialLinks as link}
 											<SocialLink partnerName={partner.name} {link} variant="card" />
 										{/each}
@@ -99,7 +99,7 @@
 							{#if partner.callToAction}
 								<a
 									href={partner.callToAction.url}
-									class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+									class="inline-flex min-h-11 items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
 									>{partner.callToAction.label}</a
 								>
 							{/if}
