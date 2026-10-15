@@ -103,28 +103,33 @@
 			</div>
 		</div>
 
-		<div
-			class="flex flex-col gap-4 border-t border-slate-700/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
-		>
-			<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-				{#each partner.callsToAction as callToAction, i (i)}
-					<a
-						href={callToAction.url}
-						class="rounded-lg px-4 py-3 text-center text-sm font-semibold transition-colors {i === 0
-							? 'bg-sky-600 text-white hover:bg-sky-500'
-							: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}"
-						>{callToAction.label}</a
-					>
-				{/each}
+		{#if partner.callsToAction.length || partner.socialLinks.length}
+			<div
+				class="flex flex-col gap-4 border-t border-slate-700/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+			>
+				{#if partner.callsToAction.length}
+					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+						{#each partner.callsToAction as callToAction, i (i)}
+							<a
+								href={callToAction.url}
+								class="rounded-lg px-4 py-3 text-center text-sm font-semibold transition-colors {i ===
+								0
+									? 'bg-sky-600 text-white hover:bg-sky-500'
+									: 'border border-slate-600 text-slate-200 hover:bg-slate-700'}"
+								>{callToAction.label}</a
+							>
+						{/each}
+					</div>
+				{/if}
+				{#if partner.socialLinks.length}
+					<div class="flex flex-wrap gap-2">
+						{#each partner.socialLinks as link, i (i)}
+							<SocialLink partnerName={partner.name} {link} variant="bar" />
+						{/each}
+					</div>
+				{/if}
 			</div>
-			{#if partner.socialLinks.length}
-				<div class="flex flex-wrap gap-2">
-					{#each partner.socialLinks as link, i (i)}
-						<SocialLink partnerName={partner.name} {link} variant="bar" />
-					{/each}
-				</div>
-			{/if}
-		</div>
+		{/if}
 	</div>
 
 	<div class="grid gap-8 lg:grid-cols-3">

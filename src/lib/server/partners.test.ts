@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { site } from '$lib/testing/site';
+import { site, type Visitor } from '$lib/testing/site';
 import { readPartners } from './partners';
 
-/** The example partner with a member perk, as `visitor` is given it. */
-async function perkPartner(as: 'guest' | 'signed-in') {
+/** The example partner with a member perk, as the visitor `as` is given it. */
+async function perkPartner(as: Visitor) {
 	const document = await readPartners(site().event('/', { as }).locals);
 	return document?.categories[0].partners.find((p) => p.slug === 'example-scenery');
 }

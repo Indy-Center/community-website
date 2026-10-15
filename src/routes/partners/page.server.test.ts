@@ -4,6 +4,9 @@ import { partners } from '$lib/testing/fixtures';
 import { fakeCms, site, run } from '$lib/testing/site';
 import { load } from './+page.server';
 
+const MINUTE = 60_000;
+const DAY = 24 * 60 * MINUTE;
+
 describe('/partners', () => {
 	it('lists each partner category in order, with a card per partner and whether it has a member perk', async () => {
 		const data = await run(load, site().event('/partners'));
@@ -121,6 +124,40 @@ describe('/partners', () => {
 		});
 	});
 
+	describe('a Social link on a platform the site does not know', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** The example site, with Sample Tools also on a platform the site has no icon for. */
+		function siteWithUnknownPlatform() {
+			const document = structuredClone(partners);
+			const links: unknown[] = document.categories[0].partners[1].socialLinks;
+			links.unshift({ platform: 'myspace', url: 'https://myspace.example.test/sample-tools' });
+			return site({ cms: fakeCms({ '/api/community/partners': document }) });
+		}
+
+		it('is left out, and the rest of the partners document is listed', async () => {
+			vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+			const data = await run(load, siteWithUnknownPlatform().event('/partners'));
+			const listed = await run(load, site().event('/partners'));
+
+			expect(data).toEqual(listed);
+		});
+
+		it('is logged once', async () => {
+			const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+			const s = siteWithUnknownPlatform();
+
+			await run(load, s.event('/partners'));
+			await run(load, s.event('/partners'));
+
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(String(warn.mock.calls[0][0])).toContain('myspace');
+		});
+	});
+
 	it('sends the CMS the community credential', async () => {
 		const s = site();
 		await run(load, s.event('/partners'));
@@ -167,7 +204,7 @@ describe('/partners', () => {
 		it('is logged once when the kept copy is served instead', async () => {
 			const s = site();
 			await run(load, s.event('/partners'));
-			s.clock.now += 6 * 60_000;
+			s.clock.now += 6 * MINUTE;
 			s.cms.documents['/api/community/partners'] = { nope: true };
 			const lines = logged();
 
@@ -187,9 +224,6 @@ describe('/partners', () => {
 	});
 
 	describe('the kept copy', () => {
-		const MINUTE = 60_000;
-		const DAY = 24 * 60 * MINUTE;
-
 		it('is served for five minutes without asking the CMS again', async () => {
 			const s = site();
 			await run(load, s.event('/partners'));
@@ -257,6 +291,42 @@ describe('/partners', () => {
 
 			expect(JSON.stringify(updated)).toContain('Renamed Scenery Co.');
 			expect(data).toEqual(updated);
+		});
+
+		describe("that isn't a partners document, as one kept by an earlier version of the site may not be", () => {
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			/** A site whose kept copy, fetched just now, is not a partners document. */
+			async function siteWithBadCopy() {
+				const s = site();
+				await s.store.put('/api/community/partners', {
+					fetchedAt: s.clock.now,
+					body: { nope: true }
+				});
+				return s;
+			}
+
+			it('is not served, and the CMS is asked instead', async () => {
+				const s = await siteWithBadCopy();
+
+				const data = await run(load, s.event('/partners'));
+
+				expect(s.cms.asked('/api/community/partners')).toBe(1);
+				expect(data).toEqual(await run(load, site().event('/partners')));
+			});
+
+			it('counts as no copy when the CMS is down', async () => {
+				vi.spyOn(logger, 'error').mockImplementation(() => {});
+				const s = await siteWithBadCopy();
+				s.clock.now += 6 * MINUTE;
+				s.cms.down();
+
+				const data = await run(load, s.event('/partners'));
+
+				expect(data).toEqual({ state: 'unavailable' });
+			});
 		});
 
 		it('is not served once it is over seven days old', async () => {
