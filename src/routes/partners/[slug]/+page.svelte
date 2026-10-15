@@ -78,11 +78,7 @@
 	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
 		<div class="relative">
 			{#if partner.banner}
-				<PartnerImage
-					image={partner.banner}
-					decorative
-					class="absolute inset-0 h-full w-full object-cover"
-				/>
+				<PartnerImage image={partner.banner} class="absolute inset-0 h-full w-full object-cover" />
 			{:else}
 				<div
 					class="absolute inset-0 bg-gradient-to-br from-sky-900 via-slate-800 to-slate-900"
@@ -93,11 +89,7 @@
 			></div>
 			<div class="relative flex items-end gap-3 px-4 pt-32 pb-4 sm:gap-4 sm:px-6 sm:pt-40 lg:pt-48">
 				<div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-900/80 sm:h-20 sm:w-20">
-					<PartnerImage
-						image={partner.logo}
-						decorative
-						class="h-full w-full object-contain p-1.5"
-					/>
+					<PartnerImage image={partner.logo} class="h-full w-full object-contain p-1.5" />
 				</div>
 				<div class="min-w-0">
 					<div class="text-xs font-semibold tracking-widest text-sky-300 uppercase">

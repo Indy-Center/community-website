@@ -1,7 +1,8 @@
 <!--
 	A partner's Social link: the platform's icon, linking to the partner's address there, named
-	"<partner> on <platform>" for screen readers. `card` is the small one on the partners list;
-	`bar` is the square button under a partner's banner.
+	"<partner> on <platform>" for screen readers. `card` is the small icon on the partners list;
+	`bar` is the square button under a partner's banner. Both are 44px square so they can be tapped
+	on a phone.
 -->
 <script lang="ts" module>
 	import type { Component } from 'svelte';
@@ -29,7 +30,10 @@
 	};
 
 	const variants = {
-		card: { link: 'hover:text-white', icon: 'h-4 w-4' },
+		card: {
+			link: 'flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-slate-700/60 hover:text-white',
+			icon: 'h-4 w-4'
+		},
 		bar: {
 			link: 'flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/60 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white',
 			icon: 'h-5 w-5'
