@@ -1,11 +1,6 @@
 /**
  * For more details on how to configure Wrangler, refer to:
  * https://developers.cloudflare.com/workers/wrangler/configuration/
- *
- * Secret, not a var (set it once, never commit it):
- *   wrangler secret put COMMUNITY_API_TOKEN
- * The CMS's server credential for the partners document, sent as
- * `Authorization: Bearer <token>` to CMS_URL.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
@@ -31,8 +26,7 @@
 		"CONNECT_BASE_URL": "https://auth.vatsim.net",
 		"CONNECT_CALLBACK_URL": "https://flyindycenter.com/login/connect/callback",
 		"CONNECT_CLIENT_ID": 1653,
-		"PUBLIC_CONSOLA_LEVEL": 4,
-		"CMS_URL": "https://cms.flyindycenter.com"
+		"PUBLIC_CONSOLA_LEVEL": 4
 	},
 	"routes": [
 		{

@@ -10,12 +10,7 @@ declare global {
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
-			/**
-			 * The CMS's server credential for the partners document, sent as
-			 * `Authorization: Bearer <token>` to CMS_URL. Set with
-			 * `wrangler secret put COMMUNITY_API_TOKEN`. Without it every read from the CMS fails,
-			 * and only copies already kept are served.
-			 */
+			/** The CMS's server credential; see the README. */
 			COMMUNITY_API_TOKEN?: string;
 		}
 	}

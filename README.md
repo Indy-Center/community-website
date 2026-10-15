@@ -39,7 +39,7 @@ place that talks to it.
 
 | Name                  | Kind       | What                                                                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `CMS_URL`             | Var        | The CMS's origin. `https://cms.flyindycenter.com` in `wrangler.jsonc`, and the default when unset.                       |
+| `CMS_URL`             | Var        | The CMS's origin. Optional; the default, `https://cms.flyindycenter.com`, is in `src/hooks.server.ts`.                   |
 | `COMMUNITY_API_TOKEN` | **Secret** | The CMS's server credential for the partners document, sent as a bearer token. `wrangler secret put COMMUNITY_API_TOKEN` |
 
 Without `COMMUNITY_API_TOKEN` the CMS refuses every read, and only copies
