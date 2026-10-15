@@ -7,7 +7,7 @@
  * The endpoint is read with the server credential in `COMMUNITY_API_TOKEN` as a bearer token. It
  * returns only published partners, in partner categories that have at least one, in order.
  *
- * Member perks are included. The site decides who sees them; nothing here is ever sent to a
+ * Member perks are included. The site decides who sees them, in `$lib/server/partners`; nothing here is ever sent to a
  * browser as it stands.
  */
 
