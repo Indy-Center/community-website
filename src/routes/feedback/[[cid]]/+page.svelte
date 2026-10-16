@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { signInHref } from '$lib/utils/signIn';
 	import IconAccount from '~icons/mdi/account';
 	import FeedbackForm from '$lib/components/feedback/FeedbackForm.svelte';
 
@@ -23,7 +24,7 @@
 
 				<div>
 					<a
-						href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
+						href={signInHref(page.url.pathname)}
 						class="flex w-fit cursor-pointer items-center justify-center space-x-2 rounded-lg border border-sky-500/30 bg-sky-600/40 px-4 py-3 text-sm font-medium text-white transition-colors duration-200 hover:border-sky-400/50 hover:bg-sky-500/50"
 					>
 						<IconAccount class="h-5 w-5" />

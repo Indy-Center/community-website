@@ -12,6 +12,7 @@
 	import IconCog from '~icons/mdi/cog';
 	import IconAdmin from '~icons/mdi/shield-account';
 	import { isAdmin } from '$lib/utils/permissions';
+	import { signInHref } from '$lib/utils/signIn';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
 	import Tooltip from '../Tooltip.svelte';
@@ -178,7 +179,7 @@
 					<!-- Connect VATSIM Account for non-authenticated users -->
 					<div class="mt-3 border-t border-slate-600/30 pt-3">
 						<a
-							href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
+							href={signInHref(page.url.pathname)}
 							class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-sky-500/30 bg-sky-600/40 px-4 py-3 text-sm font-medium text-white transition-colors duration-200 hover:border-sky-400/50 hover:bg-sky-500/50"
 							onclick={() => (showMobileMenu = false)}
 						>
