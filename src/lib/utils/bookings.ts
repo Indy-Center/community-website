@@ -181,7 +181,7 @@ export function canBookPosition(
 	}
 }
 
-// The API returns UTC times without a zone marker
+// Bookings carry UTC times without a zone marker; the API client converts from its ISO 8601
 export function parseBookingTime(time: string) {
 	return new Date(time.replace(' ', 'T') + 'Z');
 }
