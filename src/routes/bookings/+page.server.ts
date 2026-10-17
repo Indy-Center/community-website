@@ -1,11 +1,11 @@
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { fail, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
+import { CERTIFICATIONS, ENDORSEMENTS, getCertificationOrder } from '$lib/config/certifications';
 import { usersTable } from '$lib/db/schema/users';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
+import { getCredentialSource } from '$lib/server/training/credentialSource';
 import {
 	createBooking,
 	deleteBooking,
@@ -15,7 +15,6 @@ import {
 	updateBooking
 } from '$lib/server/vatsim/atcBookingsClient';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient';
-import type { Database } from '$lib/server/db';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
 	canBookPosition,
@@ -31,23 +30,32 @@ import {
 } from '$lib/utils/bookings';
 import { isAdmin } from '$lib/utils/permissions';
 
-async function fetchQualifications(db: Database, userId: string | undefined) {
-	if (!userId) return { certification: null, endorsements: [] as string[] };
+// A controller's qualifications as training-tools reports them, or null when they can't be
+// read, in which case nothing is bookable
+async function fetchQualifications(cid: string | undefined) {
+	const source = getCredentialSource();
+	if (!cid || !source) return null;
 
-	const [certifications, endorsements] = await Promise.all([
-		db
-			.select({ certification: userCertificationsTable.certification })
-			.from(userCertificationsTable)
-			.where(eq(userCertificationsTable.userId, userId)),
-		db
-			.select({ endorsement: userEndorsementsTable.endorsement })
-			.from(userEndorsementsTable)
-			.where(eq(userEndorsementsTable.userId, userId))
-	]);
+	let held: string[] | null;
+	try {
+		held = await source.getHeldCredentials(cid);
+	} catch (error) {
+		logger.error(`Failed to read training-tools credentials for ${cid}`, { error });
+		return null;
+	}
+	if (!held) return null;
+
+	const certification = CERTIFICATIONS.filter(({ key }) => held.includes(key)).reduce<
+		string | null
+	>(
+		(highest, { key }) =>
+			getCertificationOrder(key) > getCertificationOrder(highest) ? key : highest,
+		null
+	);
 
 	return {
-		certification: certifications[0]?.certification ?? null,
-		endorsements: endorsements.map((row) => row.endorsement)
+		certification,
+		endorsements: ENDORSEMENTS.filter(({ key }) => held.includes(key)).map(({ key }) => key)
 	};
 }
 
@@ -83,7 +91,7 @@ export const load = async ({ locals }) => {
 	const [allBookings, artcc, qualifications] = await Promise.all([
 		fetchBookings(),
 		fetchArtccInformation(),
-		fetchQualifications(locals.db, locals.user.id)
+		fetchQualifications(locals.user.cid)
 	]);
 
 	const bookings = filterFacilityBookings(allBookings, getCallsignPrefixes(artcc.facility));
@@ -94,11 +102,13 @@ export const load = async ({ locals }) => {
 			.filter((booking) => allLabels[booking.callsign])
 			.map((booking) => [booking.callsign, allLabels[booking.callsign]])
 	);
-	const bookablePositions = isRostered(locals.user)
-		? getBookablePositions(artcc.facility).filter(({ callsign }) =>
-				canBookPosition(callsign, qualifications.certification, qualifications.endorsements)
-			)
-		: [];
+	// Without training-tools credentials nothing is bookable
+	const bookablePositions =
+		isRostered(locals.user) && qualifications
+			? getBookablePositions(artcc.facility).filter(({ callsign }) =>
+					canBookPosition(callsign, qualifications.certification, qualifications.endorsements)
+				)
+			: [];
 
 	// Names depend on which CIDs booked, so this lookup has to follow the fetches above
 	const cids = [...new Set(bookings.map((booking) => String(booking.cid)))];
@@ -148,9 +158,15 @@ export const actions = {
 
 		const [artcc, qualifications, bookings] = await Promise.all([
 			fetchArtccInformation(),
-			fetchQualifications(locals.db, locals.user.id),
+			fetchQualifications(locals.user.cid),
 			fetchBookings()
 		]);
+
+		if (!qualifications) {
+			return setError(form, '', "We couldn't verify your certifications right now", {
+				status: 503
+			});
+		}
 
 		const { callsign, start, end } = form.data;
 		const allowed =

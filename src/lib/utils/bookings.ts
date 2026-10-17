@@ -162,18 +162,18 @@ export function canBookPosition(
 		// S-GC can work clearance anywhere, advanced fields included
 		case 'DEL':
 			return atLeast('S-GC');
+		// Ground: S-GC at simple fields, A-GC at advanced ones
 		case 'GND':
 		case 'RMP':
 			return atLeast(advanced ? 'A-GC' : 'S-GC');
+		// A-LC works every tower; S-LC only the simple ones
 		case 'TWR':
-			return (
-				atLeast('A-LC') ||
-				endorsements.includes('TWR-SOLO') ||
-				(!advanced && endorsements.includes('S-LC'))
-			);
+			return atLeast('A-LC') || (!advanced && endorsements.includes('S-LC'));
+		// T-RC and E-RC work every TRACON
 		case 'APP':
 		case 'DEP':
-			return atLeast('T-RC') || endorsements.includes('APP-SOLO');
+			return atLeast('T-RC');
+		// T2-CTR already requires E-RC in training-tools
 		case 'CTR':
 			return endorsements.includes('T2-CTR');
 		default:
