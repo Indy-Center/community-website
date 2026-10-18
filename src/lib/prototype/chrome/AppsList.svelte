@@ -1,6 +1,6 @@
 <script lang="ts">
-	// PROTOTYPE (prototype/chrome): every app, the current one marked.
-	import IconCheck from '~icons/mdi/check';
+	// PROTOTYPE (prototype/chrome): every app, the current one marked by the
+	// soft fill (current page B) and aria-current.
 	import { apps, type AppKey } from './chrome';
 	import { icons } from './icons';
 	import { row, currentRow } from './cls';
@@ -23,11 +23,7 @@
 					<span class="block font-medium text-white">{entry.name}</span>
 					<span class="block text-xs text-gray-400">{entry.what}</span>
 				</span>
-				{#if here}
-					<span class="flex items-center gap-1 text-xs text-sky-300">
-						<IconCheck class="h-4 w-4" aria-hidden="true" />You’re here
-					</span>
-				{:else if entry.live}
+				{#if entry.live}
 					<span class="text-xs text-gray-400">Live site</span>
 				{/if}
 			</a>

@@ -91,22 +91,6 @@
 	</li>
 {/snippet}
 
-{#snippet appSwitcher()}
-	<Popover
-		label="Switch app"
-		buttonClass="{control} px-1"
-		panelClass="w-80 max-w-[calc(100vw-16px)]"
-	>
-		{#snippet trigger(open)}
-			<IconChevronDown
-				class="h-5 w-5 transition-transform {open ? 'rotate-180' : ''}"
-				aria-hidden="true"
-			/>
-		{/snippet}
-		<AppsList {app} />
-	</Popover>
-{/snippet}
-
 {#snippet userTrigger(open: boolean)}
 	{#if member && compactUser}
 		<span
@@ -160,43 +144,24 @@
 	class="sticky top-0 z-40 w-full border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-lg"
 >
 	<div class="mx-auto flex min-h-16 w-full max-w-7xl items-center gap-2 px-2">
-		<!-- Brand: where the mark or logo leads, and where the app's name leads. -->
-		<div class="flex min-w-0 items-center gap-1">
-			{#if variant.header === 'A'}
-				<a href="/" class={brandLink} aria-label="Indy Center home">
-					<Logo class="h-8 w-auto" />
-				</a>
-				{#if app !== 'hub'}
-					<span class="mx-1 h-6 w-px bg-slate-600" aria-hidden="true"></span>
-					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
-				{/if}
-			{:else if variant.header === 'B'}
-				{#if app === 'hub'}
-					<!-- On the hub both lead home: one link, not two. -->
-					<a href="/" class="{brandLink} gap-2 {name}">
-						<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto" />Indy Center
-					</a>
-				{:else}
-					<a href="/" class={brandLink} aria-label="Indy Center home">
-						<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto" />
-					</a>
-					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
-				{/if}
-			{:else}
-				<!-- C: the mark on phones, the full logo from sm up. -->
-				<a href="/" class={brandLink} aria-label="Indy Center home">
-					<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto sm:hidden" />
-					<Logo class="hidden h-8 w-auto sm:block" />
-				</a>
-				{#if app !== 'hub'}
-					<span class="mx-1 h-6 w-px bg-slate-600" aria-hidden="true"></span>
-					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
-				{/if}
+		<!-- Brand (header C, decided): the mark on phones, the full logo from sm
+		     up, to the hub; then the app's name, to the app's home. From lg the
+		     block is a fixed width, so the nav starts in the same place in every
+		     app; a longer name is cut short with an ellipsis. -->
+		<div class="flex min-w-0 items-center gap-1 lg:w-64 lg:shrink-0">
+			<a href="/" class={brandLink} aria-label="Indy Center home">
+				<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto sm:hidden" />
+				<Logo class="hidden h-8 w-auto sm:block" />
+			</a>
+			{#if app !== 'hub'}
+				<span class="mx-1 h-6 w-px shrink-0 bg-slate-600" aria-hidden="true"></span>
+				<a href={entry.home} class="{brandLink} min-w-0 {name}" title={entry.name}
+					><span class="truncate">{entry.name}</span></a
+				>
 			{/if}
-			{#if variant.apps === 'C'}{@render appSwitcher()}{/if}
 		</div>
 
-		<div class="ml-2 hidden lg:block">
+		<div class="hidden lg:block">
 			<AppNav {items} {pathname} home={entry.home} />
 		</div>
 
@@ -206,7 +171,7 @@
 					label="Indy Center apps"
 					align="right"
 					buttonClass={control}
-					panelClass="w-80 max-w-[calc(100vw-16px)]"
+					panelClass="w-80 max-sm:fixed max-sm:inset-x-2 max-sm:top-16 max-sm:w-auto"
 				>
 					{#snippet trigger()}
 						<IconApps class="h-5 w-5" aria-hidden="true" /><span class="hidden sm:inline">Apps</span
