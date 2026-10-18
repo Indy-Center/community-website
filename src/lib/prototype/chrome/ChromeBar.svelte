@@ -17,15 +17,16 @@
 
 	const openPoints = points.filter((p) => !p.decided);
 	const decided = points.filter((p) => p.decided);
-	// Opens on the newest open question.
-	let open = $state<PointKey>(openPoints[openPoints.length - 1].key);
+	// Opens on the newest open question, if any are left.
+	let open = $state<PointKey | undefined>(openPoints.at(-1)?.key);
 	let collapsed = $state(false);
-	const point = $derived(points.find((p) => p.key === open)!);
-	const chosen = $derived(point.options.find((o) => o.key === variant[open])!);
+	const point = $derived(points.find((p) => p.key === open));
+	const chosen = $derived(point?.options.find((o) => o.key === variant[point.key]));
 
 	const set = (next: Partial<State>) => onchange({ variant, scheme, signedIn, ...next });
-	const pick = (key: string) => set({ variant: { ...variant, [open]: key } });
+	const pick = (key: string) => open && set({ variant: { ...variant, [open]: key } });
 	const step = (by: number) => {
+		if (!point || !chosen) return;
 		const i = point.options.indexOf(chosen);
 		pick(point.options[(i + by + point.options.length) % point.options.length].key);
 	};
@@ -79,25 +80,29 @@
 	</div>
 
 	{#if !collapsed}
-		<div
-			style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;"
-			role="group"
-			aria-label="Point"
-		>
-			{#each openPoints as p (p.key)}
-				<button
-					style="{pill}{p.key === open ? on : ''}"
-					aria-pressed={p.key === open}
-					onclick={() => (open = p.key)}
-					>{p.name} <span style="opacity:.6">{variant[p.key]}</span></button
-				>
-			{/each}
-		</div>
+		{#if openPoints.length}
+			<div
+				style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;"
+				role="group"
+				aria-label="Point"
+			>
+				{#each openPoints as p (p.key)}
+					<button
+						style="{pill}{p.key === open ? on : ''}"
+						aria-pressed={p.key === open}
+						onclick={() => (open = p.key)}
+						>{p.name} <span style="opacity:.6">{variant[p.key]}</span></button
+					>
+				{/each}
+			</div>
+		{/if}
 		<p style="{small}margin-top:6px;">
-			Decided: {decided
+			{openPoints.length ? 'Decided' : 'All decided'}: {decided
 				.map((p) => `${p.name} ${p.decided} (${p.options.find((o) => o.key === p.decided)?.name})`)
 				.join(' · ')}
 		</p>
+	{/if}
+	{#if !collapsed && point && chosen}
 		<p style="{small}margin-top:8px;">{point.question}</p>
 		<div
 			style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"
@@ -113,6 +118,8 @@
 			{/each}
 		</div>
 		<p style="{small}margin-top:6px;color:#eee;">{chosen.note}</p>
+	{/if}
+	{#if !collapsed}
 		<p style="{small}margin-top:6px;">Page title: <span style="color:#fff">{title}</span></p>
 	{/if}
 </div>

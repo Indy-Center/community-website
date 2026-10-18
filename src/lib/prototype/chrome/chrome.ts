@@ -112,6 +112,7 @@ export const points: Point[] = [
 	{
 		key: 'footer',
 		name: 'Footer',
+		decided: 'B',
 		question:
 			'The footer: the logo with the disclaimer and copyright in a bordered box (one third), and the map of apps, help and policies (two thirds). Round 4: which side.',
 		options: [
