@@ -112,18 +112,23 @@ export const points: Point[] = [
 	{
 		key: 'footer',
 		name: 'Footer',
-		question: 'The footer with the disclaimer.',
+		question:
+			'The footer: a small map (apps, help, policies) beside the disclaimer. Round 2, all from map C.',
 		options: [
-			{ key: 'A', name: 'Disclaimer only', note: 'Today’s footer: the disclaimer and copyright.' },
+			{
+				key: 'A',
+				name: 'Map left, disclaimer right',
+				note: 'The map takes two thirds; the disclaimer and copyright sit in the last third, aligned left.'
+			},
 			{
 				key: 'B',
-				name: 'Disclaimer and policy links',
-				note: 'One row of links (privacy, accessibility, community policy, contact) above the disclaimer.'
+				name: 'Map left, disclaimer in a box',
+				note: 'As A, with the disclaimer and copyright in a quiet bordered box.'
 			},
 			{
 				key: 'C',
-				name: 'Small map',
-				note: 'Columns of what people most often look for: the apps, help, and the policies. Then the disclaimer.'
+				name: 'Logo and disclaimer left, map right',
+				note: 'Mirrored: the logo with the disclaimer under it in the first third, the map in the other two.'
 			}
 		]
 	},
