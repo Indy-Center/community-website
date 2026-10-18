@@ -7,12 +7,20 @@
 
 export type PointKey = 'header' | 'apps' | 'nav' | 'user' | 'footer' | 'touch';
 type Option = { key: string; name: string; note: string };
-type Point = { key: PointKey; name: string; question: string; options: Option[] };
+type Point = {
+	key: PointKey;
+	name: string;
+	question: string;
+	options: Option[];
+	/** The user's pick, once made: the bar no longer offers the others. */
+	decided?: string;
+};
 
 export const points: Point[] = [
 	{
 		key: 'header',
 		name: 'Header',
+		decided: 'C',
 		question: 'Where the mark or logo leads, and where the app’s name leads.',
 		options: [
 			{
@@ -35,6 +43,7 @@ export const points: Point[] = [
 	{
 		key: 'apps',
 		name: 'Menu of apps',
+		decided: 'A',
 		question: 'How a member moves between apps, with the current one marked.',
 		options: [
 			{
@@ -79,6 +88,7 @@ export const points: Point[] = [
 	{
 		key: 'user',
 		name: 'User menu',
+		decided: 'C',
 		question: 'What every app shows, and what an app may add.',
 		options: [
 			{
@@ -119,6 +129,7 @@ export const points: Point[] = [
 	{
 		key: 'touch',
 		name: 'Touch size',
+		decided: 'B',
 		question: 'The smallest height of the chrome’s controls and menu items.',
 		options: [
 			{
@@ -138,11 +149,15 @@ export const points: Point[] = [
 
 export type Variant = Record<PointKey, string>;
 
-/** Reads a code such as `BACAAB`; a missing or unknown letter falls back to A. */
+/**
+ * Reads a code such as `BACAAB`. A decided point always takes its pick; for
+ * the rest, a missing or unknown letter falls back to A.
+ */
 export function parseVariant(code: string | null | undefined): Variant {
 	const letters = (code ?? '').toUpperCase();
 	return Object.fromEntries(
 		points.map((p, i) => {
+			if (p.decided) return [p.key, p.decided];
 			const letter = letters[i];
 			return [p.key, p.options.some((o) => o.key === letter) ? letter : 'A'];
 		})

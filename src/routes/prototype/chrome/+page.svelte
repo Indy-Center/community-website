@@ -2,7 +2,19 @@
 	// PROTOTYPE (prototype/chrome): how to use the chrome prototype, and every
 	// option on one page.
 	import { page } from '$app/state';
-	import { apps, parseVariant, points, variantCode } from '$lib/prototype/chrome/chrome';
+	import {
+		appByKey,
+		apps,
+		isGroup,
+		navLinks,
+		navs,
+		parseVariant,
+		points,
+		variantCode,
+		type AppKey
+	} from '$lib/prototype/chrome/chrome';
+
+	const navApps: AppKey[] = ['hub', 'training', 'library'];
 
 	const variant = $derived(parseVariant(page.url.searchParams.get('variant')));
 	const withOption = (key: string, letter: string) =>
@@ -49,10 +61,15 @@
 <div class="grid gap-6 md:grid-cols-2">
 	{#each points as point, i (point.key)}
 		<section class="rounded-lg border border-slate-700/60 bg-slate-800/60 p-4">
-			<h2 class="text-lg font-semibold text-white">{i + 1}. {point.name}</h2>
+			<h2 class="text-lg font-semibold text-white">
+				{i + 1}. {point.name}{#if point.decided}<span
+						class="ml-2 rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-300"
+						>Decided</span
+					>{/if}
+			</h2>
 			<p class="mt-1 text-sm text-gray-400">{point.question}</p>
 			<ul class="mt-3 space-y-3">
-				{#each point.options as option (option.key)}
+				{#each point.options.filter((o) => !point.decided || o.key === point.decided) as option (option.key)}
 					<li class="text-sm text-gray-300">
 						<a
 							class="font-medium text-sky-400 underline underline-offset-4"
@@ -67,6 +84,67 @@
 		</section>
 	{/each}
 </div>
+
+<section class="mt-8">
+	<h2 class="mb-1 text-xl font-semibold text-white">
+		What each navigation option does to each app
+	</h2>
+	<p class="mb-4 max-w-3xl text-sm text-gray-400">
+		A navigation option is a rule every app follows, not one look: each app keeps its own pages, so
+		they look different under the same rule. The Library has only two pages, so every rule gives it
+		the same two links.
+	</p>
+	<div class="overflow-x-auto">
+		<table class="w-full min-w-[640px] text-left text-sm text-gray-300">
+			<thead>
+				<tr class="border-b border-slate-700">
+					<th scope="col" class="py-2 pr-4 font-semibold text-white">Option</th>
+					{#each navApps as a (a)}
+						<th scope="col" class="py-2 pr-4 font-semibold text-white">{appByKey(a).name}</th>
+					{/each}
+				</tr>
+			</thead>
+			<tbody>
+				{#each points.find((p) => p.key === 'nav')!.options as o (o.key)}
+					<tr class="border-b border-slate-700/60 align-top">
+						<th scope="row" class="py-3 pr-4 font-medium text-white">
+							<a class="text-sky-400 underline underline-offset-4" href={withOption('nav', o.key)}
+								>{o.key} · {o.name}</a
+							>
+						</th>
+						{#each navApps as a (a)}
+							<td class="py-3 pr-4">
+								<ul class="space-y-0.5">
+									{#each o.key === 'B' ? navLinks(navs[a]) : navs[a] as item (item.label)}
+										<li>
+											{#if !isGroup(item)}
+												{item.label}
+											{:else if o.key === 'A'}
+												{item.label} ▾
+												<ul class="pl-4 text-gray-400">
+													{#each item.children as c (c.href)}<li>{c.label}</li>{/each}
+												</ul>
+											{:else}
+												{item.label}
+												<span class="text-gray-400"
+													>(tabs: {item.children.map((c) => c.label).join(', ')})</span
+												>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+							</td>
+						{/each}
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+	<p class="mt-2 text-xs text-gray-400">
+		▾ opens a dropdown (on phones, a group that opens in the menu). Signed in, user menu C adds the
+		app’s admin item to the end of each.
+	</p>
+</section>
 
 <section class="mt-8 max-w-3xl text-sm text-gray-400">
 	<h2 class="mb-2 text-xl font-semibold text-white">Fixed in every option</h2>

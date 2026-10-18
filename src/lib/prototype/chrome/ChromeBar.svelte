@@ -15,7 +15,9 @@
 		height = $bindable(0)
 	}: State & { title: string; onchange: (next: State) => void; height?: number } = $props();
 
-	let open = $state<PointKey>('header');
+	const openPoints = points.filter((p) => !p.decided);
+	const decided = points.filter((p) => p.decided);
+	let open = $state<PointKey>(openPoints[0].key);
 	let collapsed = $state(false);
 	const point = $derived(points.find((p) => p.key === open)!);
 	const chosen = $derived(point.options.find((o) => o.key === variant[open])!);
@@ -81,7 +83,7 @@
 			role="group"
 			aria-label="Point"
 		>
-			{#each points as p (p.key)}
+			{#each openPoints as p (p.key)}
 				<button
 					style="{pill}{p.key === open ? on : ''}"
 					aria-pressed={p.key === open}
@@ -90,6 +92,11 @@
 				>
 			{/each}
 		</div>
+		<p style="{small}margin-top:6px;">
+			Decided: {decided
+				.map((p) => `${p.name} ${p.decided} (${p.options.find((o) => o.key === p.decided)?.name})`)
+				.join(' · ')}
+		</p>
 		<p style="{small}margin-top:8px;">{point.question}</p>
 		<div
 			style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"
