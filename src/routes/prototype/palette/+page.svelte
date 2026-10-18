@@ -14,8 +14,8 @@
 		const source = url.has('variant') ? url : new URLSearchParams(data.palettePrototype);
 		return readChoice((k) => source.get(k));
 	});
-	const report = $derived(contrastReport(choice.palette, choice.scheme, choice.aa));
-	const swatches = $derived(roleSwatches(choice.palette, choice.scheme, choice.aa));
+	const report = $derived(contrastReport(choice.palette, choice.scheme));
+	const swatches = $derived(roleSwatches(choice.palette, choice.scheme));
 	const failing = $derived(report.filter((r) => !r.pass));
 
 	let pageNumber = $state(2);
@@ -34,15 +34,29 @@
 
 <div class="space-y-8 pb-28">
 	<header class="space-y-2">
-		<p class="text-xs font-semibold tracking-widest text-sky-400 uppercase">Palette prototype</p>
+		<p class="text-xs font-semibold tracking-widest text-sky-400 uppercase">
+			Palette prototype · round 2: light
+		</p>
 		<h1 class="text-3xl font-bold text-white">
-			{choice.palette.key} · {choice.palette.name}, {choice.scheme}
-			{#if choice.aa}<span class="text-gray-400">with AA fixes</span>{/if}
+			{#if choice.scheme === 'light'}
+				{choice.palette.key} · {choice.palette.name}
+			{:else}
+				Dark (settled: slate with the AA fixes)
+			{/if}
 		</h1>
-		<p class="max-w-3xl text-gray-300">{choice.palette.note}</p>
+		<p class="max-w-3xl text-gray-300">
+			{#if choice.scheme === 'light'}
+				{choice.palette.note}
+			{:else}
+				Round 1 settled dark. Flip back to Light to compare the three light options against it.
+			{/if}
+		</p>
 		<p class="max-w-3xl text-sm text-gray-400">
-			Switch palettes with the bar at the bottom (or ← →). The choice holds while you browse the
-			rest of the site: try <a class="text-sky-400 underline" href="/staff">Staff</a>,
+			Switch light options with the bar at the bottom (or ← →), and flip to Dark to check both read
+			as one brand. The choice holds while you browse the rest of the site: try <a
+				class="text-sky-400 underline"
+				href="/staff">Staff</a
+			>,
 			<a class="text-sky-400 underline" href="/roster">Roster</a>,
 			<a class="text-sky-400 underline" href="/events">Events</a>,
 			<a class="text-sky-400 underline" href="/visit/get-connected">Get connected</a> and
