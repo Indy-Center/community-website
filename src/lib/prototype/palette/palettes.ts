@@ -7,7 +7,8 @@
 // class plays a role: gray-900 is the page, slate-800 a card, white the text.
 //
 // Round 1 settled dark: A, slate (today's colours) with the AA fixes.
-// Round 2 (this file): three light options, anchored on that dark palette.
+// Round 2 offered three light options anchored on that dark palette; round 3
+// keeps L1 and L2 and adds two between them (L4 framed, L5 soft).
 
 export type Scheme = 'dark' | 'light';
 type Scale = Record<string, string>;
@@ -151,7 +152,6 @@ const tw = {
 };
 const S = tw.slate;
 const G = tw.gray;
-const NIGHT = '#070f13'; // the brand's black, from the marks
 
 const hues = ['sky', 'red', 'green', 'yellow', 'orange', 'purple', 'blue', 'pink'] as const;
 
@@ -176,7 +176,7 @@ function darkVars(): Record<string, string> {
 	return vars;
 }
 
-// ---- Light: three options for round 2 ----
+// ---- Light options ----
 
 // Each option says what every dark grey step becomes in light, by its role:
 // 900 page · 800 card/header · 700 raised, table head, card border ·
@@ -190,8 +190,11 @@ export type Palette = {
 	slate: Steps; // what slate-* classes become
 	gray: Steps; // what gray-* classes become
 	foreground: string; // what text-white becomes
-	darkChrome?: boolean; // header and page heroes keep the dark palette
+	// The header (with the home page's hero) and the footer can stand apart:
+	// 'dark' keeps the dark palette, 'soft' is a slate-200 band.
+	chrome?: { header?: Chrome; footer?: Chrome };
 };
+type Chrome = 'dark' | 'soft';
 
 const ink = (s: Scale): Steps => ({
 	'300': s['700'],
@@ -252,41 +255,27 @@ export const palettes: Palette[] = [
 			...ink(S)
 		},
 		foreground: S['900'],
-		darkChrome: true
-	},
-	{
-		key: 'L3',
-		name: 'Sky and Night',
-		note: 'Brighter: a white page, sky-tinted lines and table heads, and text in Night (#070F13), the black of the marks. Leans on the accent for identity.',
-		slate: {
-			'950': '#ffffff',
-			'900': '#ffffff',
-			'800': S['50'],
-			'700': tw.sky['100'],
-			'600': '#5a7180',
-			'500': '#5a7180',
-			'400': '#4a6070',
-			'300': '#1e323d',
-			'200': '#13222b',
-			'100': '#0b161c',
-			'50': NIGHT
-		},
-		gray: {
-			'950': '#ffffff',
-			'900': '#ffffff',
-			'800': S['50'],
-			'700': tw.sky['100'],
-			'600': '#5a7180',
-			'500': '#5a7180',
-			'400': '#4a6070',
-			'300': '#1e323d',
-			'200': '#13222b',
-			'100': '#0b161c',
-			'50': NIGHT
-		},
-		foreground: NIGHT
+		chrome: { header: 'dark' }
 	}
 ];
+
+// Round 3: between L1 and L2. (L3, Sky and Night, was ruled out.)
+palettes.push(
+	{
+		...palettes[1],
+		key: 'L4',
+		name: 'Framed: dark header and footer',
+		note: 'L2 with the footer in the dark palette too, so the dark reads as a frame around a light page rather than a bar on top of it.',
+		chrome: { header: 'dark', footer: 'dark' }
+	},
+	{
+		...palettes[0],
+		key: 'L5',
+		name: 'In between: soft slate header and footer',
+		note: 'L1’s page with the header and footer as a soft slate-200 band: still framed in the brand’s slate, without the jump to dark.',
+		chrome: { header: 'soft', footer: 'soft' }
+	}
+);
 
 // Light accents: light text tints (200-400) become dark ones.
 const lightAccent: Record<string, string> = {
@@ -329,9 +318,25 @@ const block = (vars: Record<string, string>) =>
 		.map(([k, v]) => `${k}:${v};`)
 		.join('');
 
-// The header (and its mobile menu) and the page heroes.
-const chrome = `:is(.bg-slate-800\\/95,.from-slate-700,.bg-slate-800.pt-16)`;
+// The header (and its mobile menu) with the home page's hero; the footer.
+const chromeSel = {
+	header: `:is(.bg-slate-800\\/95,.from-slate-700,.bg-slate-800.pt-16)`,
+	footer: `footer.bg-gray-900`
+};
 const logoSel = 'svg[aria-label="Indy Center Logo"]';
+
+/** What a header or footer of the given kind sets, on top of the light vars. */
+function chromeVars(p: Palette, kind: Chrome): Record<string, string> {
+	if (kind === 'dark') return darkVars();
+	return {
+		...lightVars(p),
+		'--color-slate-800': S['200'], // header band
+		'--color-gray-900': S['200'], // footer band
+		'--color-slate-700': S['300'],
+		'--color-slate-600': S['400'],
+		'--color-gray-500': G['600'] // fine print on the band
+	};
+}
 
 /** The variables as a stylesheet. */
 export function paletteCss(p: Palette, scheme: Scheme): string {
@@ -346,9 +351,15 @@ export function paletteCss(p: Palette, scheme: Scheme): string {
 		css.push(
 			`${logoSel}{background:url(/prototype/palette/logo-black.svg) center/contain no-repeat;}${logoSel}>*{visibility:hidden;}`
 		);
-		if (p.darkChrome) {
-			css.push(`${chrome}{${block(darkVars())}color-scheme:dark;}`);
-			css.push(`${chrome} ${logoSel}{background:none;}${chrome} ${logoSel}>*{visibility:visible;}`);
+		for (const part of ['header', 'footer'] as const) {
+			const kind = p.chrome?.[part];
+			if (!kind) continue;
+			const sel = chromeSel[part];
+			css.push(
+				`${sel}{${block(chromeVars(p, kind))}color-scheme:${kind === 'dark' ? 'dark' : 'light'};}`
+			);
+			if (kind === 'dark')
+				css.push(`${sel} ${logoSel}{background:none;}${sel} ${logoSel}>*{visibility:visible;}`);
 		}
 	}
 	return css.join('');
@@ -386,7 +397,7 @@ type Pair = {
 	on: string[];
 	min: number;
 	kind: 'text' | 'control';
-	chrome?: boolean; // drawn in the header
+	chrome?: 'header' | 'footer'; // drawn in the header or footer
 };
 
 const page = 'gray-900';
@@ -430,8 +441,10 @@ export const pairs: Pair[] = [
 	t('Table header text', 'muted / table head', 'gray-300', ['slate-700/50', ...card]),
 	{
 		...t('Header nav link', 'foreground (soft) / header', 'gray-300', ['slate-800/95', page]),
-		chrome: true
+		chrome: 'header'
 	},
+	{ ...t('Footer text', 'muted / footer', 'gray-400', [page]), chrome: 'footer' },
+	{ ...t('Footer fine print', 'gray-500 / footer', 'gray-500', [page]), chrome: 'footer' },
 	c('Input border against the card', 'border (input) / card', 'slate-600', card),
 	c('Focus ring on the page', 'ring / background', 'sky-500', [page]),
 	c('Focus ring in a card', 'ring / card', 'sky-500', card)
@@ -441,10 +454,10 @@ export type PairResult = Pair & { fgHex: string; bgHex: string; ratio: number; p
 
 export function contrastReport(p: Palette, scheme: Scheme): PairResult[] {
 	const main = paletteVars(p, scheme);
-	const dark = darkVars();
 	return pairs.map((pair) => {
-		// The header of a dark-chrome option keeps the dark colours (on a light page).
-		const vars = pair.chrome && p.darkChrome && scheme === 'light' ? dark : main;
+		// A header or footer that stands apart uses its own colours.
+		const kind = scheme === 'light' && pair.chrome ? p.chrome?.[pair.chrome] : undefined;
+		const vars = kind ? chromeVars(p, kind) : main;
 		const parse = (token: string): { hex: string; alpha: number } => {
 			if (token.startsWith('#')) return { hex: token, alpha: 1 };
 			const [name, a] = token.split('/');
@@ -452,7 +465,9 @@ export function contrastReport(p: Palette, scheme: Scheme): PairResult[] {
 			return { hex, alpha: a ? Number(a) / 100 : 1 };
 		};
 		const bottom = pair.on[pair.on.length - 1];
-		let rgb = hexToRgb((bottom === page ? main : vars)[`--color-${bottom}`]);
+		// The translucent header sits over the page; the footer is its own fill.
+		const base = pair.chrome === 'footer' ? vars : main;
+		let rgb = hexToRgb(base[`--color-${bottom}`]);
 		for (const layer of pair.on.slice(0, -1).reverse()) {
 			const { hex, alpha } = parse(layer);
 			rgb = over(hexToRgb(hex), alpha, rgb);
@@ -486,7 +501,7 @@ export const roleSwatches = (p: Palette, scheme: Scheme) => {
 
 export function readChoice(param: (k: string) => string | null | undefined) {
 	const p = palettes.find((x) => x.key === param('variant')) ?? palettes[0];
-	// Round 2 is about light, so light is the default.
+	// These rounds are about light, so light is the default.
 	const scheme: Scheme = param('scheme') === 'dark' ? 'dark' : 'light';
 	return { palette: p, scheme };
 }

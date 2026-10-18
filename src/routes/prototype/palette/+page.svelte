@@ -35,7 +35,7 @@
 <div class="space-y-8 pb-28">
 	<header class="space-y-2">
 		<p class="text-xs font-semibold tracking-widest text-sky-400 uppercase">
-			Palette prototype · round 2: light
+			Palette prototype · light, round 3
 		</p>
 		<h1 class="text-3xl font-bold text-white">
 			{#if choice.scheme === 'light'}
@@ -48,7 +48,7 @@
 			{#if choice.scheme === 'light'}
 				{choice.palette.note}
 			{:else}
-				Round 1 settled dark. Flip back to Light to compare the three light options against it.
+				Round 1 settled dark. Flip back to Light to compare the light options against it.
 			{/if}
 		</p>
 		<p class="max-w-3xl text-sm text-gray-400">
