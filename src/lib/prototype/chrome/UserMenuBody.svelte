@@ -81,7 +81,7 @@
 						type="button"
 						aria-pressed={scheme === key}
 						onclick={() => onscheme(key)}
-						class="inline-flex min-h-[calc(var(--tap)-8px)] cursor-pointer items-center gap-1 rounded-md px-2 text-xs {focus} {scheme ===
+						class="inline-flex min-h-[var(--tap)] cursor-pointer items-center gap-1 rounded-md px-2 text-xs {focus} {scheme ===
 						key
 							? 'bg-slate-700 text-white'
 							: 'text-gray-400 hover:text-white'}"

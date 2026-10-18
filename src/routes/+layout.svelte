@@ -115,7 +115,10 @@
 		/>
 		<main class="flex w-full flex-1 flex-col">
 			{#if isHomePage}
-				{@render children?.()}
+				<!-- The hero pads for the old overlaid header; this header takes its own space. -->
+				<div class="flex flex-1 flex-col [&_.pt-20]:pt-4">
+					{@render children?.()}
+				</div>
 			{:else}
 				<div class="w-full bg-gray-900">
 					<div class="mx-auto max-w-6xl px-4 py-8">

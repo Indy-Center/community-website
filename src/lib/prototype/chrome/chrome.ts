@@ -27,8 +27,8 @@ export const points: Point[] = [
 			},
 			{
 				key: 'C',
-				name: 'One lockup to the app’s home',
-				note: 'Logo and name are one link to the app’s home. The hub is reached only from the menu of apps.'
+				name: 'Mark on phones, logo on wider screens',
+				note: 'As A on wider screens; on phones the mark stands in for the logo to leave room for the app’s name.'
 			}
 		]
 	},
@@ -158,10 +158,11 @@ export const touchPx: Record<string, number> = { A: 36, B: 44, C: 48 };
 export type AppKey = 'hub' | 'training' | 'library';
 
 export type AppEntry = {
-	key: AppKey | 'charts' | 'tools';
+	key: AppKey | 'charts' | 'tools' | 'scheddy';
 	name: string;
 	what: string;
-	home: string;
+	/** None when the address isn't known: listed, not linked. */
+	home?: string;
 	/** Outside this prototype: a link to the live site. */
 	live?: boolean;
 };
@@ -195,10 +196,18 @@ export const apps: AppEntry[] = [
 		what: 'Its own brand, run by the tools team',
 		home: 'https://tools.flyindycenter.com',
 		live: true
+	},
+	{
+		key: 'scheddy',
+		name: 'Scheddy',
+		what: 'Session scheduling (address not known, so no link)',
+		home: undefined
 	}
 ];
 
-export const appByKey = (key: AppKey) => apps.find((a) => a.key === key)!;
+/** One of the three apps in this prototype, which always have a home. */
+export const appByKey = (key: AppKey) =>
+	apps.find((a) => a.key === key) as AppEntry & { home: string };
 
 /** Which app a path belongs to: the mock apps live under /prototype/chrome. */
 export function appForPath(pathname: string): AppKey {
@@ -291,13 +300,6 @@ export const navLinks = (items: NavItem[]): NavLink[] =>
 export function isCurrent(pathname: string, href: string, home: string) {
 	if (href === home) return pathname === home;
 	return pathname === href || pathname.startsWith(href + '/');
-}
-
-/** The deepest nav link the path falls under. */
-export function currentLink(pathname: string, links: NavLink[], home: string) {
-	return links
-		.filter((x) => isCurrent(pathname, x.href, home))
-		.sort((a, b) => b.href.length - a.href.length)[0];
 }
 
 // ---- Mock pages for training and the library ----

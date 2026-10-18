@@ -1,7 +1,6 @@
 <script lang="ts">
 	// PROTOTYPE (prototype/chrome): every app, the current one marked.
 	import IconCheck from '~icons/mdi/check';
-	import IconOpen from '~icons/mdi/open-in-new';
 	import { apps, type AppKey } from './chrome';
 	import { icons } from './icons';
 	import { row, currentRow } from './cls';
@@ -29,7 +28,7 @@
 						<IconCheck class="h-4 w-4" aria-hidden="true" />You’re here
 					</span>
 				{:else if entry.live}
-					<IconOpen class="h-4 w-4 text-gray-400" aria-label="Live site, outside the prototype" />
+					<span class="text-xs text-gray-400">Live site</span>
 				{/if}
 			</a>
 		</li>

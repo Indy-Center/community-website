@@ -45,5 +45,6 @@ export const icons: Record<string, Component> = {
 	training: IconSchool,
 	library: IconBook,
 	charts: IconMap,
-	tools: IconTools
+	tools: IconTools,
+	scheddy: IconCalendar
 };

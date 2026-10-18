@@ -27,9 +27,12 @@
 		pick(point.options[(i + by + point.options.length) % point.options.length].key);
 	};
 
+	// Only while focus is in the bar, so arrow keys on the page itself (a
+	// keyboard-only test of the chrome) never change the chrome under you.
+	let bar: HTMLElement;
 	function onkeydown(e: KeyboardEvent) {
-		const t = e.target as HTMLElement | null;
-		if (t?.closest('input, textarea, select, [contenteditable]')) return;
+		if (!bar.contains(e.target as Node)) return;
+		if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
 		if (e.key === 'ArrowLeft') step(-1);
 		if (e.key === 'ArrowRight') step(1);
 	}
@@ -45,15 +48,13 @@
 <div
 	role="region"
 	aria-label="Chrome prototype controls"
+	bind:this={bar}
 	bind:offsetHeight={height}
 	style="position:fixed;left:50%;bottom:8px;transform:translateX(-50%);z-index:9999;width:min(720px,calc(100vw - 16px));padding:8px;border-radius:16px;background:#000;box-shadow:0 8px 30px rgba(0,0,0,.45);border:2px solid #f0f;color:#fff;font:13px/1.3 system-ui,sans-serif;"
 >
 	<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-		<button
-			style={pill}
-			onclick={() => (collapsed = !collapsed)}
-			aria-expanded={!collapsed}
-			aria-label="Show the prototype controls">{collapsed ? '▲' : '▼'} Chrome</button
+		<button style={pill} onclick={() => (collapsed = !collapsed)} aria-expanded={!collapsed}
+			><span aria-hidden="true">{collapsed ? '▲' : '▼'}</span> Chrome</button
 		>
 		<code style="{pill}cursor:default;font-family:ui-monospace,monospace;"
 			>{variantCode(variant)}</code

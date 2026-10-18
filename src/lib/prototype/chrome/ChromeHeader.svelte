@@ -22,13 +22,14 @@
 		initials,
 		isCurrent,
 		isGroup,
+		navLinks,
 		type AppKey,
 		type Member,
 		type NavItem,
 		type Variant
 	} from './chrome';
 	import { icons } from './icons';
-	import { control, current, row, currentRow, groupLabel, focus } from './cls';
+	import { control, current, row, currentRow, focus } from './cls';
 	import type { Scheme } from '$lib/prototype/palette/palettes';
 
 	let {
@@ -62,12 +63,36 @@
 	const here = (href: string) => isCurrent(pathname, href, entry.home);
 
 	let phoneOpen = $state(false);
-	afterNavigate(() => (phoneOpen = false));
+	let menuButton: HTMLButtonElement;
+	// Phone menu A: which groups the member opened or closed (else: open if current).
+	let openGroups = $state<Record<string, boolean>>({});
+	afterNavigate(() => {
+		phoneOpen = false;
+		openGroups = {};
+	});
 
 	const name = 'text-lg font-semibold whitespace-nowrap text-white';
 	const brandLink = `inline-flex min-h-[var(--tap)] items-center rounded-lg px-1 ${focus}`;
 	const signIn = `inline-flex min-h-[var(--tap)] cursor-pointer items-center gap-2 rounded-lg bg-sky-600 px-3 text-sm font-medium text-white hover:bg-sky-700 ${focus}`;
 </script>
+
+<svelte:document
+	onkeydown={(e) => {
+		if (phoneOpen && e.key === 'Escape') {
+			phoneOpen = false;
+			menuButton.focus();
+		}
+	}}
+/>
+
+{#snippet phoneLink(href: string, label: string, icon: string, on: boolean)}
+	{@const Icon = icons[icon]}
+	<li>
+		<a {href} class="{row} {on ? currentRow : ''}" aria-current={on ? 'page' : undefined}>
+			<Icon class="h-5 w-5" aria-hidden="true" />{label}
+		</a>
+	</li>
+{/snippet}
 
 {#snippet appSwitcher()}
 	<Popover
@@ -165,15 +190,27 @@
 					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
 				{/if}
 			{:else if variant.header === 'B'}
-				<a href="/" class={brandLink} aria-label="Indy Center home">
-					<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto" />
-				</a>
-				<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
+				{#if app === 'hub'}
+					<!-- On the hub both lead home: one link, not two. -->
+					<a href="/" class="{brandLink} gap-2 {name}">
+						<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto" />Indy Center
+					</a>
+				{:else}
+					<a href="/" class={brandLink} aria-label="Indy Center home">
+						<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto" />
+					</a>
+					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
+				{/if}
 			{:else}
-				<a href={entry.home} class="{brandLink} gap-3">
-					<Logo class="h-8 w-auto" />
-					{#if app !== 'hub'}<span class={name}>{entry.name}</span>{/if}
+				<!-- C: the mark on phones, the full logo from sm up. -->
+				<a href="/" class={brandLink} aria-label="Indy Center home">
+					<img src="/prototype/chrome/mark-white.svg" alt="" class="h-9 w-auto sm:hidden" />
+					<Logo class="hidden h-8 w-auto sm:block" />
 				</a>
+				{#if app !== 'hub'}
+					<span class="mx-1 h-6 w-px bg-slate-600" aria-hidden="true"></span>
+					<a href={entry.home} class="{brandLink} {name}">{entry.name}</a>
+				{/if}
 			{/if}
 			{#if variant.apps === 'C'}{@render appSwitcher()}{/if}
 		</div>
@@ -202,6 +239,7 @@
 			<div class={compactUser ? '' : 'hidden lg:block'}>{@render userMenu()}</div>
 
 			<button
+				bind:this={menuButton}
 				type="button"
 				class="{control} lg:hidden"
 				aria-expanded={phoneOpen}
@@ -219,7 +257,9 @@
 
 	{#if variant.nav === 'C'}<SectionTabs {items} {pathname} home={entry.home} />{/if}
 
-	<!-- Phone menu: the app's navigation (groups as headings), then the user. -->
+	<!-- Phone menu: the app's navigation as the nav option shapes it, then the user.
+	     A: groups open and close. B: every page, flat. C: sections only; a
+	     section's pages are the tabs under the header. -->
 	<div
 		id="phone-menu"
 		hidden={!phoneOpen}
@@ -227,35 +267,40 @@
 	>
 		<nav aria-label="Main" class="mx-auto max-w-7xl p-2">
 			<ul class="space-y-1">
-				{#each items as item (item.label)}
-					{#if isGroup(item)}
-						<li>
-							<p class={groupLabel}>{item.label}</p>
-							<ul class="space-y-1">
-								{#each item.children as child (child.href)}
-									{@const Icon = icons[child.icon]}
-									<li>
-										<a
-											href={child.href}
-											class="{row} pl-6 {here(child.href) ? currentRow : ''}"
-											aria-current={here(child.href) ? 'page' : undefined}
-										>
-											<Icon class="h-5 w-5" aria-hidden="true" />{child.label}
-										</a>
-									</li>
-								{/each}
-							</ul>
-						</li>
+				{#each variant.nav === 'B' ? navLinks(items) : items as item (item.label)}
+					{#if !isGroup(item)}
+						{@render phoneLink(item.href, item.label, item.icon, here(item.href))}
+					{:else if variant.nav === 'C'}
+						{@render phoneLink(
+							item.children[0].href,
+							item.label,
+							item.icon,
+							item.children.some((c) => here(c.href))
+						)}
 					{:else}
 						{@const Icon = icons[item.icon]}
+						{@const active = item.children.some((c) => here(c.href))}
+						{@const open = openGroups[item.label] ?? active}
 						<li>
-							<a
-								href={item.href}
-								class="{row} {here(item.href) ? currentRow : ''}"
-								aria-current={here(item.href) ? 'page' : undefined}
+							<button
+								type="button"
+								class="{row} cursor-pointer {active ? 'text-white' : ''}"
+								aria-expanded={open}
+								onclick={() => (openGroups[item.label] = !open)}
 							>
-								<Icon class="h-5 w-5" aria-hidden="true" />{item.label}
-							</a>
+								<Icon class="h-5 w-5" aria-hidden="true" /><span class="flex-1 text-left"
+									>{item.label}</span
+								>
+								<IconChevronDown
+									class="h-5 w-5 transition-transform {open ? 'rotate-180' : ''}"
+									aria-hidden="true"
+								/>
+							</button>
+							<ul class="space-y-1 pl-6" hidden={!open}>
+								{#each item.children as child (child.href)}
+									{@render phoneLink(child.href, child.label, child.icon, here(child.href))}
+								{/each}
+							</ul>
 						</li>
 					{/if}
 				{/each}
