@@ -1,9 +1,9 @@
 <script lang="ts">
-	// PROTOTYPE (prototype/chrome): the footer, round 2. Every option is the
-	// small map (apps, help, policies) beside the disclaimer, the map taking
-	// about two thirds. A: map left, disclaimer right. B: as A, disclaimer in
-	// a box. C: logo and disclaimer left, map right. Phones stack them.
-	// Policies not written yet are shown, but not as links.
+	// PROTOTYPE (prototype/chrome): the footer, round 3. The logo and disclaimer
+	// take the first third, the small map (apps, help, policies) the other two;
+	// phones stack them. A: no border. B: the disclaimer in a box. C: logo and
+	// disclaimer together in a box. Policies not written yet are shown, but
+	// not as links.
 	import Logo from '$lib/components/Logo.svelte';
 	import { apps, type AppKey } from './chrome';
 	import { focus } from './cls';
@@ -25,6 +25,7 @@
 	const link = `inline-flex min-h-[var(--tap)] items-center text-sm text-gray-300 underline-offset-4 hover:text-white hover:underline ${focus}`;
 	const notYet = 'inline-flex min-h-[var(--tap)] items-center gap-1 text-sm text-gray-400';
 	const heading = 'mb-1 text-xs font-semibold tracking-wider text-gray-400 uppercase';
+	const box = 'rounded-lg border border-slate-700 p-4';
 </script>
 
 {#snippet item(i: Item)}
@@ -75,21 +76,14 @@
 
 <footer data-chrome="footer" class="shrink-0 border-t border-slate-800 bg-gray-900">
 	<div class="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-3">
-		{#if variant === 'C'}
-			<div class="md:col-span-1">
-				<Logo class="mb-3 h-8 w-auto" />
+		<div class="self-start md:col-span-1 {variant === 'C' ? box : ''}">
+			<Logo class="mb-3 h-8 w-auto" />
+			{#if variant === 'B'}
+				<div class={box}>{@render disclaimer()}</div>
+			{:else}
 				{@render disclaimer()}
-			</div>
-			<div class="md:col-span-2">{@render map()}</div>
-		{:else}
-			<div class="md:col-span-2">{@render map()}</div>
-			<div
-				class="md:col-span-1 {variant === 'B'
-					? 'self-start rounded-lg border border-slate-700 p-4'
-					: 'md:pt-5'}"
-			>
-				{@render disclaimer()}
-			</div>
-		{/if}
+			{/if}
+		</div>
+		<div class="md:col-span-2">{@render map()}</div>
 	</div>
 </footer>
