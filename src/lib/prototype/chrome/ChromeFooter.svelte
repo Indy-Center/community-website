@@ -1,9 +1,9 @@
 <script lang="ts">
-	// PROTOTYPE (prototype/chrome): the footer, round 3. The logo and disclaimer
-	// take the first third, the small map (apps, help, policies) the other two;
-	// phones stack them. A: no border. B: the disclaimer in a box. C: logo and
-	// disclaimer together in a box. Policies not written yet are shown, but
-	// not as links.
+	// PROTOTYPE (prototype/chrome): the footer, round 4. The logo with the
+	// disclaimer in a bordered box takes a third, the small map (apps, help,
+	// policies) two thirds; phones stack them. A: logo and disclaimer left.
+	// B: mirrored, map left. Policies not written yet are shown, but not as
+	// links.
 	import Logo from '$lib/components/Logo.svelte';
 	import { apps, type AppKey } from './chrome';
 	import { focus } from './cls';
@@ -76,14 +76,12 @@
 
 <footer data-chrome="footer" class="shrink-0 border-t border-slate-800 bg-gray-900">
 	<div class="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-3">
-		<div class="self-start md:col-span-1 {variant === 'C' ? box : ''}">
+		<!-- Source order follows the visual order, so reading order matches. -->
+		{#if variant === 'B'}<div class="md:col-span-2">{@render map()}</div>{/if}
+		<div class="self-start md:col-span-1">
 			<Logo class="mb-3 h-8 w-auto" />
-			{#if variant === 'B'}
-				<div class={box}>{@render disclaimer()}</div>
-			{:else}
-				{@render disclaimer()}
-			{/if}
+			<div class={box}>{@render disclaimer()}</div>
 		</div>
-		<div class="md:col-span-2">{@render map()}</div>
+		{#if variant !== 'B'}<div class="md:col-span-2">{@render map()}</div>{/if}
 	</div>
 </footer>

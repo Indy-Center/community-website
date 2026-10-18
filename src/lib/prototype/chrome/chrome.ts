@@ -113,22 +113,17 @@ export const points: Point[] = [
 		key: 'footer',
 		name: 'Footer',
 		question:
-			'The footer: logo and disclaimer in the first third, the map (apps, help, policies) in the other two. Round 3: the border.',
+			'The footer: the logo with the disclaimer and copyright in a bordered box (one third), and the map of apps, help and policies (two thirds). Round 4: which side.',
 		options: [
 			{
 				key: 'A',
-				name: 'No border',
-				note: 'Round 2’s C as it was: the logo, the disclaimer and copyright under it.'
+				name: 'Logo and disclaimer left',
+				note: 'Round 3’s B: the logo and boxed disclaimer first, the map to the right.'
 			},
 			{
 				key: 'B',
-				name: 'Disclaimer in a box',
-				note: 'The logo above; the disclaimer and copyright in a quiet bordered box.'
-			},
-			{
-				key: 'C',
-				name: 'Logo and disclaimer in a box',
-				note: 'The logo, disclaimer and copyright together in one bordered box.'
+				name: 'Mirrored: map left',
+				note: 'The map first, the logo and boxed disclaimer at the right.'
 			}
 		]
 	},
