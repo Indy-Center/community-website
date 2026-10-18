@@ -5,7 +5,7 @@ export function load({ locals, cookies }: { locals: App.Locals; cookies: Cookies
 		user: locals.user,
 		roles: locals.roles,
 		session: locals.session,
-		// PROTOTYPE (prototype/palette): the palette chosen on the switcher bar.
-		palettePrototype: cookies.get('palette-prototype') ?? ''
+		// PROTOTYPE (prototype/chrome): the choices made on the chrome bar.
+		chromePrototype: cookies.get('chrome-prototype') ?? ''
 	};
 }

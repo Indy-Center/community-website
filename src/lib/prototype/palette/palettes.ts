@@ -320,8 +320,9 @@ const block = (vars: Record<string, string>) =>
 
 // The header (and its mobile menu) with the home page's hero; the footer.
 const chromeSel = {
-	header: `:is(.bg-slate-800\\/95,.from-slate-700,.bg-slate-800.pt-16)`,
-	footer: `footer.bg-gray-900`
+	// [data-chrome]: the chrome prototype's header and footer.
+	header: `:is([data-chrome="header"],.bg-slate-800\\/95,.from-slate-700,.bg-slate-800.pt-16)`,
+	footer: `:is([data-chrome="footer"],footer.bg-gray-900)`
 };
 const logoSel = 'svg[aria-label="Indy Center Logo"]';
 
