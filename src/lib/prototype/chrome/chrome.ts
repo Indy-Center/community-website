@@ -149,6 +149,7 @@ export const points: Point[] = [
 	// Last, so codes written before it keep their letters.
 	{
 		key: 'current',
+		decided: 'B',
 		name: 'Current page',
 		question:
 			'How the navigation marks where you are: in the header, and in dropdowns and the phone menu.',
