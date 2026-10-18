@@ -2,8 +2,34 @@
 	import '../app.css';
 	import Header from '$lib/components/header/Header.svelte';
 	import { page } from '$app/state';
+	import { dev } from '$app/environment';
+	import { goto } from '$app/navigation';
+	import { paletteCss, readChoice, type Scheme } from '$lib/prototype/palette/palettes';
+	import PaletteSwitcher from '$lib/prototype/palette/PaletteSwitcher.svelte';
 
 	let { children, data } = $props();
+
+	// PROTOTYPE (prototype/palette): the URL's ?variant=&scheme=&aa= win, else
+	// the last choice from the cookie, so it holds while you browse the site.
+	let saved = $state(data.palettePrototype);
+	const choice = $derived.by(() => {
+		const url = page.url.searchParams;
+		const fromUrl = ['variant', 'scheme', 'aa'].some((k) => url.has(k));
+		const source = fromUrl ? url : new URLSearchParams(saved);
+		return readChoice((k) => source.get(k));
+	});
+	function choose(next: { variant: string; scheme: Scheme; aa: boolean }) {
+		const qs = new URLSearchParams({
+			variant: next.variant,
+			scheme: next.scheme,
+			aa: next.aa ? '1' : '0'
+		});
+		saved = qs.toString();
+		document.cookie = `palette-prototype=${encodeURIComponent(saved)}; path=/; max-age=2592000; samesite=lax`;
+		const url = new URL(page.url);
+		for (const [k, v] of qs) url.searchParams.set(k, v);
+		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+	}
 
 	// Check if current page is home
 	let isHomePage = $derived(page.url.pathname === '/');
@@ -11,7 +37,19 @@
 
 <svelte:head>
 	<title>Indy Center | Welcome to Indy</title>
+	{#if dev}
+		{@html `<style id="palette-prototype">${paletteCss(choice.palette, choice.scheme, choice.aa)}</style>`}
+	{/if}
 </svelte:head>
+
+{#if dev}
+	<PaletteSwitcher
+		palette={choice.palette}
+		scheme={choice.scheme}
+		aa={choice.aa}
+		onchange={choose}
+	/>
+{/if}
 
 <div class="flex min-h-screen w-full flex-col bg-gray-900">
 	<div
