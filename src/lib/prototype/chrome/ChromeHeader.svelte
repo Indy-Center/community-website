@@ -13,23 +13,20 @@
 	import Popover from './Popover.svelte';
 	import AppsList from './AppsList.svelte';
 	import AppNav from './AppNav.svelte';
-	import SectionTabs from './SectionTabs.svelte';
 	import UserMenuBody from './UserMenuBody.svelte';
 	import {
-		apps,
 		appByKey,
 		appExtras,
 		initials,
 		isCurrent,
 		isGroup,
-		navLinks,
 		type AppKey,
 		type Member,
 		type NavItem,
 		type Variant
 	} from './chrome';
 	import { icons } from './icons';
-	import { control, current, row, currentRow, focus } from './cls';
+	import { control, row, focus } from './cls';
 	import type { Scheme } from '$lib/prototype/palette/palettes';
 
 	let {
@@ -88,7 +85,7 @@
 {#snippet phoneLink(href: string, label: string, icon: string, on: boolean)}
 	{@const Icon = icons[icon]}
 	<li>
-		<a {href} class="{row} {on ? currentRow : ''}" aria-current={on ? 'page' : undefined}>
+		<a {href} class={row} aria-current={on ? 'page' : undefined}>
 			<Icon class="h-5 w-5" aria-hidden="true" />{label}
 		</a>
 	</li>
@@ -159,25 +156,9 @@
 
 <header
 	data-chrome="header"
+	data-current={variant.current}
 	class="sticky top-0 z-40 w-full border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-lg"
 >
-	{#if variant.apps === 'B'}
-		<nav aria-label="Indy Center apps" class="border-b border-slate-700/60 bg-gray-900">
-			<ul class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2">
-				{#each apps as a (a.key)}
-					{@const on = a.key === app}
-					<li class="shrink-0">
-						<a
-							href={a.home}
-							aria-current={on ? 'true' : undefined}
-							class="{control} text-xs {on ? current : ''}">{a.name}</a
-						>
-					</li>
-				{/each}
-			</ul>
-		</nav>
-	{/if}
-
 	<div class="mx-auto flex min-h-16 w-full max-w-7xl items-center gap-2 px-2">
 		<!-- Brand: where the mark or logo leads, and where the app's name leads. -->
 		<div class="flex min-w-0 items-center gap-1">
@@ -216,7 +197,7 @@
 		</div>
 
 		<div class="ml-2 hidden lg:block">
-			<AppNav {items} mode={variant.nav} {pathname} home={entry.home} />
+			<AppNav {items} {pathname} home={entry.home} />
 		</div>
 
 		<div class="ml-auto flex items-center gap-1">
@@ -255,11 +236,8 @@
 		</div>
 	</div>
 
-	{#if variant.nav === 'C'}<SectionTabs {items} {pathname} home={entry.home} />{/if}
-
-	<!-- Phone menu: the app's navigation as the nav option shapes it, then the user.
-	     A: groups open and close. B: every page, flat. C: sections only; a
-	     section's pages are the tabs under the header. -->
+	<!-- Phone menu: the app's navigation, groups that open and close (nav A),
+	     then the user. -->
 	<div
 		id="phone-menu"
 		hidden={!phoneOpen}
@@ -267,16 +245,9 @@
 	>
 		<nav aria-label="Main" class="mx-auto max-w-7xl p-2">
 			<ul class="space-y-1">
-				{#each variant.nav === 'B' ? navLinks(items) : items as item (item.label)}
+				{#each items as item (item.label)}
 					{#if !isGroup(item)}
 						{@render phoneLink(item.href, item.label, item.icon, here(item.href))}
-					{:else if variant.nav === 'C'}
-						{@render phoneLink(
-							item.children[0].href,
-							item.label,
-							item.icon,
-							item.children.some((c) => here(c.href))
-						)}
 					{:else}
 						{@const Icon = icons[item.icon]}
 						{@const active = item.children.some((c) => here(c.href))}
@@ -284,7 +255,8 @@
 						<li>
 							<button
 								type="button"
-								class="{row} cursor-pointer {active ? 'text-white' : ''}"
+								class="{row} cursor-pointer"
+								data-active={active || undefined}
 								aria-expanded={open}
 								onclick={() => (openGroups[item.label] = !open)}
 							>
@@ -321,3 +293,74 @@
 		{/if}
 	</div>
 </header>
+
+<style>
+	/* The current page, per the "Current page" option (data-current). Drawn
+	   from aria-current, and data-active on a group holding the current page.
+	   "top": the header's own links and dropdown buttons. "row": rows in a
+	   dropdown and in the phone menu. */
+	:global {
+		header[data-current] :is(.chrome-top, #phone-menu) :is([aria-current], [data-active]) {
+			color: var(--color-white);
+		}
+
+		/* A: underline only. */
+		header[data-current='A']
+			:is(
+				.chrome-top > ul > li > a[aria-current],
+				.chrome-top > ul > li > div > button[data-active]
+			) {
+			box-shadow: inset 0 -2px 0 var(--color-sky-400);
+			border-bottom-left-radius: 0;
+			border-bottom-right-radius: 0;
+		}
+		header[data-current='A']
+			:is(.chrome-top li li, #phone-menu)
+			:is([aria-current], [data-active]) {
+			box-shadow: inset 3px 0 0 var(--color-sky-400);
+		}
+
+		/* B: soft fill. */
+		header[data-current='B'] :is(.chrome-top, #phone-menu) :is([aria-current], [data-active]) {
+			background-color: rgb(255 255 255 / 0.1);
+		}
+
+		/* C: bold and a dot. */
+		header[data-current='C'] :is(.chrome-top, #phone-menu) :is([aria-current], [data-active]) {
+			font-weight: 600;
+		}
+		header[data-current='C']
+			:is(
+				.chrome-top > ul > li > a[aria-current],
+				.chrome-top > ul > li > div > button[data-active]
+			) {
+			position: relative;
+		}
+		header[data-current='C']
+			:is(
+				.chrome-top > ul > li > a[aria-current],
+				.chrome-top > ul > li > div > button[data-active]
+			)::after {
+			content: '';
+			position: absolute;
+			bottom: 3px;
+			left: 50%;
+			width: 5px;
+			height: 5px;
+			margin-left: -2.5px;
+			border-radius: 999px;
+			background: var(--color-sky-400);
+		}
+		header[data-current='C']
+			:is(.chrome-top li li, #phone-menu)
+			:is([aria-current], [data-active])::after {
+			content: '';
+			flex: none;
+			width: 6px;
+			height: 6px;
+			margin-left: auto;
+			border-radius: 999px;
+			background: var(--color-sky-400);
+		}
+	}
+</style>

@@ -5,7 +5,7 @@
 // letter per point, in this order, so `?variant=BACAAB` is header B, apps A...
 // The settled palette (dark A, light L4 "framed") is pinned underneath.
 
-export type PointKey = 'header' | 'apps' | 'nav' | 'user' | 'footer' | 'touch';
+export type PointKey = 'header' | 'apps' | 'nav' | 'user' | 'footer' | 'touch' | 'current';
 type Option = { key: string; name: string; note: string };
 type Point = {
 	key: PointKey;
@@ -65,6 +65,7 @@ export const points: Point[] = [
 	},
 	{
 		key: 'nav',
+		decided: 'A',
 		name: 'App navigation',
 		question: 'An app’s own navigation, and how deep it may go.',
 		options: [
@@ -143,6 +144,30 @@ export const points: Point[] = [
 				note: 'Apple’s minimum touch target, and WCAG’s enhanced (AAA) size.'
 			},
 			{ key: 'C', name: '48px', note: 'Android’s Material minimum.' }
+		]
+	},
+	// Last, so codes written before it keep their letters.
+	{
+		key: 'current',
+		name: 'Current page',
+		question:
+			'How the navigation marks where you are: in the header, and in dropdowns and the phone menu.',
+		options: [
+			{
+				key: 'A',
+				name: 'Underline only',
+				note: 'White text and a blue bar under it, no box. In menus, a blue bar at the left.'
+			},
+			{
+				key: 'B',
+				name: 'Soft fill',
+				note: 'White text on a faint grey pill, no blue. The same in menus.'
+			},
+			{
+				key: 'C',
+				name: 'Bold and a dot',
+				note: 'White bold text with a small blue dot under it. In menus, the dot at the right.'
+			}
 		]
 	}
 ];

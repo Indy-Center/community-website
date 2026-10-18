@@ -12,7 +12,6 @@ export const control = `inline-flex min-h-[var(--tap)] min-w-[var(--tap)] cursor
 export const row = `flex min-h-[var(--tap)] w-full items-center gap-3 rounded-lg px-3 text-sm text-gray-300 transition-colors hover:bg-slate-700 hover:text-white ${focus}`;
 
 /** Marks the current page: a fill and a bar, so it isn't colour alone. */
-export const current = 'bg-sky-600/20 text-white shadow-[inset_0_-2px_0_var(--color-sky-400)]';
 export const currentRow = 'bg-sky-600/20 text-white shadow-[inset_3px_0_0_var(--color-sky-400)]';
 
 export const groupLabel =

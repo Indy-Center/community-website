@@ -2,19 +2,7 @@
 	// PROTOTYPE (prototype/chrome): how to use the chrome prototype, and every
 	// option on one page.
 	import { page } from '$app/state';
-	import {
-		appByKey,
-		apps,
-		isGroup,
-		navLinks,
-		navs,
-		parseVariant,
-		points,
-		variantCode,
-		type AppKey
-	} from '$lib/prototype/chrome/chrome';
-
-	const navApps: AppKey[] = ['hub', 'training', 'library'];
+	import { apps, parseVariant, points, variantCode } from '$lib/prototype/chrome/chrome';
 
 	const variant = $derived(parseVariant(page.url.searchParams.get('variant')));
 	const withOption = (key: string, letter: string) =>
@@ -84,67 +72,6 @@
 		</section>
 	{/each}
 </div>
-
-<section class="mt-8">
-	<h2 class="mb-1 text-xl font-semibold text-white">
-		What each navigation option does to each app
-	</h2>
-	<p class="mb-4 max-w-3xl text-sm text-gray-400">
-		A navigation option is a rule every app follows, not one look: each app keeps its own pages, so
-		they look different under the same rule. The Library has only two pages, so every rule gives it
-		the same two links.
-	</p>
-	<div class="overflow-x-auto">
-		<table class="w-full min-w-[640px] text-left text-sm text-gray-300">
-			<thead>
-				<tr class="border-b border-slate-700">
-					<th scope="col" class="py-2 pr-4 font-semibold text-white">Option</th>
-					{#each navApps as a (a)}
-						<th scope="col" class="py-2 pr-4 font-semibold text-white">{appByKey(a).name}</th>
-					{/each}
-				</tr>
-			</thead>
-			<tbody>
-				{#each points.find((p) => p.key === 'nav')!.options as o (o.key)}
-					<tr class="border-b border-slate-700/60 align-top">
-						<th scope="row" class="py-3 pr-4 font-medium text-white">
-							<a class="text-sky-400 underline underline-offset-4" href={withOption('nav', o.key)}
-								>{o.key} · {o.name}</a
-							>
-						</th>
-						{#each navApps as a (a)}
-							<td class="py-3 pr-4">
-								<ul class="space-y-0.5">
-									{#each o.key === 'B' ? navLinks(navs[a]) : navs[a] as item (item.label)}
-										<li>
-											{#if !isGroup(item)}
-												{item.label}
-											{:else if o.key === 'A'}
-												{item.label} ▾
-												<ul class="pl-4 text-gray-400">
-													{#each item.children as c (c.href)}<li>{c.label}</li>{/each}
-												</ul>
-											{:else}
-												{item.label}
-												<span class="text-gray-400"
-													>(tabs: {item.children.map((c) => c.label).join(', ')})</span
-												>
-											{/if}
-										</li>
-									{/each}
-								</ul>
-							</td>
-						{/each}
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-	<p class="mt-2 text-xs text-gray-400">
-		▾ opens a dropdown (on phones, a group that opens in the menu). Signed in, user menu C adds the
-		app’s admin item to the end of each.
-	</p>
-</section>
 
 <section class="mt-8 max-w-3xl text-sm text-gray-400">
 	<h2 class="mb-2 text-xl font-semibold text-white">Fixed in every option</h2>

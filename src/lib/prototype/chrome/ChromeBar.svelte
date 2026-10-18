@@ -17,7 +17,8 @@
 
 	const openPoints = points.filter((p) => !p.decided);
 	const decided = points.filter((p) => p.decided);
-	let open = $state<PointKey>(openPoints[0].key);
+	// Opens on the newest open question.
+	let open = $state<PointKey>(openPoints[openPoints.length - 1].key);
 	let collapsed = $state(false);
 	const point = $derived(points.find((p) => p.key === open)!);
 	const chosen = $derived(point.options.find((o) => o.key === variant[open])!);

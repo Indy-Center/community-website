@@ -11,8 +11,11 @@
 		label,
 		align = 'left',
 		buttonClass = '',
-		panelClass = ''
+		panelClass = '',
+		active = false
 	}: {
+		/** The current page is inside this one's panel. */
+		active?: boolean;
 		trigger: Snippet<[boolean]>;
 		children: Snippet;
 		label?: string;
@@ -50,6 +53,7 @@
 		bind:this={button}
 		type="button"
 		class={buttonClass}
+		data-active={active || undefined}
 		aria-expanded={open}
 		aria-controls={id}
 		aria-label={label}
