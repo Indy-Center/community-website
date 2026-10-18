@@ -7,7 +7,8 @@
 // changes with no page edits. Fonts and the scale are separate questions,
 // each with its own URL parameter: ?font=B&mono=A&scale=C&scheme=light.
 
-export type Scheme = 'dark' | 'light';
+import type { Scheme } from '../palette/palettes';
+export type { Scheme };
 
 // Tailwind's own stacks: what the apps use today.
 export const systemSans =
@@ -20,6 +21,11 @@ const sourceCode = `'Source Code Pro', ${systemMono}`;
 
 /** A self-hosted webfont file: the Latin subset of a variable font (every weight). */
 export type FontFile = { family: string; style: 'normal' | 'italic'; url: string; kb: number };
+
+// The characters Google Fonts puts in its Latin subset. Declaring it lets a
+// Latin Extended file be added later and fetched only when a page needs it.
+const latinRange =
+	'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
 
 const files = {
 	sans: {
@@ -66,7 +72,7 @@ export const fonts: FontOption[] = [
 	{
 		key: 'C',
 		name: 'Source Sans 3 headings, system body',
-		note: 'The logo’s font where it shows most (headings, labels), the device’s font for running text. Half the download of B; body text looks native.',
+		note: 'The logo’s font for headings (panel titles included), the device’s font for everything else. Half the download of B; body text looks native.',
 		body: systemSans,
 		headings: sourceSans,
 		files: [files.sans]
@@ -149,14 +155,20 @@ export const scales: ScaleOption[] = [
 	},
 	{
 		key: 'B',
-		name: 'Minor third (×1.2)',
-		note: 'Each step 1.2× the last. Headings a little smaller and closer together: calmer, suits dense app screens.',
-		sizes: modular(1.2)
+		name: 'Compact (×1.125)',
+		note: 'Each step 1.125× the last. Headings much smaller and closer together (page titles 26px, the largest 36px): calm, suits dense app screens.',
+		sizes: modular(1.125)
 	},
 	{
 		key: 'C',
+		name: 'Minor third (×1.2)',
+		note: 'Each step 1.2× the last. Even steps; headings a little larger than today up to 4xl, the very largest a little smaller.',
+		sizes: modular(1.2)
+	},
+	{
+		key: 'D',
 		name: 'Major third (×1.25)',
-		note: 'Each step 1.25× the last. Clearer jumps between heading levels; large headings grow.',
+		note: 'Each step 1.25× the last. Clear jumps between heading levels; large headings grow well past today’s.',
 		sizes: modular(1.25)
 	}
 ];
@@ -168,7 +180,7 @@ export type TypeChoice = {
 	scheme: Scheme;
 };
 
-const pick = <T extends Option>(list: T[], key: string | null | undefined) =>
+export const pick = <T extends Option>(list: T[], key: string | null | undefined) =>
 	list.find((o) => o.key === key) ?? list[0];
 
 /** Reads a choice from named parameters; anything missing or unknown is today's. */
@@ -197,7 +209,7 @@ const rem = (px: number) => `${+(px / 16).toFixed(4)}rem`;
 export function typeCss(c: TypeChoice): string {
 	const faces = filesFor(c).map(
 		(f) =>
-			`@font-face{font-family:'${f.family}';font-style:${f.style};font-weight:200 900;font-display:swap;src:url(${f.url}) format('woff2');}`
+			`@font-face{font-family:'${f.family}';font-style:${f.style};font-weight:200 900;font-display:swap;src:url(${f.url}) format('woff2');unicode-range:${latinRange};}`
 	);
 	const sizes = steps.flatMap((s) => {
 		const { px, lineHeight } = c.scale.sizes[s];
@@ -206,7 +218,8 @@ export function typeCss(c: TypeChoice): string {
 	return [
 		...faces,
 		`:root{--font-sans:${c.font.body};--font-heading:${c.font.headings};--font-mono:${c.mono.family};${sizes.join('')}}`,
-		`:is(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);}`,
+		// In Tailwind's base layer, so a font class on a heading still wins.
+		`@layer base{:is(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);}}`,
 		// Equal-width digits wherever CIDs and ratings are set.
 		`.font-mono{font-variant-numeric:tabular-nums;}`
 	].join('\n');

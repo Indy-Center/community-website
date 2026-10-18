@@ -2,7 +2,7 @@
 	// PROTOTYPE: the floating bar that switches type options, one row per
 	// question. Styled inline in a fixed font and size so the options under
 	// test never restyle it.
-	import { fonts, monos, scales, choiceParams, type TypeChoice, type Scheme } from './type';
+	import { fonts, monos, scales, pick, choiceParams, type TypeChoice, type Scheme } from './type';
 
 	let { choice, onchange }: { choice: TypeChoice; onchange: (next: TypeChoice) => void } = $props();
 
@@ -11,19 +11,19 @@
 			label: 'Font',
 			options: fonts,
 			current: choice.font,
-			set: (key: string) => onchange({ ...choice, font: fonts.find((o) => o.key === key)! })
+			set: (key: string) => onchange({ ...choice, font: pick(fonts, key) })
 		},
 		{
 			label: 'Mono',
 			options: monos,
 			current: choice.mono,
-			set: (key: string) => onchange({ ...choice, mono: monos.find((o) => o.key === key)! })
+			set: (key: string) => onchange({ ...choice, mono: pick(monos, key) })
 		},
 		{
 			label: 'Scale',
 			options: scales,
 			current: choice.scale,
-			set: (key: string) => onchange({ ...choice, scale: scales.find((o) => o.key === key)! })
+			set: (key: string) => onchange({ ...choice, scale: pick(scales, key) })
 		}
 	]);
 	const setScheme = (scheme: Scheme) => onchange({ ...choice, scheme });

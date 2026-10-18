@@ -287,15 +287,16 @@
 				<li>
 					<strong class="text-white">Size.</strong> Each file is a variable font (every weight from 200
 					to 900 in one file), cut to the Latin characters Google Fonts serves for English and Western
-					European names. Sizes are those files, already compressed (WOFF2).
+					European names. Sizes are those files, already compressed (WOFF2). The italic file is fetched
+					only on a page that sets italic text, so most pages cost less than the figure above.
 				</li>
 				<li>
 					<strong class="text-white">Loading.</strong> Served from our own domain with the page,
 					preloaded in the page’s head, and cached by the browser after the first visit, so only a
 					member’s first page pays. On a slow phone connection that first page shows the system font
 					for a moment, then swaps (<code class="font-mono">font-display: swap</code>), so text is
-					never hidden but can shift slightly as it swaps. Fallback metrics tuned to Source Sans 3
-					can keep that shift small.
+					never hidden but can shift slightly as it swaps. Tuning the fallback font’s metrics to
+					Source Sans 3 can keep that shift small (not tried in this prototype).
 				</li>
 				<li>
 					<strong class="text-white">Characters outside the subset</strong> (some Polish, Czech or Turkish

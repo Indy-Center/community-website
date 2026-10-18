@@ -25,14 +25,21 @@
 		const cookie = new URLSearchParams(saved);
 		return readChoice((k) => url.get(k) ?? cookie.get(k));
 	});
-	function choose(next: TypeChoice) {
-		const qs = new URLSearchParams(choiceParams(next));
-		saved = qs.toString();
+	function remember(c: TypeChoice) {
+		saved = new URLSearchParams(choiceParams(c)).toString();
 		document.cookie = `type-prototype=${encodeURIComponent(saved)}; path=/; max-age=2592000; samesite=lax`;
+	}
+	function choose(next: TypeChoice) {
+		remember(next);
 		const url = new URL(page.url);
-		for (const [k, v] of qs) url.searchParams.set(k, v);
+		for (const [k, v] of Object.entries(choiceParams(next))) url.searchParams.set(k, v);
 		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
 	}
+	// A shared link's choice holds as you browse on from it.
+	$effect(() => {
+		const url = page.url.searchParams;
+		if (['font', 'mono', 'scale', 'scheme'].some((k) => url.has(k))) remember(choice);
+	});
 
 	// The settled palette: dark A with the AA fixes, light L4 (framed).
 	const settled = palettes.find((p) => p.key === 'L4')!;
@@ -45,7 +52,8 @@
 	<title>Indy Center | Welcome to Indy</title>
 	{#if dev}
 		{@html `<style id="palette-prototype">${paletteCss(settled, choice.scheme)}</style>`}
-		{#each filesFor(choice) as f (f.url)}
+		<!-- Italic loads only on a page that sets italic text. -->
+		{#each filesFor(choice).filter((f) => f.style === 'normal') as f (f.url)}
 			<link rel="preload" href={f.url} as="font" type="font/woff2" crossorigin="anonymous" />
 		{/each}
 		{@html `<style id="type-prototype">${typeCss(choice)}</style>`}
