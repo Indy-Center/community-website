@@ -169,12 +169,13 @@ function vatusaRow(row: Partial<VatusaRosterMember>): VatusaRosterMember {
 
 /**
  * Fails if page data holds anything a visitor must not get: any member's email, a VATSIM
- * Connect record (`personal`) or VATUSA roster row (`fname`, `flag_nameprivacy`), or one of
- * `hiddenNames`, the last names of members with VATUSA name privacy set.
+ * Connect record (a user row's `data`: `personal`, `vatsim`) or VATUSA roster row (`fname`,
+ * `flag_nameprivacy`), or one of `hiddenNames`, the last names of members with VATUSA name
+ * privacy set. It looks for the records' own keys, since superforms sends a `data` key too.
  */
 export function expectNothingPrivate(pageData: unknown, hiddenNames: string[] = []) {
 	const sent = JSON.stringify(pageData);
 	expect(sent).not.toMatch(/@/);
-	expect(sent).not.toMatch(/"(email|personal|fname|lname|flag_nameprivacy)":/);
+	expect(sent).not.toMatch(/"(email|personal|vatsim|fname|lname|flag_nameprivacy)":/);
 	for (const name of hiddenNames) expect(sent).not.toContain(name);
 }

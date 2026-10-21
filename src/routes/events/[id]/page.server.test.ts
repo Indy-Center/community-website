@@ -42,12 +42,14 @@ beforeEach(async () => {
 });
 
 function visit() {
-	return callLoad(load, { locals: { db, roles: [] }, params: { id: EVENT_ID } });
+	return callLoad(load, { locals: { db, roles: [] }, params: { id: EVENT_ID } }) as Promise<
+		Exclude<Awaited<ReturnType<typeof load>>, void>
+	>;
 }
 
 describe('/events/[id]', () => {
 	it('names who holds each position and who asked for one, with their initials', async () => {
-		const { event } = (await visit()) as Exclude<Awaited<ReturnType<typeof visit>>, void>;
+		const { event } = await visit();
 
 		expect(
 			event.positions.map(({ position, userId, user }) => ({ position, userId, user }))

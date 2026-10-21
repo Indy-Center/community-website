@@ -100,6 +100,13 @@ Tests call a page's server load with a hand-built event and a fake CMS behind
 CMS is down. The fixtures' content is made up: this repository is public, so
 never put a real partner's details or member perk in a test.
 
+Loads that read the database get an in-memory SQLite database built from
+`drizzle/migrations` (`testDb()` in `src/lib/testing/db.ts`), seeded with
+made-up members. Page data reaches every visitor's browser, so a load that
+shows members selects only the columns its page shows (`src/lib/members.ts`),
+and its test calls `expectNothingPrivate()`: no email, VATSIM Connect record,
+VATUSA roster row or hidden last name.
+
 ## Deployment
 
 Pushing to `main` deploys automatically. Manual deploy, which applies the remote D1 migrations first:
