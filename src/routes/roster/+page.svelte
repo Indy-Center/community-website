@@ -14,14 +14,12 @@
 		getEndorsementDisplayName,
 		getCertificationOrder
 	} from '$lib/config/certifications';
-	import { userCertificationsTable } from '$lib/db/schema/certifications';
-	import { isAdmin } from '$lib/utils/permissions';
 
 	let { data } = $props();
 
 	// Display names now handled by centralized configuration
 
-	const { roster, controllers, roles, staffBadges } = data;
+	const { roster, controllers, staffBadges } = data;
 
 	// Same chip shape as StaffBadges so every badge in a row reads as one set
 	const CHIP =
@@ -55,7 +53,7 @@
 		}
 	];
 
-	function getHighestCertification(certifications: { certification: string }[]) {
+	function getHighestCertification(certifications: string[]) {
 		if (!certifications || certifications.length === 0) return null;
 
 		const certOrder = CERTIFICATIONS.map((cert) => cert.key);
@@ -63,7 +61,7 @@
 		let highestIndex = -1;
 
 		for (const cert of certifications) {
-			const index = certOrder.indexOf(cert.certification);
+			const index = certOrder.indexOf(cert);
 			if (index > highestIndex) {
 				highestIndex = index;
 				highest = cert;
@@ -126,16 +124,12 @@
 
 			// Filter first
 			const filtered = data.roster.filter((member) => {
-				const displayName = member.user?.preferredName
-					? member.user.preferredName.toLowerCase()
-					: `${member.data.fname} ${member.data.lname}`.toLowerCase();
-
 				const matchesSearch =
 					searchTerm === '' ||
-					displayName.includes(searchTerm.toLowerCase()) ||
-					member.data.cid.toString().includes(searchTerm);
+					member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					member.cid.includes(searchTerm);
 
-				const onlineStatus = getOnlineStatus(member.data.cid.toString());
+				const onlineStatus = getOnlineStatus(member.cid);
 				const matchesOnlineFilter = !showOnlineOnly || onlineStatus.isOnline;
 
 				return matchesSearch && matchesOnlineFilter;
@@ -147,30 +141,24 @@
 
 				switch (sortField) {
 					case 'name':
-						aVal = a.user?.preferredName
-							? a.user.preferredName.toLowerCase()
-							: a.data.fname.toLowerCase();
-						bVal = b.user?.preferredName
-							? b.user.preferredName.toLowerCase()
-							: b.data.fname.toLowerCase();
+						aVal = a.name.toLowerCase();
+						bVal = b.name.toLowerCase();
 						break;
 					case 'rating':
-						aVal = getRatingOrder(a.data.rating_short);
-						bVal = getRatingOrder(b.data.rating_short);
+						aVal = getRatingOrder(a.rating);
+						bVal = getRatingOrder(b.rating);
 						break;
 					case 'certification':
-						const aHighest = getHighestCertification(a.user?.certifications || []);
-						const bHighest = getHighestCertification(b.user?.certifications || []);
-						aVal = getCertificationOrder(aHighest?.certification || null);
-						bVal = getCertificationOrder(bHighest?.certification || null);
+						aVal = getCertificationOrder(getHighestCertification(a.certifications));
+						bVal = getCertificationOrder(getHighestCertification(b.certifications));
 						break;
 					case 'initials':
-						aVal = (a.user?.operatingInitials || 'ZZZ').toLowerCase();
-						bVal = (b.user?.operatingInitials || 'ZZZ').toLowerCase();
+						aVal = (a.operatingInitials || 'ZZZ').toLowerCase();
+						bVal = (b.operatingInitials || 'ZZZ').toLowerCase();
 						break;
 					case 'joined':
-						aVal = new Date(a.data.facility_join);
-						bVal = new Date(b.data.facility_join);
+						aVal = new Date(a.joined);
+						bVal = new Date(b.joined);
 						break;
 					default:
 						return 0;
@@ -254,7 +242,7 @@
 <!-- Sleek Card Rows -->
 <div class="space-y-2">
 	{#each filteredAndSortedRoster as member}
-		{@const onlineStatus = getOnlineStatus(member.data.cid.toString())}
+		{@const onlineStatus = getOnlineStatus(member.cid)}
 		<div
 			class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline
 				? 'bg-green-950/20 ring-1 ring-green-500/30'
@@ -267,10 +255,10 @@
 				<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
 					<!-- OI Space (always reserved) -->
 					<div class="flex w-10 flex-shrink-0 justify-start">
-						{#if member.user?.operatingInitials}
+						{#if member.operatingInitials}
 							<Tooltip text="Operating Initials">
 								<div class="{CHIP} bg-indigo-600/80">
-									{member.user.operatingInitials}
+									{member.operatingInitials}
 								</div>
 							</Tooltip>
 						{/if}
@@ -280,15 +268,13 @@
 					<div class="flex min-w-0 flex-wrap items-center justify-center gap-2">
 						<!-- Name -->
 						<div class="min-w-0 font-semibold text-white">
-							<a href={`/profile/${member.data.cid}`} class="block hover:text-sky-500 md:inline">
-								{member.user?.preferredName
-									? member.user.preferredName
-									: `${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`}
+							<a href={`/profile/${member.cid}`} class="block hover:text-sky-500 md:inline">
+								{member.name}
 							</a>
-							<span class="ml-1 text-sm font-normal text-gray-400">({member.data.cid})</span>
-							{#if isAdmin(roles) && member.user}
+							<span class="ml-1 text-sm font-normal text-gray-400">({member.cid})</span>
+							{#if member.userId}
 								<a
-									href={`/admin/users/${member.user.id}`}
+									href={`/admin/users/${member.userId}`}
 									class="ml-1 inline-flex align-middle text-gray-500 hover:text-sky-500"
 									title="Manage user"
 									aria-label="Manage user"
@@ -301,34 +287,30 @@
 						<!-- Rating -->
 						<Tooltip text="VATSIM Rating">
 							<div class="{CHIP} bg-sky-600/90">
-								{member.data.rating_short}
+								{member.rating}
 							</div>
 						</Tooltip>
 
 						<!-- Staff -->
-						<StaffBadges badges={staffBadges[member.data.cid] ?? []} />
+						<StaffBadges badges={staffBadges[member.cid] ?? []} />
 
 						<!-- Certifications -->
-						{#if member.user?.certifications && member.user.certifications.length > 0}
-							{#each member.user.certifications as cert}
-								<Tooltip text={getCertificationDisplayName(cert.certification)}>
-									<div class="{CHIP} bg-emerald-600/80">
-										{cert.certification}
-									</div>
-								</Tooltip>
-							{/each}
-						{/if}
+						{#each member.certifications as cert}
+							<Tooltip text={getCertificationDisplayName(cert)}>
+								<div class="{CHIP} bg-emerald-600/80">
+									{cert}
+								</div>
+							</Tooltip>
+						{/each}
 
 						<!-- Endorsements -->
-						{#if member.user?.endorsements && member.user.endorsements.length > 0}
-							{#each member.user.endorsements as endorsement}
-								<Tooltip text={getEndorsementDisplayName(endorsement.endorsement)}>
-									<div class="{CHIP} bg-purple-600/80">
-										{endorsement.endorsement}
-									</div>
-								</Tooltip>
-							{/each}
-						{/if}
+						{#each member.endorsements as endorsement}
+							<Tooltip text={getEndorsementDisplayName(endorsement)}>
+								<div class="{CHIP} bg-purple-600/80">
+									{endorsement}
+								</div>
+							</Tooltip>
+						{/each}
 
 						<!-- Online Status -->
 						{#if onlineStatus.isOnline}
@@ -348,7 +330,7 @@
 				<div
 					class="mt-2 flex-shrink-0 text-left text-right text-xs text-gray-400 md:mt-0 md:ml-4 md:text-right"
 				>
-					{formatSince(member.data.facility_join)}
+					{formatSince(member.joined)}
 				</div>
 			</div>
 		</div>
