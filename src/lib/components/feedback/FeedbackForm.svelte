@@ -14,7 +14,10 @@
 		controllers
 	}: {
 		data: SuperValidated<Infer<typeof feedbackSchema>>;
-		controllers: User[];
+		controllers: Pick<
+			User,
+			'id' | 'cid' | 'firstName' | 'lastName' | 'preferredName' | 'operatingInitials'
+		>[];
 	} = $props();
 
 	const { form, errors, enhance, constraints, message } = superForm(data);

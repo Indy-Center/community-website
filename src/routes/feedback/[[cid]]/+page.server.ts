@@ -11,8 +11,17 @@ import { logger } from '$lib/server/logger';
 export const load = async ({ locals, params, url }) => {
 	const form = await superValidate(zod4(feedbackSchema));
 
+	// Page data goes to every visitor's browser: only what the controller picker shows and searches
 	const controllers = await locals.db.query.usersTable.findMany({
-		where: eq(usersTable.membership, 'controller')
+		where: eq(usersTable.membership, 'controller'),
+		columns: {
+			id: true,
+			cid: true,
+			firstName: true,
+			lastName: true,
+			preferredName: true,
+			operatingInitials: true
+		}
 	});
 
 	// Sort controllers by display name (preferred name if available, otherwise first + last name)
