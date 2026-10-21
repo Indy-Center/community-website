@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	eventPositionRequestsTable,
-	eventPositionsTable,
-	eventsTable
-} from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
-import { expectNothingPrivate, seedMember, testDb } from '$lib/testing/db';
+import { expectNothingPrivate, seedEvent, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
 import { load } from './+page.server';
 
@@ -36,26 +31,13 @@ beforeEach(async () => {
 			operatingInitials: 'AS'
 		}
 	});
-	await db.insert(eventsTable).values({
+	await seedEvent(db, {
 		id: EVENT_ID,
-		name: 'Example Fly-In',
-		type: 'home',
-		rosterType: 'assigned',
-		description: 'A made-up event.',
-		startTime: new Date('2026-11-01T23:00:00Z'),
-		endTime: new Date('2026-11-02T02:00:00Z'),
-		isPublished: true,
-		isRosterPublished: true
-	});
-	await db.insert(eventPositionsTable).values([
-		{ eventId: EVENT_ID, position: 'IND_APP', userId: 'user-jane' },
-		{ eventId: EVENT_ID, position: 'IND_TWR', userId: null }
-	]);
-	await db.insert(eventPositionRequestsTable).values({
-		id: 'request-1',
-		eventId: EVENT_ID,
-		userId: 'user-alex',
-		comments: 'Happy to take any tower.'
+		positions: [
+			{ position: 'IND_APP', userId: 'user-jane' },
+			{ position: 'IND_TWR', userId: null }
+		],
+		requests: [{ id: 'request-1', userId: 'user-alex', comments: 'Happy to take any tower.' }]
 	});
 });
 

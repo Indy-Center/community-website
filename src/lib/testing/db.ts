@@ -5,6 +5,11 @@ import { expect } from 'vitest';
 import { schema, type Database } from '$lib/server/db';
 import { userCertificationsTable } from '$lib/db/schema/certifications';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
+import {
+	eventPositionRequestsTable,
+	eventPositionsTable,
+	eventsTable
+} from '$lib/db/schema/events';
 import { usersTable } from '$lib/db/schema/users';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import type { VatusaRosterMember } from '$lib/types/vatusa';
@@ -98,6 +103,34 @@ export async function seedMember(
 	}
 	for (const endorsement of user.endorsements ?? []) {
 		await db.insert(userEndorsementsTable).values({ userId: user.id, endorsement });
+	}
+}
+
+/** Seeds a published event with an assigned roster, its positions and position requests. */
+export async function seedEvent(
+	db: Database,
+	event: {
+		id: string;
+		positions: { position: string; userId: string | null }[];
+		requests?: { id: string; userId: string; comments: string }[];
+	}
+) {
+	await db.insert(eventsTable).values({
+		id: event.id,
+		name: 'Example Fly-In',
+		type: 'home',
+		rosterType: 'assigned',
+		description: 'A made-up event.',
+		startTime: new Date('2026-11-01T23:00:00Z'),
+		endTime: new Date('2026-11-02T02:00:00Z'),
+		isPublished: true,
+		isRosterPublished: true
+	});
+	for (const position of event.positions) {
+		await db.insert(eventPositionsTable).values({ eventId: event.id, ...position });
+	}
+	for (const request of event.requests ?? []) {
+		await db.insert(eventPositionRequestsTable).values({ eventId: event.id, ...request });
 	}
 }
 

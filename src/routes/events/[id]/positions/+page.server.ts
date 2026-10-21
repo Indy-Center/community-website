@@ -12,18 +12,20 @@ export const load = async ({ locals, params, depends }) => {
 		return redirect(302, '/');
 	}
 
+	// Event managers need not be admins: send names and initials, never emails or Connect data
+	const shownUser = {
+		columns: { firstName: true, lastName: true, preferredName: true, operatingInitials: true }
+	} as const;
+
 	const event = await locals.db.query.eventsTable.findFirst({
 		where: eq(eventsTable.id, params.id),
 		with: {
 			positions: {
-				with: {
-					user: true
-				}
+				with: { user: shownUser }
 			},
 			positionRequests: {
-				with: {
-					user: true
-				}
+				columns: { userId: true, comments: true, createdAt: true },
+				with: { user: shownUser }
 			}
 		}
 	});
@@ -33,6 +35,14 @@ export const load = async ({ locals, params, depends }) => {
 	}
 
 	const users = await locals.db.query.usersTable.findMany({
+		columns: {
+			id: true,
+			cid: true,
+			firstName: true,
+			lastName: true,
+			preferredName: true,
+			operatingInitials: true
+		},
 		orderBy: (users, { asc }) => [asc(users.firstName), asc(users.lastName)]
 	});
 
