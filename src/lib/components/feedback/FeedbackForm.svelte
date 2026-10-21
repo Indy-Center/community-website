@@ -6,7 +6,7 @@
 
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
 	import type { feedbackSchema } from '$lib/forms/feedback';
-	import type { User } from '$lib/db/schema/users';
+	import type { PickableMember } from '$lib/members';
 	import StarRating from './StarRating.svelte';
 
 	const {
@@ -14,7 +14,7 @@
 		controllers
 	}: {
 		data: SuperValidated<Infer<typeof feedbackSchema>>;
-		controllers: User[];
+		controllers: PickableMember[];
 	} = $props();
 
 	const { form, errors, enhance, constraints, message } = superForm(data);

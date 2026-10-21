@@ -9,7 +9,7 @@ import * as feedback from '$lib/db/schema/feedback';
 import * as staff from '$lib/db/schema/staff';
 
 // Properly typed schema object
-const schema = {
+export const schema = {
 	...users,
 	...certifications,
 	...events,
