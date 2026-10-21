@@ -13,11 +13,10 @@ import { logger } from '$lib/server/logger';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
+import { memberNameColumns } from '$lib/members';
 
 // Page data goes to every visitor's browser: of each member, only what the page shows
-const shownUser = {
-	columns: { firstName: true, lastName: true, preferredName: true, operatingInitials: true }
-} as const;
+const shownUser = { columns: memberNameColumns };
 
 export const load = async ({ locals, params }) => {
 	const event = await locals.db.query.eventsTable.findFirst({
