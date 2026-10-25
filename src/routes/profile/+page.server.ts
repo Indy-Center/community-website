@@ -23,7 +23,7 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	const [rows, rosterEntry, certifications, endorsements, assignments, teamRows] =
+	const [rows, rosterEntry, certifications, endorsements, assignments, teamRows, pocs] =
 		await Promise.all([
 			// Approved feedback about this user, at every rating
 			locals.db
@@ -58,7 +58,8 @@ export const load = async ({ locals, url }) => {
 				.from(userEndorsementsTable)
 				.where(eq(userEndorsementsTable.userId, locals.user.id)),
 			locals.db.query.staffAssignmentsTable.findMany(),
-			locals.db.query.staffTeamMembersTable.findMany()
+			locals.db.query.staffTeamMembersTable.findMany(),
+			locals.db.query.staffPocsTable.findMany()
 		]);
 
 	// Pilots who gave their callsign are shown by their preferred name, or first name and
@@ -100,7 +101,7 @@ export const load = async ({ locals, url }) => {
 		hasPublicProfile: !!rosterEntry,
 		// Manually assigned staff can be off the roster, so badges don't need a roster entry
 		staffBadges:
-			getStaffBadges(rosterEntry ? [rosterEntry] : [], assignments, teamRows).get(
+			getStaffBadges(rosterEntry ? [rosterEntry] : [], assignments, teamRows, pocs).get(
 				locals.user.cid
 			) ?? [],
 		certifications: certifications.map((c) => c.certification),

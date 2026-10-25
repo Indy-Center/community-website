@@ -2,7 +2,7 @@ import { FACILITY_ID } from '$lib/config';
 import {
 	STAFF_POSITIONS,
 	STAFF_TEAMS,
-	isManualOnlyPosition,
+	isPocPosition,
 	type StaffTeamSection
 } from '$lib/config/staff';
 import type { StaffBadgeKey } from '$lib/config/staffBadges';
@@ -14,6 +14,7 @@ import type { VatusaRosterMember } from '$lib/types/vatusa';
 type RosterEntry = { cid: string; data: VatusaRosterMember };
 type Assignment = { position: string; cid: string };
 type TeamRow = { team: string; cid: string; excluded: boolean };
+type Poc = { position: string; cid: string };
 
 // CIDs holding a role according to VATUSA facility roles
 export function getVatusaHolders(roster: RosterEntry[], role: string) {
@@ -24,15 +25,25 @@ export function getVatusaHolders(roster: RosterEntry[], role: string) {
 		.map((member) => member.cid);
 }
 
-// Manual assignments replace the VATUSA role holders for a position
+// Who VATUSA says holds a position: its point of contact for team leads, otherwise its
+// facility role holders
+export function getVatusaPositionHolders(position: string, roster: RosterEntry[], pocs: Poc[]) {
+	if (isPocPosition(position)) {
+		return pocs.filter((poc) => poc.position === position).map((poc) => poc.cid);
+	}
+	return getVatusaHolders(roster, position);
+}
+
+// Manual assignments replace the VATUSA holders for a position
 export function getPositionHolders(
 	position: string,
 	roster: RosterEntry[],
-	assignments: Assignment[]
+	assignments: Assignment[],
+	pocs: Poc[]
 ) {
 	const manual = assignments.filter((a) => a.position === position).map((a) => a.cid);
-	if (isManualOnlyPosition(position) || manual.length > 0) return manual;
-	return getVatusaHolders(roster, position);
+	if (manual.length > 0) return manual;
+	return getVatusaPositionHolders(position, roster, pocs);
 }
 
 // A team section is its VATUSA role holders plus manual additions, minus manual
@@ -59,20 +70,21 @@ export function getSectionMembers(
 export function getStaffBadges(
 	rosterEntries: RosterEntry[],
 	assignments: Assignment[],
-	teamRows: TeamRow[]
+	teamRows: TeamRow[],
+	pocs: Poc[]
 ) {
 	const badges = new Map<string, StaffBadgeKey[]>();
 	const add = (cid: string, key: StaffBadgeKey) =>
 		badges.set(cid, [...(badges.get(cid) ?? []), key]);
 
 	for (const position of STAFF_POSITIONS) {
-		for (const cid of getPositionHolders(position.key, rosterEntries, assignments)) {
+		for (const cid of getPositionHolders(position.key, rosterEntries, assignments, pocs)) {
 			add(cid, position.key as StaffBadgeKey);
 		}
 	}
 
 	for (const team of STAFF_TEAMS) {
-		const leads = getPositionHolders(team.lead, rosterEntries, assignments);
+		const leads = getPositionHolders(team.lead, rosterEntries, assignments, pocs);
 		for (const section of team.sections) {
 			for (const cid of getSectionMembers(section, leads, rosterEntries, teamRows)) {
 				add(cid, section.key as StaffBadgeKey);

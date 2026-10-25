@@ -5,7 +5,7 @@ import { isAdmin } from '$lib/utils/permissions';
 // Page data goes to every visitor's browser, so build each member from only what the page
 // shows: never the user row (email, Connect data) or VATUSA's row (a hidden last name).
 export const load = async ({ locals }) => {
-	const [results, assignments, teamRows, controllers] = await Promise.all([
+	const [results, assignments, teamRows, pocs, controllers] = await Promise.all([
 		locals.db.query.vatsimControllersTable.findMany({
 			with: {
 				user: {
@@ -19,10 +19,11 @@ export const load = async ({ locals }) => {
 		}),
 		locals.db.query.staffAssignmentsTable.findMany(),
 		locals.db.query.staffTeamMembersTable.findMany(),
+		locals.db.query.staffPocsTable.findMany(),
 		fetchControllers()
 	]);
 
-	const staffBadges = Object.fromEntries(getStaffBadges(results, assignments, teamRows));
+	const staffBadges = Object.fromEntries(getStaffBadges(results, assignments, teamRows, pocs));
 	const admin = isAdmin(locals.roles);
 
 	const roster = results.map(({ cid, data, user }) => ({
