@@ -17,6 +17,7 @@ import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
 import { getPositionHolders, getSectionMembers, getVatusaPositionHolders } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
+import { byRating } from '$lib/utils/ratings';
 
 const POSITION_KEYS = STAFF_POSITIONS.map((position) => position.key) as [string, ...string[]];
 const TEAM_KEYS = STAFF_TEAMS.map((team) => team.key) as [string, ...string[]];
@@ -89,7 +90,9 @@ export const load = async ({ locals }) => {
 		isTeamLead: isPocPosition(position.key),
 		isManual: assignments.some((a) => a.position === position.key),
 		emails: getEmails(position.key),
-		members: getPositionHolders(position.key, roster, assignments, pocs).map(describe).sort(byName)
+		members: getPositionHolders(position.key, roster, assignments, pocs)
+			.map(describe)
+			.sort(byRating)
 	}));
 
 	const teams = STAFF_TEAMS.map((team) => {
@@ -98,10 +101,10 @@ export const load = async ({ locals }) => {
 		return {
 			...team,
 			emails: getEmails(team.key),
-			leads: leads.map(describe).sort(byName),
+			leads: leads.map(describe).sort(byRating),
 			sections: team.sections.map((section) => ({
 				...section,
-				members: getSectionMembers(section, leads, roster, teamRows).map(describe).sort(byName)
+				members: getSectionMembers(section, leads, roster, teamRows).map(describe).sort(byRating)
 			}))
 		};
 	});
