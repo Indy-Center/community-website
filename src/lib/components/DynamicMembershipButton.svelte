@@ -11,7 +11,7 @@
 		class?: string;
 	}
 
-	const { user, canTransfer = false, class: additionalClasses = '' } = $props<Props>();
+	const { user, canTransfer = false, class: additionalClasses = '' }: Props = $props();
 
 	// Dynamic button logic for membership progression - shows NEXT step in journey
 	const getNextStepConfig = () => {

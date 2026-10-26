@@ -15,7 +15,7 @@
 		user?: any;
 	}
 
-	const { checklist, canVisit, canTransfer, user } = $props<Props>();
+	const { checklist, canVisit, canTransfer, user }: Props = $props();
 
 	// Visiting requirements - tight and easy to understand
 	const visitingItems = [
@@ -27,7 +27,7 @@
 	];
 
 	// Transfer requirements - matching server logic exactly
-	const transferItems = [
+	const transferItems: { key: string; label: string; value: boolean; note?: string }[] = [
 		{ key: 'needbasic', label: 'Basic Exam Complete', value: checklist.needbasic },
 		{ key: '90days', label: '90+ Days Since Transfer', value: checklist['90days'] },
 		{ key: '50hrs', label: '50+ Hours Since Promotion', value: checklist['50hrs'] },
