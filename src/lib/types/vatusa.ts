@@ -2,6 +2,21 @@ export type VatusaRosterResponse = {
 	data: VatusaRosterMember[];
 };
 
+// Point of contact CID for each facility position, 0 when vacant
+export type VatusaFacilityInfo = {
+	id: string;
+	atm: number;
+	datm: number;
+	ta: number;
+	ec: number;
+	fe: number;
+	wm: number;
+};
+
+export type VatusaFacilityResponse = {
+	data: { facility: { info: VatusaFacilityInfo } };
+};
+
 export type VatusaRole = {
 	id: number;
 	cid: number;

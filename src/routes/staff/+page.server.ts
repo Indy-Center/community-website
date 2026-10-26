@@ -5,7 +5,7 @@ import {
 	STAFF_POSITIONS,
 	STAFF_TEAMS,
 	STAFF_TEAM_SECTIONS,
-	isManualOnlyPosition
+	isPocPosition
 } from '$lib/config/staff';
 import {
 	staffAssignmentsTable,
@@ -15,7 +15,7 @@ import {
 } from '$lib/db/schema/staff';
 import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
-import { getPositionHolders, getSectionMembers, getVatusaHolders } from '$lib/server/staff';
+import { getPositionHolders, getSectionMembers, getVatusaPositionHolders } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
 import { byRating } from '$lib/utils/ratings';
 
@@ -41,17 +41,18 @@ function getDisplayName(member: RosterMember) {
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
 
 export const load = async ({ locals }) => {
-	const [roster, assignments, teamRows, bios, emailRows] = await Promise.all([
+	const [roster, assignments, teamRows, bios, emailRows, pocs] = await Promise.all([
 		getRoster(locals.db),
 		locals.db.query.staffAssignmentsTable.findMany(),
 		locals.db.query.staffTeamMembersTable.findMany(),
 		locals.db.query.staffBiosTable.findMany(),
-		locals.db.query.staffEmailsTable.findMany()
+		locals.db.query.staffEmailsTable.findMany(),
+		locals.db.query.staffPocsTable.findMany()
 	]);
 
 	const getEmails = (key: string) => emailRows.find((row) => row.key === key)?.emails ?? [];
 
-	const offRosterCids = [...assignments, ...teamRows]
+	const offRosterCids = [...assignments, ...teamRows, ...pocs]
 		.map((row) => row.cid)
 		.filter((cid) => !roster.some((member) => member.cid === cid));
 	// Manually added staff who aren't on the roster fall back to their site account
@@ -86,14 +87,16 @@ export const load = async ({ locals }) => {
 
 	const staff = STAFF_POSITIONS.map((position) => ({
 		...position,
-		manualOnly: isManualOnlyPosition(position.key),
+		isTeamLead: isPocPosition(position.key),
 		isManual: assignments.some((a) => a.position === position.key),
 		emails: getEmails(position.key),
-		members: getPositionHolders(position.key, roster, assignments).map(describe).sort(byRating)
+		members: getPositionHolders(position.key, roster, assignments, pocs)
+			.map(describe)
+			.sort(byRating)
 	}));
 
 	const teams = STAFF_TEAMS.map((team) => {
-		const leads = getPositionHolders(team.lead, roster, assignments);
+		const leads = getPositionHolders(team.lead, roster, assignments, pocs);
 
 		return {
 			...team,
@@ -152,17 +155,15 @@ const bioSchema = z.object({
 	bio: z.string().trim().max(MAX_BIO_LENGTH)
 });
 
-// The first manual edit to a position starts from what VATUSA currently shows.
-// Manual-only positions don't need this, since they never come from VATUSA.
+// The first manual edit to a position starts from what VATUSA currently shows
 async function seedFromVatusa(db: Database, position: string) {
-	if (isManualOnlyPosition(position)) return;
-
 	const existing = await db.query.staffAssignmentsTable.findFirst({
 		where: eq(staffAssignmentsTable.position, position)
 	});
 	if (existing) return;
 
-	const holders = getVatusaHolders(await getRoster(db), position);
+	const [roster, pocs] = await Promise.all([getRoster(db), db.query.staffPocsTable.findMany()]);
+	const holders = getVatusaPositionHolders(position, roster, pocs);
 	if (holders.length) {
 		await db.insert(staffAssignmentsTable).values(holders.map((cid) => ({ position, cid })));
 	}

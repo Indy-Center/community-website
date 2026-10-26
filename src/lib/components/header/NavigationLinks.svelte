@@ -17,6 +17,7 @@
 	import IconHandshake from '~icons/mdi/handshake';
 	import IconEmail from '~icons/mdi/email-outline';
 	import IconAccountPlus from '~icons/mdi/account-plus';
+	import IconSchool from '~icons/mdi/school';
 
 	type NavLink = { label: string; href: string; icon: Component; external?: boolean };
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
@@ -60,6 +61,12 @@
 					label: 'Join Indy Center',
 					href: '/visit',
 					icon: IconAccountPlus
+				},
+				{
+					label: 'Training',
+					href: 'https://training.flyindycenter.com',
+					icon: IconSchool,
+					external: true
 				}
 			]
 		},

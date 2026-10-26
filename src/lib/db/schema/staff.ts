@@ -34,3 +34,10 @@ export const staffEmailsTable = sqliteTable('staff_emails', {
 	key: text('key').primaryKey(),
 	emails: text('emails', { mode: 'json' }).$type<string[]>().notNull()
 });
+
+// Point of contact for each staff position from VATUSA's facility info, synced with the
+// roster. Vacant positions have no row.
+export const staffPocsTable = sqliteTable('staff_pocs', {
+	position: text('position').primaryKey(),
+	cid: text('cid').notNull()
+});

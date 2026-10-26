@@ -145,9 +145,9 @@
 
 {#if editing}
 	<p class="mb-4 text-sm text-gray-400">
-		Positions follow VATUSA facility roles until edited here. Editing a position replaces its VATUSA
-		holders; reset it to follow VATUSA again. Team leads (EC, FE and WM) are always set here, and a
-		lead is left off their team list.
+		Positions follow VATUSA until edited here: team leads (EC, FE and WM) follow VATUSA's point of
+		contact for the position, and the rest follow VATUSA facility roles. Editing a position replaces
+		its VATUSA holders; reset it to follow VATUSA again. A lead is left off their team list.
 	</p>
 {/if}
 
@@ -240,7 +240,7 @@
 						<input type="hidden" name="position" value={position.key} />
 						<label for="add-{position.key}" class="sr-only">Add to {position.title}</label>
 						<select id="add-{position.key}" name="cid" required class={selectClass}>
-							{#if position.manualOnly && team}
+							{#if position.isTeamLead && team}
 								<option value="">Set lead…</option>
 								<optgroup label={team.name}>
 									{#each teamMembers(team) as member (member.cid)}
@@ -261,21 +261,23 @@
 						</select>
 						{@render addButton(`Add to ${position.title}`)}
 					</form>
-					{#if !position.manualOnly}
-						<div class="flex items-center justify-between text-xs">
-							<span class="text-gray-500">
-								{position.isManual ? 'Manually set' : 'From VATUSA roles'}
-							</span>
-							{#if position.isManual}
-								<form method="POST" action="?/reset" use:enhance>
-									<input type="hidden" name="position" value={position.key} />
-									<button type="submit" class="font-medium text-sky-400 hover:text-sky-300">
-										Reset to VATUSA
-									</button>
-								</form>
-							{/if}
-						</div>
-					{/if}
+					<div class="flex items-center justify-between text-xs">
+						<span class="text-gray-500">
+							{position.isManual
+								? 'Manually set'
+								: position.isTeamLead
+									? 'From VATUSA point of contact'
+									: 'From VATUSA roles'}
+						</span>
+						{#if position.isManual}
+							<form method="POST" action="?/reset" use:enhance>
+								<input type="hidden" name="position" value={position.key} />
+								<button type="submit" class="font-medium text-sky-400 hover:text-sky-300">
+									Reset to VATUSA
+								</button>
+							</form>
+						{/if}
+					</div>
 				</div>
 			{/if}
 			{@render emailForm(position.key, position.title, position.emails)}

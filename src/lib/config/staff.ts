@@ -63,7 +63,7 @@ export const STAFF_TEAMS: StaffTeam[] = [
 export const STAFF_TEAM_SECTIONS = STAFF_TEAMS.flatMap((team) => team.sections);
 
 // When a team is built from a position's VATUSA role, that role can't identify the
-// lead, so the position is only ever filled manually.
-export function isManualOnlyPosition(position: string) {
+// lead, so the position follows VATUSA's point of contact for it instead.
+export function isPocPosition(position: string) {
 	return STAFF_TEAM_SECTIONS.some((section) => section.vatusaRole === position);
 }
