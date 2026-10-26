@@ -19,7 +19,5 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      # Non-blocking until the existing type errors on main are fixed
       - run: npm run check
-        continue-on-error: true
       - run: npm run build
