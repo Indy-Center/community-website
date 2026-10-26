@@ -61,8 +61,9 @@ export const EVENT_TYPES: EventTypeConfig[] = [
 	}
 ];
 
-// Helper functions
-export function getEventTypeConfig(key: EventType): EventTypeConfig | undefined {
+// Helper functions. An event's type comes from the database as a plain string, so these
+// take one; a string that isn't an event type finds no config.
+export function getEventTypeConfig(key: string): EventTypeConfig | undefined {
 	return EVENT_TYPES.find((type) => type.key === key);
 }
 
@@ -70,7 +71,7 @@ export function getRosterTypeConfig(key: RosterType): EventRosterTypeConfig | un
 	return EVENT_ROSTER_TYPES.find((type) => type.key === key);
 }
 
-export function supportsRosters(eventType: EventType): boolean {
+export function supportsRosters(eventType: string): boolean {
 	const config = getEventTypeConfig(eventType);
 	return config ? config.allowedRosterTypes.length > 1 : false;
 }

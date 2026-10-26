@@ -19,7 +19,7 @@
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 	import { isSignUpClosed } from '$lib/utils/events.js';
 	import { supportsRosters } from '$lib/config/events';
-	import type { VnasFacility, VnasPosition } from '$lib/types/vnas.js';
+	import type { VnasFacilityPosition } from '$lib/types/vnas.js';
 
 	const { data } = $props();
 	const { event, artccInformation, user, userId } = data;
@@ -36,7 +36,7 @@
 	 * Position sorting puts the positions in order of Approach > Tower > Ground > Delivery > Ramp/Other
 	 * @param positions
 	 */
-	function sortPositions(positions: VnasPosition[] = []) {
+	function sortPositions(positions: VnasFacilityPosition[] = []) {
 		// Sorting positions by type and callsign
 		// We have to do a partial callsign match because VnasPosition doesn't tell us.
 		// These are the suffixes to look for
@@ -282,10 +282,10 @@
 											<div class="flex items-center justify-between rounded-lg bg-slate-700/30 p-4">
 												<div class="flex-1">
 													<div class="font-semibold text-white">
-														{getPositionInfo(position.position).radioName}
+														{getPositionInfo(position.position)?.radioName}
 													</div>
 													<div class="text-sm text-slate-400">
-														{getPositionInfo(position.position).name}
+														{getPositionInfo(position.position)?.name}
 													</div>
 												</div>
 
@@ -407,7 +407,7 @@
 													</div>
 												</div>
 												<div class="text-xs text-slate-500">
-													{new Date(request.createdAt).toLocaleDateString()}
+													{request.createdAt?.toLocaleDateString()}
 												</div>
 											</div>
 										</div>

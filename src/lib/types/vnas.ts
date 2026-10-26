@@ -47,7 +47,7 @@ export type VnasFacility = {
 	type: string;
 	name: string;
 	childFacilities: VnasChildFacility[];
-	positions: VnasPosition[];
+	positions: VnasFacilityPosition[];
 };
 
 type VnasChildFacility = {
@@ -55,11 +55,16 @@ type VnasChildFacility = {
 	type: string;
 	name: string;
 	childFacilities: VnasChildFacility[];
-	positions: {
-		id: string;
-		name: string;
-		starred: boolean;
-		radioName: string;
-		callsign: string;
-	}[];
+	positions: VnasFacilityPosition[];
+};
+
+/** A position as the ARTCC data lists it, unlike a controller's position in the data feed. */
+export type VnasFacilityPosition = {
+	id: string;
+	name: string;
+	starred: boolean;
+	radioName: string;
+	callsign: string;
+	/** Not in the ARTCC data; the event pages try it before `id` and `callsign`. */
+	defaultCallsign?: string;
 };
