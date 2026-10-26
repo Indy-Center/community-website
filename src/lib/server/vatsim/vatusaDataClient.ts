@@ -1,4 +1,5 @@
 import type {
+	VatusaFacilityResponse,
 	VatusaRosterResponse,
 	VatusaTransferChecklist,
 	VatusaTransferChecklistResponse
@@ -18,6 +19,14 @@ export async function fetchRoster(
 	const { data } = response as VatusaRosterResponse;
 
 	return data;
+}
+
+export async function fetchFacilityInfo(artcc: string = FACILITY_ID) {
+	const url = `${VATUSA_API_BASE_URL}/facility/${artcc}`;
+	const response = await fetch(url).then((res) => res.json());
+	const { data } = response as VatusaFacilityResponse;
+
+	return data.facility.info;
 }
 
 export async function checkTransferChecklist(cid: string, artcc: string = FACILITY_ID) {
