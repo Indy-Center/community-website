@@ -7,6 +7,8 @@
 		"dev": "npm run db:migrate:local && vite dev",
 		"build": "vite build",
 		"preview": "npm run build && wrangler dev",
+		"dev:worker": "npm run db:migrate:local && npm run build && wrangler dev --test-scheduled",
+		"dev:training": "wrangler dev -c dev/fake-training/wrangler.jsonc --port 8788",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
