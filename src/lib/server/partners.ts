@@ -37,7 +37,8 @@ export async function readPartners(
 		document = await locals.cms.partners();
 	} catch (err) {
 		if (!(err instanceof CmsUnavailableError)) throw err;
-		logger.error('Partners could not be loaded', err);
+		// consola prints an error's stack but not its cause, so the reason goes in the message.
+		logger.error(`Partners could not be loaded: ${err.reason}`, err);
 		return null;
 	}
 
