@@ -2,15 +2,17 @@ import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { getStaffBadges } from '$lib/server/staff';
+import { readAvailableCredentials } from '$lib/server/roster';
 
 // Public profile. Like the public roster, only controllers on the roster have one, and
 // only public fields are sent (no email, raw VATSIM data, or feedback).
 export const load = async ({ locals, params }) => {
-	const [controller, assignments, teamRows, pocs] = await Promise.all([
+	const [controller, credentials, assignments, teamRows, pocs] = await Promise.all([
 		locals.db.query.vatsimControllersTable.findFirst({
 			where: eq(vatsimControllersTable.cid, params.cid),
-			with: { user: { with: { certifications: true, endorsements: true } } }
+			with: { user: true }
 		}),
+		readAvailableCredentials(locals.db),
 		locals.db.query.staffAssignmentsTable.findMany(),
 		locals.db.query.staffTeamMembersTable.findMany(),
 		locals.db.query.staffPocsTable.findMany()
@@ -47,8 +49,9 @@ export const load = async ({ locals, params }) => {
 			bio: user?.bio ?? null,
 			staffBadges:
 				getStaffBadges([controller], assignments, teamRows, pocs).get(controller.cid) ?? [],
-			certifications: user?.certifications.map((c) => c.certification) ?? [],
-			endorsements: user?.endorsements.map((e) => e.endorsement) ?? []
+			certifications: controller.certification ? [controller.certification] : [],
+			endorsements: controller.endorsements,
+			credentials: credentials.map(({ code, name }) => ({ code, name }))
 		},
 		isOwnProfile: locals.user?.cid === controller.cid
 	};
