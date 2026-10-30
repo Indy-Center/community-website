@@ -92,6 +92,13 @@
 			"when": 1793328314116,
 			"tag": "0012_roster_from_training",
 			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "6",
+			"when": 1793330890371,
+			"tag": "0013_event_positions_drop_solo_endorsements",
+			"breakpoints": true
 		}
 	]
 }
