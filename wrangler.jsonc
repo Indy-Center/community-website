@@ -48,5 +48,7 @@
 			"database_id": "fd51d586-3679-4a01-ae18-64e12c5da4aa",
 			"migrations_dir": "./drizzle/migrations"
 		}
-	]
+	],
+	// The controller roster and credentials, from the training app (see the README)
+	"services": [{ "binding": "TRAINING", "service": "training-tools", "entrypoint": "TrainingRpc" }]
 }
