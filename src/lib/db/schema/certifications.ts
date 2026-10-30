@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
 
+// Unread since the roster comes from the training app; drop 30 days after cutover.
 export const userCertificationsTable = sqliteTable(
 	'user_certifications',
 	{

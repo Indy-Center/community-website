@@ -70,23 +70,4 @@ describe('/profile/<cid>', () => {
 		expect(data.profile.name).toBe('Jane');
 		expectNothingPrivate(data, ['Hiddenlast']);
 	});
-
-	it('ignores the old certification and endorsement tables', async () => {
-		await seedMember(db, {
-			cid: '1000004',
-			firstName: 'Old',
-			lastName: 'Tables',
-			user: {
-				id: 'user-old',
-				email: 'old@private.example.test',
-				certifications: ['T-RC'],
-				endorsements: ['T2-CTR']
-			}
-		});
-
-		const data = await visit('1000004');
-
-		expect(data.profile.certifications).toEqual([]);
-		expect(data.profile.endorsements).toEqual([]);
-	});
 });

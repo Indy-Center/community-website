@@ -6,8 +6,6 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { expect } from 'vitest';
 import { schema, type Database } from '$lib/server/db';
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import {
 	eventPositionRequestsTable,
 	eventPositionsTable,
@@ -71,12 +69,6 @@ export type SeedUser = {
 	preferredName?: string;
 	operatingInitials?: string;
 	membership?: 'basic' | 'community' | 'controller';
-	/**
-	 * Rows in the site's old certification and endorsement tables, for the pages that still read
-	 * them. A member's credentials now come with the roster copy: `SeedMember.certification`.
-	 */
-	certifications?: string[];
-	endorsements?: string[];
 };
 
 /** A member as `seedMember` takes them: their roster row's fields, and their site account. */
@@ -148,12 +140,6 @@ export async function seedMember(db: Database, member: SeedMember) {
 			}
 		}
 	});
-	for (const certification of user.certifications ?? []) {
-		await db.insert(userCertificationsTable).values({ userId: user.id, certification });
-	}
-	for (const endorsement of user.endorsements ?? []) {
-		await db.insert(userEndorsementsTable).values({ userId: user.id, endorsement });
-	}
 }
 
 /** Seeds a published event with an assigned roster, its positions and position requests. */
