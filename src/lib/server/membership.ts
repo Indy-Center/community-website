@@ -10,7 +10,7 @@ import { Role } from '$lib/utils/permissions';
 import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
 import { logger } from './logger';
-import { BANNED_TWO_LETTER_COMBINATIONS, FACILITY_ID } from '$lib/config';
+import { BANNED_TWO_LETTER_COMBINATIONS } from '$lib/config';
 
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
@@ -282,10 +282,8 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		lastName: user.lastName
 	});
 
-	// Get the user's VATUSA roles for this facility
-	const vatsimRoles = controller.data.roles
-		.filter((role) => role.facility === FACILITY_ID)
-		.map((role) => role.role);
+	// The user's VATUSA roles at this facility; the training app sends no others
+	const vatsimRoles = controller.roles;
 
 	logger.debug('VATUSA roles for user', {
 		userId: user.id,

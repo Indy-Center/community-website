@@ -8,6 +8,6 @@ export default {
 
 	async scheduled(_event, env, _ctx) {
 		setEnv(env as unknown as Record<string, string | undefined>);
-		await runProcessRoster(drizzle(env.DB));
+		await runProcessRoster({ training: env.TRAINING, db: drizzle(env.DB) });
 	}
 } satisfies ExportedHandler<Env>;

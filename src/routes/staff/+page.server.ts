@@ -34,7 +34,7 @@ function getRoster(db: Database) {
 function getDisplayName(member: RosterMember) {
 	return (
 		member.user?.preferredName ??
-		`${member.data.fname} ${member.data.flag_nameprivacy ? member.data.cid : member.data.lname}`
+		`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`
 	);
 }
 
@@ -69,7 +69,7 @@ export const load = async ({ locals }) => {
 			return {
 				cid,
 				name: getDisplayName(member),
-				rating: member.data.rating_short,
+				rating: member.rating,
 				operatingInitials: member.user?.operatingInitials ?? null,
 				bio
 			};

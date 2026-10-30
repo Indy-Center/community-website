@@ -20,7 +20,7 @@ export const load = async ({ locals, params }) => {
 		error(404, 'Controller not found');
 	}
 
-	const roster = controller.data;
+	const { firstName, lastName } = controller;
 	const user = controller.user;
 
 	// Settings pre-fills the preferred name with the full name, so only a preferred name
@@ -28,12 +28,12 @@ export const load = async ({ locals, params }) => {
 	const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
 	const preferredName = user?.preferredName?.trim();
 	const hasCustomPreferredName =
-		!!preferredName && normalize(preferredName) !== normalize(`${roster.fname} ${roster.lname}`);
+		!!preferredName && normalize(preferredName) !== normalize(`${firstName} ${lastName}`);
 	const name = hasCustomPreferredName
 		? preferredName
-		: roster.flag_nameprivacy
-			? roster.fname
-			: `${roster.fname} ${roster.lname}`;
+		: controller.namePrivacy
+			? firstName
+			: `${firstName} ${lastName}`;
 
 	return {
 		profile: {
@@ -42,7 +42,7 @@ export const load = async ({ locals, params }) => {
 			pronouns: user?.pronouns ?? null,
 			membership: user?.membership ?? ('controller' as const),
 			operatingInitials: user?.operatingInitials ?? null,
-			atcRating: user?.data.vatsim.rating.short ?? roster.rating_short ?? null,
+			atcRating: user?.data.vatsim.rating.short ?? controller.rating ?? null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
 			staffBadges:

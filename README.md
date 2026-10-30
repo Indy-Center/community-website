@@ -16,7 +16,8 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
 - `src/routes/admin/` — admin tooling; role-gated.
 - `src/routes/settings/` — member profile/settings.
-- `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster from VATUSA, syncs memberships, renews controllers' certifications.
+- `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster copy from the training app, then syncs memberships from it; syncs the staff points of contact from VATUSA.
+- `src/lib/server/roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
 - `src/lib/server/identity.ts` — OAuth client for the identity server, and its userinfo lookup.
 - `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
@@ -25,11 +26,28 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 
 ## Bindings
 
-| Binding               | Type             | Purpose                                           |
-| --------------------- | ---------------- | ------------------------------------------------- |
-| `DB`                  | D1               | Website-local data (sessions, roster cache, etc.) |
-| `ASSETS`              | Assets           | Static files from the SvelteKit build             |
-| `CF_VERSION_METADATA` | Version metadata | Build version tracking                            |
+| Binding               | Type             | Purpose                                                                                 |
+| --------------------- | ---------------- | --------------------------------------------------------------------------------------- |
+| `DB`                  | D1               | Website-local data (sessions, the roster copy, etc.)                                    |
+| `TRAINING`            | Service          | The training app's `TrainingRpc` entrypoint (`training-tools` Worker): the roster below |
+| `ASSETS`              | Assets           | Static files from the SvelteKit build                                                   |
+| `CF_VERSION_METADATA` | Version metadata | Build version tracking                                                                  |
+
+## Where the roster comes from
+
+The training app (`training-tools`) owns the controller roster and the credentials. Every 5
+minutes the cron calls `getRoster()` on the `TRAINING` binding, whose types come from the
+`@indy-center/training-tools` package, and stores the answer in D1: each member
+(`vatsim_controllers`, keyed by CID, with their certification and endorsements) and the
+available credentials (`available_credentials`). Sign-in membership, the staff page, profiles
+and `/roster` all read that copy. The site makes no VATUSA roster call.
+
+If the training app throws or answers with no members, the copy is kept as it was, a warning
+is logged and the membership sync is skipped. The staff points of contact still come from
+VATUSA, on their own.
+
+The copy holds a member's last name even when VATUSA name privacy (`namePrivacy`) is set; a
+page never sends it then.
 
 ## Vars and secrets for the CMS
 
@@ -83,10 +101,38 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 
 - `IDENTITY_CLIENT_SECRET` — sign-in through the identity server (`IDENTITY_URL` points it at another one). `CONNECT_CLIENT_SECRET` instead when `AUTH_PROVIDER` isn't `identity`.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
-- `VATUSA_API_KEY` — VATUSA roster and API calls.
+- `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 
 `adapter-cloudflare` proxies the `DB` binding via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally.
+
+### Roster from a fake training app
+
+`vite dev` serves pages but never runs the cron, so the roster copy stays as it is. To fill it,
+run the built Worker under `wrangler dev` beside `dev/fake-training/`, a stand-in for the
+training app's `TrainingRpc` that answers 150 made-up members (more than D1's 100-parameter
+limit) and seven credentials. Two terminals, from the repository root:
+
+```bash
+npm run dev:training           # 1: the fake training app, on port 8788
+npm run dev:worker             # 2: migrates local D1, builds, serves http://localhost:8787
+```
+
+Run them as two processes, not one `wrangler dev -c … -c …`: in one process the second cron
+run crashes on a console-patching loop between wrangler and Sentry. Start the fake first; the
+site's startup table then shows `env.TRAINING (training-tools#TrainingRpc) … [connected]`.
+Either takes wrangler's own flags after `--`, such as `npm run dev:worker -- --port 3109`.
+
+Then run the roster refresh, as the cron would:
+
+```bash
+curl "http://localhost:8787/__scheduled?cron=0-59/5+*+*+*+*"   # answers "Ran scheduled event"
+```
+
+The site's terminal logs `Stored 150 controllers and 7 available credentials from the training
+app`, and `/roster` lists them. Stop the fake and run it again to see a refused answer: the log
+says `Keeping the last roster copy` and `Skipping the membership sync`, and `/roster` is
+unchanged. The copy stays in `.wrangler/state` between runs.
 
 ## Tests
 
@@ -105,7 +151,13 @@ Loads that read the database get an in-memory SQLite database built from
 made-up members. Page data reaches every visitor's browser, so a load that
 shows members selects only the columns its page shows (`src/lib/members.ts`),
 and its test calls `expectNothingPrivate()`: no email, VATSIM Connect record,
-VATUSA roster row or hidden last name.
+row of the roster copy or hidden last name.
+
+The roster refresh is tested through the cron job with a fake `{ getRoster }`
+in place of the `TRAINING` binding (`src/lib/server/triggers/processRoster.test.ts`).
+A migration that moves data is tested by building the database from the
+migrations before it (`testDbBefore()`), inserting rows in the old shape, then
+applying the rest.
 
 ## Deployment
 
