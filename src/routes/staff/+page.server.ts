@@ -17,6 +17,7 @@ import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
 import { getPositionHolders, getSectionMembers, getVatusaPositionHolders } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
+import { customPreferredName } from '$lib/members';
 import { byRating } from '$lib/utils/ratings';
 
 const POSITION_KEYS = STAFF_POSITIONS.map((position) => position.key) as [string, ...string[]];
@@ -33,7 +34,7 @@ function getRoster(db: Database) {
 
 function getDisplayName(member: RosterMember) {
 	return (
-		member.user?.preferredName ??
+		customPreferredName(member.user?.preferredName, member.firstName, member.lastName) ??
 		`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`
 	);
 }

@@ -2,6 +2,7 @@ import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { readMemberCredentials } from '$lib/server/roster';
+import { customPreferredName } from '$lib/members';
 import { averageRating } from '$lib/utils/feedbackRatings';
 import { signInHref } from '$lib/utils/signIn';
 import { getStaffBadges } from '$lib/server/staff';
@@ -66,14 +67,9 @@ export const load = async ({ locals, url }) => {
 
 		// Settings pre-fills the preferred name with the full name, so a preferred name that
 		// just matches it isn't a real choice and would expose the full last name
-		const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
-		const preferredName = row.submitterPreferredName?.trim();
-		const hasCustomPreferredName =
-			!!preferredName && normalize(preferredName) !== normalize(`${firstName} ${lastName}`);
+		const preferredName = customPreferredName(row.submitterPreferredName, firstName, lastName);
 
-		const submitterName = callsign
-			? (hasCustomPreferredName ? preferredName : shortName) || null
-			: null;
+		const submitterName = callsign ? (preferredName ?? shortName) || null : null;
 
 		return {
 			id: row.id,

@@ -49,6 +49,14 @@ beforeEach(async () => {
 		joined: null,
 		user: { id: 'user-robin', email: 'robin@private.example.test', preferredName: 'Rob E' }
 	});
+	// Saved the settings form unchanged, so the preferred name is the pre-filled full name
+	await seedMember(db, {
+		cid: '1000004',
+		firstName: 'Pat',
+		lastName: 'Prefilled',
+		namePrivacy: true,
+		user: { id: 'user-pat', email: 'pat@private.example.test', preferredName: 'Pat Prefilled' }
+	});
 });
 
 function visit(roles: string[] = []) {
@@ -86,6 +94,15 @@ describe('/roster', () => {
 				operatingInitials: null,
 				certification: null,
 				endorsements: []
+			},
+			{
+				cid: '1000004',
+				name: 'Pat 1000004',
+				rating: 'S2',
+				joined: '2024-01-15T00:00:00+00:00',
+				operatingInitials: null,
+				certification: null,
+				endorsements: []
 			}
 		]);
 	});
@@ -100,7 +117,7 @@ describe('/roster', () => {
 		const data = await visit();
 
 		expect(data.roster[0]).not.toHaveProperty('lastName');
-		expectNothingPrivate(data, ['Hiddenlast']);
+		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
 	});
 
 	it("gives an admin each member's account id for the manage link, and nothing more private", async () => {
@@ -109,8 +126,9 @@ describe('/roster', () => {
 		expect(data.roster.map((member) => member.userId)).toEqual([
 			'user-jane',
 			undefined,
-			'user-robin'
+			'user-robin',
+			'user-pat'
 		]);
-		expectNothingPrivate(data, ['Hiddenlast']);
+		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
 	});
 });
