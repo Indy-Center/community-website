@@ -5,7 +5,6 @@
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import { goto } from '$app/navigation';
 	import type { User } from '$lib/db/schema/users.js';
-	import Badge from '$lib/components/Badge.svelte';
 
 	let { data } = $props();
 
@@ -102,8 +101,6 @@
 						<th class="px-4 py-3 text-left text-sm font-medium text-gray-300">User</th>
 						<th class="px-4 py-3 text-left text-sm font-medium text-gray-300">Membership</th>
 						<th class="px-4 py-3 text-left text-sm font-medium text-gray-300">Roles</th>
-						<th class="px-4 py-3 text-left text-sm font-medium text-gray-300">Certifications</th>
-						<th class="px-4 py-3 text-left text-sm font-medium text-gray-300">Endorsements</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -146,24 +143,10 @@
 									<span class="text-xs text-gray-500 italic">No roles</span>
 								{/if}
 							</td>
-							<td class="px-4 py-4">
-								<div class="flex flex-wrap gap-2 text-xs">
-									{#each user.certifications as certification}
-										<Badge size="sm" label={certification.certification} />
-									{/each}
-								</div>
-							</td>
-							<td class="px-4 py-4">
-								<div class="flex flex-wrap gap-2 text-xs">
-									{#each user.endorsements as endorsement}
-										<Badge size="sm" label={endorsement.endorsement} />
-									{/each}
-								</div>
-							</td>
 						</tr>
 					{:else}
 						<tr>
-							<td colspan="5" class="px-4 py-8 text-center text-gray-400">
+							<td colspan="3" class="px-4 py-8 text-center text-gray-400">
 								{#if searchQuery}
 									No users found matching "{searchQuery}".
 								{:else}
