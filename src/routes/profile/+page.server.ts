@@ -47,7 +47,7 @@ export const load = async ({ locals, url }) => {
 			// Only controllers on the roster have a public profile
 			locals.db.query.vatsimControllersTable.findFirst({
 				where: eq(vatsimControllersTable.cid, locals.user.cid),
-				columns: { cid: true, data: true }
+				columns: { cid: true, roles: true }
 			}),
 			locals.db
 				.select({ certification: userCertificationsTable.certification })

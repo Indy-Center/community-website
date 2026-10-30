@@ -85,6 +85,13 @@
 			"when": 1792967481261,
 			"tag": "0011_staff_pocs",
 			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "6",
+			"when": 1793328314116,
+			"tag": "0012_roster_from_training",
+			"breakpoints": true
 		}
 	]
 }

@@ -7,19 +7,11 @@
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import StaffBadges from '$lib/components/StaffBadges.svelte';
 	import type { VnasController } from '$lib/types/vnas.js';
-	import {
-		CERTIFICATIONS,
-		ENDORSEMENTS,
-		getCertificationDisplayName,
-		getEndorsementDisplayName,
-		getCertificationOrder
-	} from '$lib/config/certifications';
+	import { credentialName, credentialOrder } from '$lib/credentials';
 
 	let { data } = $props();
 
-	// Display names now handled by centralized configuration
-
-	const { roster, controllers, staffBadges } = data;
+	const { controllers, staffBadges, credentials } = data;
 
 	// Same chip shape as StaffBadges so every badge in a row reads as one set
 	const CHIP =
@@ -53,24 +45,6 @@
 		}
 	];
 
-	function getHighestCertification(certifications: string[]) {
-		if (!certifications || certifications.length === 0) return null;
-
-		const certOrder = CERTIFICATIONS.map((cert) => cert.key);
-		let highest = null;
-		let highestIndex = -1;
-
-		for (const cert of certifications) {
-			const index = certOrder.indexOf(cert);
-			if (index > highestIndex) {
-				highestIndex = index;
-				highest = cert;
-			}
-		}
-
-		return highest;
-	}
-
 	function getRatingOrder(rating: string): number {
 		const ratingOrder = ['OBS', 'S1', 'S2', 'S3', 'C1', 'C3', 'I1', 'I3', 'SUP'];
 		const index = ratingOrder.indexOf(rating);
@@ -88,7 +62,8 @@
 		}
 	}
 
-	function formatSince(dateString: string): string {
+	function formatSince(dateString: string | null): string {
+		if (!dateString) return '';
 		const date = parseISO(dateString);
 		return formatDistanceToNow(date, { addSuffix: false });
 	}
@@ -149,16 +124,17 @@
 						bVal = getRatingOrder(b.rating);
 						break;
 					case 'certification':
-						aVal = getCertificationOrder(getHighestCertification(a.certifications));
-						bVal = getCertificationOrder(getHighestCertification(b.certifications));
+						aVal = credentialOrder(credentials, a.certification);
+						bVal = credentialOrder(credentials, b.certification);
 						break;
 					case 'initials':
 						aVal = (a.operatingInitials || 'ZZZ').toLowerCase();
 						bVal = (b.operatingInitials || 'ZZZ').toLowerCase();
 						break;
 					case 'joined':
-						aVal = new Date(a.joined);
-						bVal = new Date(b.joined);
+						// VATUSA may not say when a member joined; they sort as the earliest
+						aVal = a.joined ? new Date(a.joined) : new Date(0);
+						bVal = b.joined ? new Date(b.joined) : new Date(0);
 						break;
 					default:
 						return 0;
@@ -294,18 +270,18 @@
 						<!-- Staff -->
 						<StaffBadges badges={staffBadges[member.cid] ?? []} />
 
-						<!-- Certifications -->
-						{#each member.certifications as cert}
-							<Tooltip text={getCertificationDisplayName(cert)}>
+						<!-- Certification -->
+						{#if member.certification}
+							<Tooltip text={credentialName(credentials, member.certification)}>
 								<div class="{CHIP} bg-emerald-600/80">
-									{cert}
+									{member.certification}
 								</div>
 							</Tooltip>
-						{/each}
+						{/if}
 
 						<!-- Endorsements -->
 						{#each member.endorsements as endorsement}
-							<Tooltip text={getEndorsementDisplayName(endorsement)}>
+							<Tooltip text={credentialName(credentials, endorsement)}>
 								<div class="{CHIP} bg-purple-600/80">
 									{endorsement}
 								</div>
