@@ -119,7 +119,7 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 		});
 	}
 
-	// Sync controller membership and certifications
+	// Sync controller membership
 	await syncUserMembership(locals.db, user);
 
 	// Create session
