@@ -1,0 +1,8 @@
+// The fake training app for local development; see the README's "Roster from a fake training app".
+// Named as the real Worker so the site's `TRAINING` service binding finds it under `wrangler dev`.
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "training-tools",
+	"main": "worker.ts",
+	"compatibility_date": "2025-08-30"
+}

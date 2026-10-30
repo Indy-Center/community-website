@@ -16,14 +16,14 @@ beforeEach(async () => {
 	db = await testDb();
 	await seedMember(db, {
 		cid: '1000001',
-		fname: 'Jane',
-		lname: 'Doe',
+		firstName: 'Jane',
+		lastName: 'Doe',
 		user: { id: 'user-jane', email: 'jane@private.example.test', operatingInitials: 'JD' }
 	});
 	await seedMember(db, {
 		cid: '1000002',
-		fname: 'Alex',
-		lname: 'Sample',
+		firstName: 'Alex',
+		lastName: 'Sample',
 		user: {
 			id: 'user-alex',
 			email: 'alex@private.example.test',

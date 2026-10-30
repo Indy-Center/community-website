@@ -2,15 +2,18 @@ import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { getStaffBadges } from '$lib/server/staff';
+import { readAvailableCredentials } from '$lib/server/roster';
+import { customPreferredName } from '$lib/members';
 
 // Public profile. Like the public roster, only controllers on the roster have one, and
 // only public fields are sent (no email, raw VATSIM data, or feedback).
 export const load = async ({ locals, params }) => {
-	const [controller, assignments, teamRows, pocs] = await Promise.all([
+	const [controller, credentials, assignments, teamRows, pocs] = await Promise.all([
 		locals.db.query.vatsimControllersTable.findFirst({
 			where: eq(vatsimControllersTable.cid, params.cid),
-			with: { user: { with: { certifications: true, endorsements: true } } }
+			with: { user: true }
 		}),
+		readAvailableCredentials(locals.db),
 		locals.db.query.staffAssignmentsTable.findMany(),
 		locals.db.query.staffTeamMembersTable.findMany(),
 		locals.db.query.staffPocsTable.findMany()
@@ -20,20 +23,14 @@ export const load = async ({ locals, params }) => {
 		error(404, 'Controller not found');
 	}
 
-	const roster = controller.data;
+	const { firstName, lastName } = controller;
 	const user = controller.user;
 
 	// Settings pre-fills the preferred name with the full name, so only a preferred name
 	// that differs from it counts as a real choice. Otherwise follow VATUSA name privacy.
-	const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
-	const preferredName = user?.preferredName?.trim();
-	const hasCustomPreferredName =
-		!!preferredName && normalize(preferredName) !== normalize(`${roster.fname} ${roster.lname}`);
-	const name = hasCustomPreferredName
-		? preferredName
-		: roster.flag_nameprivacy
-			? roster.fname
-			: `${roster.fname} ${roster.lname}`;
+	const name =
+		customPreferredName(user?.preferredName, firstName, lastName) ??
+		(controller.namePrivacy ? firstName : `${firstName} ${lastName}`);
 
 	return {
 		profile: {
@@ -42,13 +39,14 @@ export const load = async ({ locals, params }) => {
 			pronouns: user?.pronouns ?? null,
 			membership: user?.membership ?? ('controller' as const),
 			operatingInitials: user?.operatingInitials ?? null,
-			atcRating: user?.data.vatsim.rating.short ?? roster.rating_short ?? null,
+			atcRating: user?.data.vatsim.rating.short ?? controller.rating ?? null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
 			staffBadges:
 				getStaffBadges([controller], assignments, teamRows, pocs).get(controller.cid) ?? [],
-			certifications: user?.certifications.map((c) => c.certification) ?? [],
-			endorsements: user?.endorsements.map((e) => e.endorsement) ?? []
+			certifications: controller.certification ? [controller.certification] : [],
+			endorsements: controller.endorsements,
+			credentials: credentials.map(({ code, name }) => ({ code, name }))
 		},
 		isOwnProfile: locals.user?.cid === controller.cid
 	};

@@ -1,18 +1,24 @@
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { expect } from 'vitest';
 import { schema, type Database } from '$lib/server/db';
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import {
 	eventPositionRequestsTable,
 	eventPositionsTable,
 	eventsTable
 } from '$lib/db/schema/events';
 import { usersTable } from '$lib/db/schema/users';
-import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
-import type { VatusaRosterMember } from '$lib/types/vatusa';
+import {
+	availableCredentialsTable,
+	vatsimControllersTable
+} from '$lib/db/schema/vatsimControllers';
+import type { AvailableCredential } from '$lib/credentials';
+
+const MIGRATIONS = 'drizzle/migrations';
 
 /**
  * An empty site database in memory, built from the same migrations as D1. Typed as the site's
@@ -20,8 +26,40 @@ import type { VatusaRosterMember } from '$lib/types/vatusa';
  */
 export async function testDb(): Promise<Database> {
 	const db = drizzle(createClient({ url: ':memory:' }), { schema });
-	await migrate(db, { migrationsFolder: 'drizzle/migrations' });
+	await migrate(db, { migrationsFolder: MIGRATIONS });
 	return db as unknown as Database;
+}
+
+/**
+ * For a migration's test: a database in memory built from the migrations before the one tagged
+ * `tag` (its file name without `.sql`), so the test can insert rows in the old shape. `migrate()`
+ * then applies the rest.
+ */
+export async function testDbBefore(tag: string) {
+	const journal = JSON.parse(readFileSync(join(MIGRATIONS, 'meta/_journal.json'), 'utf8')) as {
+		entries: { tag: string }[];
+	};
+	const index = journal.entries.findIndex((entry) => entry.tag === tag);
+	if (index === -1) throw new Error(`No migration tagged ${tag}`);
+
+	const earlier = mkdtempSync(join(tmpdir(), 'migrations-'));
+	mkdirSync(join(earlier, 'meta'));
+	const entries = journal.entries.slice(0, index);
+	writeFileSync(join(earlier, 'meta/_journal.json'), JSON.stringify({ ...journal, entries }));
+	for (const entry of entries) {
+		copyFileSync(join(MIGRATIONS, `${entry.tag}.sql`), join(earlier, `${entry.tag}.sql`));
+	}
+
+	const client = createClient({ url: ':memory:' });
+	const db = drizzle(client, { schema });
+	await migrate(db, { migrationsFolder: earlier });
+	rmSync(earlier, { recursive: true });
+
+	return {
+		client,
+		db: db as unknown as Database,
+		migrate: () => migrate(db, { migrationsFolder: MIGRATIONS })
+	};
 }
 
 /** A member's site account: the user row VATSIM Connect sign-in leaves, plus what they set. */
@@ -31,41 +69,45 @@ export type SeedUser = {
 	preferredName?: string;
 	operatingInitials?: string;
 	membership?: 'basic' | 'community' | 'controller';
-	certifications?: string[];
+};
+
+/** A member as `seedMember` takes them: their roster row's fields, and their site account. */
+export type SeedMember = {
+	cid: string;
+	firstName: string;
+	lastName: string;
+	namePrivacy?: boolean;
+	rating?: string;
+	joined?: string | null;
+	/** VATUSA facility role codes held at ZID, e.g. `ATM`. */
+	roles?: string[];
+	/** Code of the certification held, as the training app sends it. */
+	certification?: string | null;
 	endorsements?: string[];
+	/** False for someone with a site account who isn't on the controller roster. */
+	onRoster?: boolean;
+	user?: SeedUser;
 };
 
 /**
- * Seeds a member: their VATUSA roster row, unless `onRoster` is false, and their site account if
- * `user` is given. Every member here is made up; the repository is public.
+ * Seeds a member: their row in the roster copy (with their credentials), unless `onRoster` is
+ * false, and their site account if `user` is given. Every member here is made up; the repository
+ * is public. Seed the available credentials with `seedAvailableCredentials`.
  */
-export async function seedMember(
-	db: Database,
-	member: {
-		cid: string;
-		fname: string;
-		lname: string;
-		namePrivacy?: boolean;
-		rating?: string;
-		joined?: string;
-		onRoster?: boolean;
-		user?: SeedUser;
-	}
-) {
-	const { cid, fname, lname, user } = member;
+export async function seedMember(db: Database, member: SeedMember) {
+	const { cid, firstName, lastName, user } = member;
 
 	if (member.onRoster !== false) {
 		await db.insert(vatsimControllersTable).values({
 			cid,
-			data: vatusaRow({
-				cid: Number(cid),
-				fname,
-				lname,
-				flag_nameprivacy: member.namePrivacy ?? false,
-				rating_short: member.rating ?? 'S2',
-				facility_join: member.joined ?? '2024-01-15T00:00:00+00:00',
-				email: user?.email ?? null
-			})
+			firstName,
+			lastName,
+			namePrivacy: member.namePrivacy ?? false,
+			rating: member.rating ?? 'S2',
+			facilityJoinedAt: member.joined === undefined ? '2024-01-15T00:00:00+00:00' : member.joined,
+			roles: member.roles ?? [],
+			certification: member.certification ?? null,
+			endorsements: member.endorsements ?? []
 		});
 	}
 
@@ -74,8 +116,8 @@ export async function seedMember(
 	await db.insert(usersTable).values({
 		id: user.id,
 		cid,
-		firstName: fname,
-		lastName: lname,
+		firstName,
+		lastName,
 		email: user.email,
 		preferredName: user.preferredName ?? null,
 		operatingInitials: user.operatingInitials ?? null,
@@ -83,9 +125,9 @@ export async function seedMember(
 		data: {
 			cid,
 			personal: {
-				name_first: fname,
-				name_last: lname,
-				name_full: `${fname} ${lname}`,
+				name_first: firstName,
+				name_last: lastName,
+				name_full: `${firstName} ${lastName}`,
 				email: user.email,
 				country: { id: 'US', name: 'United States' }
 			},
@@ -98,12 +140,6 @@ export async function seedMember(
 			}
 		}
 	});
-	for (const certification of user.certifications ?? []) {
-		await db.insert(userCertificationsTable).values({ userId: user.id, certification });
-	}
-	for (const endorsement of user.endorsements ?? []) {
-		await db.insert(userEndorsementsTable).values({ userId: user.id, endorsement });
-	}
 }
 
 /** Seeds a published event with an assigned roster, its positions and position requests. */
@@ -134,48 +170,33 @@ export async function seedEvent(
 	}
 }
 
-function vatusaRow(row: Partial<VatusaRosterMember>): VatusaRosterMember {
-	return {
-		cid: 0,
-		fname: '',
-		lname: '',
-		email: null,
-		facility: 'ZID',
-		rating: 3,
-		created_at: '2024-01-01T00:00:00+00:00',
-		updated_at: '2024-01-01T00:00:00+00:00',
-		flag_needbasic: false,
-		flag_xferOverride: false,
-		facility_join: '2024-01-15T00:00:00+00:00',
-		flag_homecontroller: true,
-		lastactivity: '2026-10-01T00:00:00+00:00',
-		flag_broadcastOptedIn: null,
-		flag_preventStaffAssign: null,
-		discord_id: 0,
-		last_cert_sync: '2026-10-01T00:00:00+00:00',
-		flag_nameprivacy: false,
-		last_competency_date: null,
-		promotion_eligible: false,
-		transfer_eligible: null,
-		roles: [],
-		rating_short: 'S2',
-		isMentor: false,
-		isSupIns: false,
-		last_promotion: null,
-		membership: 'home',
-		...row
-	};
+/** The available credentials as tests seed them: made up in shape, in the training app's order. */
+export const AVAILABLE_CREDENTIALS: AvailableCredential[] = [
+	{ code: 'S-GC', kind: 'certification', name: 'Simple Ground Control', order: 1 },
+	{ code: 'A-LC', kind: 'certification', name: 'Advanced Local Control', order: 2 },
+	{ code: 'T-RC', kind: 'certification', name: 'Terminal Radar Control', order: 3 },
+	{ code: 'E-RC', kind: 'certification', name: 'Enroute Radar Control', order: 4 },
+	{ code: 'S-LC', kind: 'endorsement', name: 'Simple Local Control', order: 5 },
+	{ code: 'T2-CTR', kind: 'endorsement', name: 'Tier 2 Center', order: 6 }
+];
+
+/** Seeds the available credentials, as the roster refresh stores them. */
+export async function seedAvailableCredentials(
+	db: Database,
+	credentials: AvailableCredential[] = AVAILABLE_CREDENTIALS
+) {
+	await db.insert(availableCredentialsTable).values(credentials);
 }
 
 /**
  * Fails if page data holds anything a visitor must not get: any member's email, a VATSIM
- * Connect record (a user row's `data`: `personal`, `vatsim`) or VATUSA roster row (`fname`,
- * `flag_nameprivacy`), or one of `hiddenNames`, the last names of members with VATUSA name
- * privacy set. It looks for the records' own keys, since superforms sends a `data` key too.
+ * Connect record (a user row's `data`: `personal`, `vatsim`) or a row of the roster copy
+ * (`namePrivacy`), or one of `hiddenNames`, the last names of members with VATUSA name privacy
+ * set. It looks for the records' own keys, since superforms sends a `data` key too.
  */
 export function expectNothingPrivate(pageData: unknown, hiddenNames: string[] = []) {
 	const sent = JSON.stringify(pageData);
 	expect(sent).not.toMatch(/@/);
-	expect(sent).not.toMatch(/"(email|personal|vatsim|fname|lname|flag_nameprivacy)":/);
+	expect(sent).not.toMatch(/"(email|personal|vatsim|namePrivacy)":/);
 	for (const name of hiddenNames) expect(sent).not.toContain(name);
 }

@@ -65,6 +65,7 @@
 		staffBadges={data.staffBadges}
 		certifications={data.certifications}
 		endorsements={data.endorsements}
+		credentials={data.credentials}
 	/>
 	{#if data.hasPublicProfile}
 		<a

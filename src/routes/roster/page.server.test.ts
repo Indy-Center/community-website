@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Role } from '$lib/utils/permissions';
 import type { Database } from '$lib/server/db';
-import { expectNothingPrivate, seedMember, testDb } from '$lib/testing/db';
+import {
+	AVAILABLE_CREDENTIALS,
+	expectNothingPrivate,
+	seedAvailableCredentials,
+	seedMember,
+	testDb
+} from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
 import { load } from './+page.server';
 
@@ -11,33 +17,45 @@ let db: Database;
 
 beforeEach(async () => {
 	db = await testDb();
+	await seedAvailableCredentials(db);
 	await seedMember(db, {
 		cid: '1000001',
-		fname: 'Jane',
-		lname: 'Hiddenlast',
+		firstName: 'Jane',
+		lastName: 'Hiddenlast',
 		namePrivacy: true,
 		rating: 'S2',
 		joined: '2024-03-01T00:00:00+00:00',
+		certification: 'T-RC',
+		endorsements: ['T2-CTR'],
 		user: {
 			id: 'user-jane',
 			email: 'jane@private.example.test',
-			operatingInitials: 'JH',
-			certifications: ['GND'],
-			endorsements: ['T2CTR']
+			operatingInitials: 'JH'
 		}
 	});
+	// On the controller roster without a site account
 	await seedMember(db, {
 		cid: '1000002',
-		fname: 'Sam',
-		lname: 'Shown',
+		firstName: 'Sam',
+		lastName: 'Shown',
 		rating: 'C1',
-		joined: '2023-06-01T00:00:00+00:00'
+		joined: '2023-06-01T00:00:00+00:00',
+		certification: 'S-GC'
 	});
 	await seedMember(db, {
 		cid: '1000003',
-		fname: 'Robin',
-		lname: 'Example',
+		firstName: 'Robin',
+		lastName: 'Example',
+		joined: null,
 		user: { id: 'user-robin', email: 'robin@private.example.test', preferredName: 'Rob E' }
+	});
+	// Saved the settings form unchanged, so the preferred name is the pre-filled full name
+	await seedMember(db, {
+		cid: '1000004',
+		firstName: 'Pat',
+		lastName: 'Prefilled',
+		namePrivacy: true,
+		user: { id: 'user-pat', email: 'pat@private.example.test', preferredName: 'Pat Prefilled' }
 	});
 });
 
@@ -46,7 +64,7 @@ function visit(roles: string[] = []) {
 }
 
 describe('/roster', () => {
-	it('lists each member with the name the roster shows, honouring VATUSA name privacy', async () => {
+	it('lists each member with their name, honouring VATUSA name privacy, and their credentials', async () => {
 		const data = await visit();
 
 		expect(data.roster).toEqual([
@@ -56,8 +74,8 @@ describe('/roster', () => {
 				rating: 'S2',
 				joined: '2024-03-01T00:00:00+00:00',
 				operatingInitials: 'JH',
-				certifications: ['GND'],
-				endorsements: ['T2CTR']
+				certification: 'T-RC',
+				endorsements: ['T2-CTR']
 			},
 			{
 				cid: '1000002',
@@ -65,23 +83,41 @@ describe('/roster', () => {
 				rating: 'C1',
 				joined: '2023-06-01T00:00:00+00:00',
 				operatingInitials: null,
-				certifications: [],
+				certification: 'S-GC',
 				endorsements: []
 			},
 			{
 				cid: '1000003',
 				name: 'Rob E',
 				rating: 'S2',
+				joined: null,
+				operatingInitials: null,
+				certification: null,
+				endorsements: []
+			},
+			{
+				cid: '1000004',
+				name: 'Pat 1000004',
+				rating: 'S2',
 				joined: '2024-01-15T00:00:00+00:00',
 				operatingInitials: null,
-				certifications: [],
+				certification: null,
 				endorsements: []
 			}
 		]);
 	});
 
-	it('sends no email, Connect or VATUSA record, or hidden last name to a visitor', async () => {
-		expectNothingPrivate(await visit(), ['Hiddenlast']);
+	it('sends the available credentials once, in order, to name and sort the chips', async () => {
+		const data = await visit();
+
+		expect(data.credentials).toEqual(AVAILABLE_CREDENTIALS);
+	});
+
+	it('sends no email, Connect record, roster copy row or hidden last name to a visitor', async () => {
+		const data = await visit();
+
+		expect(data.roster[0]).not.toHaveProperty('lastName');
+		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
 	});
 
 	it("gives an admin each member's account id for the manage link, and nothing more private", async () => {
@@ -90,8 +126,9 @@ describe('/roster', () => {
 		expect(data.roster.map((member) => member.userId)).toEqual([
 			'user-jane',
 			undefined,
-			'user-robin'
+			'user-robin',
+			'user-pat'
 		]);
-		expectNothingPrivate(data, ['Hiddenlast']);
+		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
 	});
 });

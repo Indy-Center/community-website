@@ -1,8 +1,6 @@
 import { relations, type InferInsertModel, type InferSelectModel } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { eventPositionsTable } from './events';
-import { userCertificationsTable } from './certifications';
-import { userEndorsementsTable } from './endorsements';
 import { userRolesTable } from './roles';
 import { vatsimControllersTable } from './vatsimControllers';
 import type { VatsimUserData } from '$lib/types/vatsim';
@@ -45,8 +43,6 @@ export const userRelations = relations(usersTable, ({ many, one }) => ({
 		fields: [usersTable.cid],
 		references: [vatsimControllersTable.cid]
 	}),
-	certifications: many(userCertificationsTable),
-	endorsements: many(userEndorsementsTable),
 	roles: many(userRolesTable),
 	eventPositions: many(eventPositionsTable)
 }));

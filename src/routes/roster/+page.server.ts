@@ -1,22 +1,30 @@
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
+import { readAvailableCredentials } from '$lib/server/roster';
 import { getStaffBadges } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
+import { customPreferredName } from '$lib/members';
 
 // Page data goes to every visitor's browser, so build each member from only what the page
-// shows: never the user row (email, Connect data) or VATUSA's row (a hidden last name).
+// shows: never the user row (email, Connect data) or a hidden last name from the roster copy.
 export const load = async ({ locals }) => {
-	const [results, assignments, teamRows, pocs, controllers] = await Promise.all([
+	const [results, credentials, assignments, teamRows, pocs, controllers] = await Promise.all([
 		locals.db.query.vatsimControllersTable.findMany({
+			columns: {
+				cid: true,
+				firstName: true,
+				lastName: true,
+				namePrivacy: true,
+				rating: true,
+				facilityJoinedAt: true,
+				roles: true,
+				certification: true,
+				endorsements: true
+			},
 			with: {
-				user: {
-					columns: { id: true, preferredName: true, operatingInitials: true },
-					with: {
-						certifications: { columns: { certification: true } },
-						endorsements: { columns: { endorsement: true } }
-					}
-				}
+				user: { columns: { id: true, preferredName: true, operatingInitials: true } }
 			}
 		}),
+		readAvailableCredentials(locals.db),
 		locals.db.query.staffAssignmentsTable.findMany(),
 		locals.db.query.staffTeamMembersTable.findMany(),
 		locals.db.query.staffPocsTable.findMany(),
@@ -26,20 +34,23 @@ export const load = async ({ locals }) => {
 	const staffBadges = Object.fromEntries(getStaffBadges(results, assignments, teamRows, pocs));
 	const admin = isAdmin(locals.roles);
 
-	const roster = results.map(({ cid, data, user }) => ({
-		cid,
-		name: user?.preferredName || `${data.fname} ${data.flag_nameprivacy ? cid : data.lname}`,
-		rating: data.rating_short,
-		joined: data.facility_join,
-		operatingInitials: user?.operatingInitials ?? null,
-		certifications: user?.certifications.map((c) => c.certification) ?? [],
-		endorsements: user?.endorsements.map((e) => e.endorsement) ?? [],
+	const roster = results.map((member) => ({
+		cid: member.cid,
+		name:
+			customPreferredName(member.user?.preferredName, member.firstName, member.lastName) ??
+			`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`,
+		rating: member.rating,
+		joined: member.facilityJoinedAt,
+		operatingInitials: member.user?.operatingInitials ?? null,
+		certification: member.certification,
+		endorsements: member.endorsements,
 		// Only admins see the link to manage a member's account
-		...(admin && user ? { userId: user.id } : {})
+		...(admin && member.user ? { userId: member.user.id } : {})
 	}));
 
 	return {
 		roster,
+		credentials,
 		controllers,
 		staffBadges
 	};

@@ -14,6 +14,7 @@
 	import IconArrowLeft from '~icons/mdi/arrow-left';
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 	import ControllerPicker from '$lib/components/events/ControllerPicker.svelte';
+	import { credentialName } from '$lib/credentials';
 
 	let { data } = $props();
 
@@ -377,7 +378,7 @@
 											<div class="mb-2 flex flex-wrap gap-1">
 												{#each position.requiredCertifications as cert}
 													<span class="rounded bg-blue-500/20 px-2 py-1 text-xs text-blue-300"
-														>{cert}</span
+														>{credentialName(data.credentials, cert)}</span
 													>
 												{/each}
 											</div>
@@ -386,7 +387,7 @@
 											<div class="flex flex-wrap gap-1">
 												{#each position.requiredEndorsements as endorsement}
 													<span class="rounded bg-purple-500/20 px-2 py-1 text-xs text-purple-300"
-														>{endorsement}</span
+														>{credentialName(data.credentials, endorsement)}</span
 													>
 												{/each}
 											</div>
