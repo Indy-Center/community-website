@@ -4,6 +4,7 @@
 		POSITION_TYPE_LABELS,
 		plainFacilityName,
 		groupPositions,
+		isListed,
 		formatZuluRange,
 		getPositionLabel,
 		searchPositions,
@@ -19,9 +20,17 @@
 		error?: string | string[];
 		// Positions already booked during the chosen times; shown greyed out and can't be picked
 		booked?: Map<string, AtcBooking>;
+		// Also list the non-primary positions. The page resets it each time the form opens.
+		showAll?: boolean;
 	};
 
-	let { positions, value = $bindable(), error, booked = new Map() }: Props = $props();
+	let {
+		positions,
+		value = $bindable(),
+		error,
+		booked = new Map(),
+		showAll = $bindable(false)
+	}: Props = $props();
 
 	// Tower cab positions can be narrowed further within ATCT
 	type AtctRole = 'TWR' | 'GND' | 'DEL' | 'RMP';
@@ -36,9 +45,11 @@
 	const availableTypes = $derived(
 		POSITION_TYPES.filter((type) => positions.some((position) => position.type === type))
 	);
+	// What the list offers right now; the rest sits behind the toggle
+	const listed = $derived(positions.filter((position) => isListed(position, showAll)));
 	const availableRoles = $derived(
 		ATCT_ROLES.filter(({ role }) =>
-			positions.some((position) => position.type === 'ATCT' && roleOf(position) === role)
+			listed.some((position) => position.type === 'ATCT' && roleOf(position) === role)
 		)
 	);
 
@@ -52,13 +63,19 @@
 			: (positions.find((position) => position.callsign === value)?.type ?? availableTypes[0])
 	);
 
-	const matches = $derived(searchPositions(positions, query));
-	const typeMatches = $derived(
-		matches.filter(
-			(position) =>
-				position.type === activeType &&
-				(activeType !== 'ATCT' || atctRole === 'ALL' || roleOf(position) === atctRole)
-		)
+	const inActiveGroup = (position: BookablePosition) =>
+		position.type === activeType &&
+		(activeType !== 'ATCT' || atctRole === 'ALL' || roleOf(position) === atctRole);
+
+	const matches = $derived(searchPositions(listed, query));
+	const typeMatches = $derived(matches.filter(inActiveGroup));
+	// Positions the search would find here if the toggle were on
+	const hiddenCount = $derived(
+		showAll
+			? 0
+			: searchPositions(positions, query).filter(
+					(position) => inActiveGroup(position) && !isListed(position, false)
+				).length
 	);
 	const otherMatches = $derived(
 		query
@@ -73,6 +90,13 @@
 	);
 
 	const groups = $derived(groupPositions(typeMatches));
+
+	// Turning the toggle off drops a selected position that is no longer listed
+	function setShowAll(next: boolean) {
+		showAll = next;
+		const selected = positions.find((position) => position.callsign === value);
+		if (!next && selected && !isListed(selected, false)) value = '';
+	}
 
 	function selectType(type: PositionType) {
 		if (type === activeType) return;
@@ -136,6 +160,29 @@
 				class="w-full rounded-lg border border-slate-600 bg-slate-700 py-2 pr-4 pl-9 text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 			/>
 		</div>
+
+		<!-- Every Center sector is listed, so the toggle only matters for TRACON and ATCT -->
+		{#if activeType !== 'ARTCC'}
+			<div class="mt-2 flex items-center gap-2 text-xs text-slate-300">
+				<button
+					type="button"
+					role="switch"
+					aria-checked={showAll}
+					aria-label="Show all positions"
+					onclick={() => setShowAll(!showAll)}
+					class="relative h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors {showAll
+						? 'bg-sky-600'
+						: 'bg-slate-600'}"
+				>
+					<span
+						class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform {showAll
+							? 'translate-x-4'
+							: ''}"
+					></span>
+				</button>
+				<span>Show all positions, not just the primary ones</span>
+			</div>
+		{/if}
 
 		{#if activeType === 'ATCT' && availableRoles.length > 1}
 			<div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="ATCT position filter">
@@ -219,10 +266,25 @@
 				{/each}
 			{:else}
 				<p class="px-3 py-4 text-sm text-slate-400">
-					No {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions match "{query}".
+					{#if query}
+						No {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions match "{query}".
+					{:else}
+						No primary {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions here.
+					{/if}
 				</p>
 			{/each}
 		</div>
+
+		{#if hiddenCount > 0}
+			<p class="mt-2 text-xs text-slate-400">
+				{hiddenCount} non-primary {hiddenCount === 1 ? 'position' : 'positions'} hidden.
+				<button
+					type="button"
+					class="cursor-pointer text-sky-400 hover:underline"
+					onclick={() => setShowAll(true)}>Show all</button
+				>
+			</p>
+		{/if}
 
 		{#if otherMatches.length > 0}
 			<p class="mt-2 text-xs text-slate-400">
