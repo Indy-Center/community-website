@@ -44,6 +44,18 @@
 	const days = $derived(
 		getWeekDays(weekStart).map((day) => ({ day, segments: layoutCalendarDay(bookings, day) }))
 	);
+	// A day with bookings side by side gets a wider column, so each keeps room to be read
+	const MIN_LANE_PX = 100;
+	// From this many side by side, a booking shows its short callsign and time only
+	const COMPACT_LANES = 3;
+	const gridColumns = $derived(
+		`3rem ${days
+			.map(({ segments }) => {
+				const lanes = Math.max(1, ...segments.map((segment) => segment.lanes));
+				return `minmax(${lanes * MIN_LANE_PX}px, ${lanes}fr)`;
+			})
+			.join(' ')}`
+	);
 	const lastBookingEnd = $derived(
 		Math.max(0, ...bookings.map((booking) => parseBookingTime(booking.end).getTime()))
 	);
@@ -117,7 +129,7 @@
 	</div>
 
 	<div class="overflow-x-auto">
-		<div class="grid min-w-[760px] grid-cols-[3rem_repeat(7,minmax(0,1fr))]">
+		<div class="grid min-w-[760px]" style="grid-template-columns: {gridColumns}">
 			<!-- Day headers -->
 			<div class="border-b border-slate-700/60"></div>
 			{#each days as { day } (day.getTime())}
@@ -158,11 +170,19 @@
 						{@const height = ((segment.endMinute - segment.startMinute) / 60) * hourHeight}
 						{@const label = positions[booking.callsign]}
 						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - 1)}
-						{@const lines = [
-							names[booking.cid] ?? String(booking.cid),
-							...(label?.detail ? [label.detail] : []),
-							`${zulu(booking.start)}–${zulu(booking.end)}`
-						].slice(0, fit)}
+						{@const compact = segment.lanes >= COMPACT_LANES}
+						{@const lines = (
+							compact
+								? [
+										`${zulu(booking.start)}–${zulu(booking.end)}`,
+										names[booking.cid] ?? String(booking.cid)
+									]
+								: [
+										names[booking.cid] ?? String(booking.cid),
+										...(label?.detail ? [label.detail] : []),
+										`${zulu(booking.start)}–${zulu(booking.end)}`
+									]
+						).slice(0, fit)}
 						{@const title = `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
 							names[booking.cid] ?? booking.cid
 						}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}${booking.pending ? ' · pending' : ''}`}
@@ -173,7 +193,7 @@
 							100 / segment.lanes
 						}% - 4px)`}
 						{#snippet content()}
-							{#if label}
+							{#if label && !compact}
 								<div class="truncate font-semibold">{label.title}</div>
 							{:else}
 								<div class="truncate font-mono font-semibold">{booking.callsign}</div>
