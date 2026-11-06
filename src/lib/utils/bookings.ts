@@ -10,8 +10,8 @@ export type BookablePosition = {
 	name: string;
 	radioName: string;
 	type: PositionType;
-	// The facility the position belongs to; the picker groups on it
-	facility: { id: string; name: string };
+	// The facility the position belongs to, and its parent (e.g. Anderson under Indianapolis)
+	facility: { id: string; name: string; parent: { id: string; name: string } | null };
 };
 
 const callsignSuffix = (callsign: string) => callsign.split('_').at(-1) ?? '';
@@ -94,10 +94,42 @@ export function getBookablePositions(
 				name: position.name,
 				radioName: position.radioName,
 				type,
-				facility: { id: position.facility.id, name: position.facility.name }
+				facility: position.facility
 			}
 		];
 	});
+}
+
+export type PositionGroup = {
+	// The top-level facility: a field's parent, or the facility itself when it has none
+	label: string;
+	facilities: { id: string; label: string; positions: BookablePosition[] }[];
+};
+
+// Positions under their facility, and facilities under their parent, e.g. Anderson and Columbus
+// under Indianapolis ATCT/TRACON. Both levels sort by name; positions keep the order they came in.
+export function groupPositions(positions: BookablePosition[]): PositionGroup[] {
+	const groups = new Map<string, Map<string, PositionGroup['facilities'][number]>>();
+
+	for (const position of positions) {
+		const top = position.facility.parent ?? position.facility;
+		const facilities = groups.get(top.name) ?? new Map();
+		const facility = facilities.get(position.facility.id) ?? {
+			id: position.facility.id,
+			label: position.facility.name,
+			positions: []
+		};
+		facility.positions.push(position);
+		facilities.set(position.facility.id, facility);
+		groups.set(top.name, facilities);
+	}
+
+	return [...groups]
+		.map(([label, facilities]) => ({
+			label,
+			facilities: [...facilities.values()].sort((a, b) => a.label.localeCompare(b.label))
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function searchPositions(positions: BookablePosition[], query: string) {
@@ -253,6 +285,19 @@ export function getDueReminders(
 		const start = parseBookingTime(booking.start).getTime();
 		return start >= windowStart && start < windowEnd;
 	});
+}
+
+// Bookings that start within the next `leadHours`, soonest first. Once one starts the controller
+// is on the network, so it drops off. Bookings not yet in the list (pending) are not here.
+export function getUpcomingBookings(bookings: AtcBooking[], now: Date, leadHours: number) {
+	const windowEnd = now.getTime() + leadHours * 3600000;
+
+	return sortBookings(
+		bookings.filter((booking) => {
+			const start = parseBookingTime(booking.start).getTime();
+			return start > now.getTime() && start <= windowEnd;
+		})
+	);
 }
 
 // Back-to-back bookings (one ends as the next starts) don't overlap

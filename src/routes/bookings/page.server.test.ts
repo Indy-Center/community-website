@@ -153,6 +153,42 @@ describe('/bookings load', () => {
 	});
 });
 
+describe('/bookings names', () => {
+	it('names bookers by the roster rule: a chosen preferred name, else first and last, privacy hiding the last', async () => {
+		await seedMember(db, {
+			cid: '1000003',
+			firstName: 'Casey',
+			lastName: 'Hidden',
+			namePrivacy: true,
+			user: { id: 'user-casey', email: 'casey@private.example.test' }
+		});
+		await seedMember(db, {
+			cid: '1000004',
+			firstName: 'Drew',
+			lastName: 'Chosen',
+			user: { id: 'user-drew', email: 'drew@private.example.test', preferredName: 'Dee' }
+		});
+		const worker = stubWorker([
+			listed({ id: 1, externalId: 'a', cid: 1000001 }),
+			listed({ id: 2, externalId: 'b', cid: 1000003, callsign: 'IND_APP' }),
+			listed({ id: 3, externalId: 'c', cid: 1000004, callsign: 'IND_TWR' }),
+			listed({ id: 4, externalId: 'd', cid: 1999999, callsign: 'IND_DEL' })
+		]);
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001'),
+			platform: { env: { BOOKINGS: worker } }
+		});
+
+		expect(data.names).toEqual({
+			'1000001': 'Pat Example',
+			'1000003': 'Casey 1000003',
+			'1000004': 'Dee'
+		});
+		expect(JSON.stringify(data)).not.toContain('Hidden');
+	});
+});
+
 describe('/bookings create', () => {
 	it('queues the booking with an externalId and holds the position', async () => {
 		const worker = stubWorker();

@@ -139,12 +139,14 @@
 							{:else}
 								<div class="truncate font-mono font-semibold">{booking.callsign}</div>
 							{/if}
+							{#if height >= HOUR_HEIGHT}
+								<div class="truncate opacity-80">{names[booking.cid] ?? booking.cid}</div>
+							{/if}
 							{#if height >= 2 * HOUR_HEIGHT}
 								{#if label?.detail}
 									<div class="truncate opacity-80">{label.detail}</div>
 								{/if}
 								<div class="truncate opacity-80">{zulu(booking.start)}–{zulu(booking.end)}</div>
-								<div class="truncate opacity-80">{names[booking.cid] ?? booking.cid}</div>
 							{/if}
 						{/snippet}
 						{#if editable}

@@ -1,7 +1,8 @@
 import { inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { usersTable } from '$lib/db/schema/users';
+import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
+import { customPreferredName } from '$lib/members';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
@@ -107,23 +108,25 @@ export const load = async ({ locals, platform }) => {
 			? getBookablePositions(feed, qualifications.certification, qualifications.endorsements)
 			: [];
 
-	// Names depend on which CIDs booked, so this lookup has to follow the fetches above
+	// Names depend on which CIDs booked, so this lookup has to follow the fetches above. The same
+	// rule as the roster: a preferred name they chose, else first and last name, with a
+	// privacy-flagged member's last name replaced by their CID. Anyone off the roster shows by CID.
 	const cids = [...new Set(bookings.map((booking) => String(booking.cid)))];
-	const users =
+	const members =
 		cids.length > 0
-			? await locals.db
-					.select({
-						cid: usersTable.cid,
-						firstName: usersTable.firstName,
-						lastName: usersTable.lastName,
-						preferredName: usersTable.preferredName
-					})
-					.from(usersTable)
-					.where(inArray(usersTable.cid, cids))
+			? await locals.db.query.vatsimControllersTable.findMany({
+					where: inArray(vatsimControllersTable.cid, cids),
+					columns: { cid: true, firstName: true, lastName: true, namePrivacy: true },
+					with: { user: { columns: { preferredName: true } } }
+				})
 			: [];
 
 	const names = Object.fromEntries(
-		users.map((user) => [user.cid, user.preferredName || `${user.firstName} ${user.lastName}`])
+		members.map((member) => [
+			member.cid,
+			customPreferredName(member.user?.preferredName, member.firstName, member.lastName) ??
+				`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`
+		])
 	);
 
 	const manageable = bookings

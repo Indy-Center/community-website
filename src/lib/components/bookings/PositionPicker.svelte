@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		POSITION_TYPES,
+		groupPositions,
 		formatZuluRange,
 		getPositionLabel,
 		searchPositions,
@@ -69,20 +70,7 @@
 			: []
 	);
 
-	// Positions sit under the facility they belong to, e.g. Indianapolis ATCT/TRACON
-	const groups = $derived.by(() => {
-		const byFacility = new Map<string, BookablePosition[]>();
-		for (const position of typeMatches) {
-			byFacility.set(position.facility.name, [
-				...(byFacility.get(position.facility.name) ?? []),
-				position
-			]);
-		}
-
-		return [...byFacility]
-			.map(([label, positions]) => ({ label, positions }))
-			.sort((a, b) => a.label.localeCompare(b.label));
-	});
+	const groups = $derived(groupPositions(typeMatches));
 
 	function selectType(type: PositionType) {
 		if (type === activeType) return;
@@ -181,36 +169,44 @@
 				>
 					{group.label}
 				</div>
-				{#each group.positions as position (position.callsign)}
-					{@const label = getPositionLabel(position)}
-					{@const conflict = booked.get(position.callsign)}
-					<label
-						class="flex items-center gap-3 px-3 py-2 text-sm transition-colors {conflict
-							? 'cursor-not-allowed text-slate-500'
-							: value === position.callsign
-								? 'cursor-pointer bg-sky-600/30 text-white'
-								: 'cursor-pointer text-slate-300 hover:bg-slate-700/60'}"
-					>
-						<input
-							type="radio"
-							name="callsign-choice"
-							value={position.callsign}
-							bind:group={value}
-							disabled={!!conflict}
-							class="h-4 w-4 border-slate-500 bg-slate-700 text-sky-500 focus:ring-sky-500 disabled:opacity-40"
-						/>
-						<span class="shrink-0 font-semibold" title={position.callsign}>{label.title}</span>
-						{#if label.detail}
-							<span class="truncate {conflict ? '' : 'text-slate-400'}">{label.detail}</span>
-						{/if}
-						{#if conflict}
-							<span
-								class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"
-							>
-								Booked {formatZuluRange(conflict)}
-							</span>
-						{/if}
-					</label>
+				{#each group.facilities as facility (facility.id)}
+					<!-- A field under a parent facility gets its own line; a facility with no parent is its own heading -->
+					{#if facility.label !== group.label}
+						<div class="bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-400">
+							{facility.label}
+						</div>
+					{/if}
+					{#each facility.positions as position (position.callsign)}
+						{@const label = getPositionLabel(position)}
+						{@const conflict = booked.get(position.callsign)}
+						<label
+							class="flex items-center gap-3 px-3 py-2 text-sm transition-colors {conflict
+								? 'cursor-not-allowed text-slate-500'
+								: value === position.callsign
+									? 'cursor-pointer bg-sky-600/30 text-white'
+									: 'cursor-pointer text-slate-300 hover:bg-slate-700/60'}"
+						>
+							<input
+								type="radio"
+								name="callsign-choice"
+								value={position.callsign}
+								bind:group={value}
+								disabled={!!conflict}
+								class="h-4 w-4 border-slate-500 bg-slate-700 text-sky-500 focus:ring-sky-500 disabled:opacity-40"
+							/>
+							<span class="shrink-0 font-semibold" title={position.callsign}>{label.title}</span>
+							{#if label.detail}
+								<span class="truncate {conflict ? '' : 'text-slate-400'}">{label.detail}</span>
+							{/if}
+							{#if conflict}
+								<span
+									class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"
+								>
+									Booked {formatZuluRange(conflict)}
+								</span>
+							{/if}
+						</label>
+					{/each}
 				{/each}
 			{:else}
 				<p class="px-3 py-4 text-sm text-slate-400">No {activeType} positions match "{query}".</p>
