@@ -69,10 +69,6 @@ const bookings: WorkerBooking[] = [
 	}
 ];
 
-const later = (apply: () => void) => {
-	setTimeout(apply, QUEUE_DELAY_MS);
-};
-
 export default class FakeBookings extends WorkerEntrypoint implements BookingsWorker {
 	async listOrgBookings() {
 		return bookings;
@@ -82,15 +78,22 @@ export default class FakeBookings extends WorkerEntrypoint implements BookingsWo
 		return POSITIONS;
 	}
 
+	// A timer dies with the call that set it, so the delay is held open with waitUntil
+	private later(apply: () => void) {
+		this.ctx.waitUntil(
+			new Promise<void>((resolve) => setTimeout(resolve, QUEUE_DELAY_MS)).then(apply)
+		);
+	}
+
 	async createBooking(booking: Parameters<BookingsWorker['createBooking']>[0]) {
-		later(() => {
+		this.later(() => {
 			if (bookings.some((b) => b.externalId === booking.externalId)) return;
 			bookings.push({ id: nextId++, type: 'booking', ...booking });
 		});
 	}
 
 	async updateBooking(change: Parameters<BookingsWorker['updateBooking']>[0]) {
-		later(() => {
+		this.later(() => {
 			const booking = bookings.find((b) => b.externalId === change.externalId);
 			if (booking)
 				Object.assign(booking, {
@@ -101,7 +104,7 @@ export default class FakeBookings extends WorkerEntrypoint implements BookingsWo
 	}
 
 	async cancelBooking({ externalId }: Parameters<BookingsWorker['cancelBooking']>[0]) {
-		later(() => {
+		this.later(() => {
 			const index = bookings.findIndex((b) => b.externalId === externalId);
 			if (index !== -1) bookings.splice(index, 1);
 		});
