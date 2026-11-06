@@ -159,6 +159,11 @@ export function groupPositions(positions: BookablePosition[]): PositionGroup[] {
 		.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+// The picker lists primary positions, plus everything when asked. Every Center sector is listed
+// regardless, as there are too many sectors to call most of them secondary.
+export const isListed = (position: BookablePosition, showAll: boolean) =>
+	showAll || position.primary || position.type === 'ARTCC';
+
 export function searchPositions(positions: BookablePosition[], query: string) {
 	const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
 

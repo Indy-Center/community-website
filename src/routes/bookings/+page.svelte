@@ -29,6 +29,13 @@
 	let { data } = $props();
 
 	let createModal: Modal | undefined = $state();
+	// Starts off each time the form opens, so people see the primary positions first
+	let showAllPositions = $state(false);
+
+	function openCreate() {
+		showAllPositions = false;
+		createModal?.open();
+	}
 	let updateModal: Modal | undefined = $state();
 	let editing: AtcBooking | undefined = $state();
 	let deleteError: string | undefined = $state();
@@ -143,7 +150,7 @@
 	<div class="flex items-center justify-between gap-3">
 		<h1 class="text-3xl font-bold text-white">Bookings</h1>
 		{#if canBook}
-			<button type="button" onclick={() => createModal?.open()} class="{primaryButton} shadow-lg">
+			<button type="button" onclick={openCreate} class="{primaryButton} shadow-lg">
 				<IconPlus class="h-4 w-4" />
 				Book a Position
 			</button>
@@ -324,6 +331,7 @@
 			label="End"
 		/>
 		<PositionPicker
+			bind:showAll={showAllPositions}
 			positions={data.bookablePositions}
 			bind:value={$createForm.callsign}
 			error={$createErrors.callsign}

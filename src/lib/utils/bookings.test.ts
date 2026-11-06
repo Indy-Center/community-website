@@ -5,6 +5,7 @@ import {
 	getBookablePositions,
 	getUpcomingBookings,
 	groupPositions,
+	isListed,
 	meetsRequirements,
 	mergePendingBookings,
 	PENDING_MAX_MINUTES,
@@ -236,5 +237,23 @@ describe('getBookablePositions', () => {
 			['IND_17_CTR', false],
 			['IND_18_CTR', false]
 		]);
+	});
+});
+
+describe('isListed', () => {
+	const position = (type: BookablePosition['type'], primary: boolean): BookablePosition => ({
+		callsign: 'X_TWR',
+		name: 'x',
+		radioName: 'x',
+		type,
+		primary,
+		facility: { id: 'X', name: 'X', parent: null }
+	});
+
+	it('lists primary positions, hides the rest until asked, and always lists Center sectors', () => {
+		expect(isListed(position('ATCT', true), false)).toBe(true);
+		expect(isListed(position('ATCT', false), false)).toBe(false);
+		expect(isListed(position('TRACON', false), true)).toBe(true);
+		expect(isListed(position('ARTCC', false), false)).toBe(true);
 	});
 });
