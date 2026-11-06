@@ -21,13 +21,14 @@ export const holdsBookings = (event: Held, now = new Date()) =>
 	event.rosterType !== 'none' &&
 	event.endTime > now;
 
-// Our ID for one controller on one event position, within the Worker's 64 characters. It includes
-// the CID, so putting someone else on the position is a cancel and a new booking.
+// Our ID for one controller on one event position: ev_<event id>_<hash>, within the Worker's 64
+// characters. The event ID stays readable so /bookings can group by event; the hash covers the
+// position and CID, so putting someone else on the position is a cancel and a new booking.
 export async function eventBookingId(eventId: string, positionId: string, cid: string) {
 	const bytes = new TextEncoder().encode(`${eventId}:${positionId}:${cid}`);
 	const hash = await crypto.subtle.digest('SHA-256', bytes);
 	const hex = [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-	return `${EVENT_BOOKING_PREFIX}${hex.slice(0, 40)}`;
+	return `${EVENT_BOOKING_PREFIX}${eventId}_${hex.slice(0, 16)}`;
 }
 
 type Assigned = { positionId: string; cid: string };

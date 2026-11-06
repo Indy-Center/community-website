@@ -14,6 +14,9 @@ export type AtcBooking = {
 	end: string;
 	// Sent to the bookings Worker but not in its list yet; the position is held meanwhile
 	pending?: boolean;
+	// Stands in for an event's many bookings: the calendar shows this one block, and opening it
+	// lists them (see groupEventBookings)
+	group?: { eventId: string; name: string; members: AtcBooking[] };
 };
 
 // What the bookings Worker (Indy-Center/bookings-worker) says to us over the BOOKINGS service

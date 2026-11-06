@@ -20,9 +20,16 @@ export const POSITION_TYPE_LABELS: Record<PositionType, string> = {
 // Facility names from the CMS say "ARTCC" too
 export const plainFacilityName = (name: string) => name.replace(/ARTCC/g, 'Center');
 
-// Event rosters book their controllers under IDs that start with this, so /bookings can tell they
-// are managed from the event
+// Event rosters book their controllers under IDs like ev_<event id>_<16 hex digits>, so /bookings
+// can tell they are managed from the event, and which event
 export const EVENT_BOOKING_PREFIX = 'ev_';
+
+export function eventIdOf(externalId: string | null | undefined) {
+	return /^ev_(.+)_[0-9a-f]{16}$/.exec(externalId ?? '')?.[1] ?? null;
+}
+
+// An event with this many bookings or more shows as one block instead of one per position
+export const EVENT_GROUP_MIN = 4;
 
 type FacilityNode = {
 	childFacilities: FacilityNode[];
@@ -202,6 +209,46 @@ export function searchPositions(positions: BookablePosition[], query: string) {
 
 export const sortBookings = (bookings: AtcBooking[]) =>
 	[...bookings].sort((a, b) => a.start.localeCompare(b.start));
+
+// Folds each event's bookings into one stand-in booking once there are `min` or more of them, so
+// an event with twenty positions is one block, not twenty. Everything else is left as it was.
+// `eventNames` is by event ID; an event we have no name for is called "Event".
+export function groupEventBookings(
+	bookings: AtcBooking[],
+	eventNames: Record<string, string>,
+	min = EVENT_GROUP_MIN
+) {
+	const byEvent = new Map<string, AtcBooking[]>();
+	for (const booking of bookings) {
+		const eventId = eventIdOf(booking.externalId);
+		if (eventId) byEvent.set(eventId, [...(byEvent.get(eventId) ?? []), booking]);
+	}
+
+	const grouped = new Set<AtcBooking>();
+	const stands = [...byEvent]
+		.filter(([, members]) => members.length >= min)
+		.map(([eventId, members]): AtcBooking => {
+			members.forEach((member) => grouped.add(member));
+			const sorted = sortBookings(members);
+
+			return {
+				id: -1,
+				externalId: `group:${eventId}`,
+				callsign: '',
+				cid: 0,
+				type: 'event',
+				start: sorted[0].start,
+				end:
+					members
+						.map((member) => member.end)
+						.sort()
+						.at(-1) ?? sorted[0].end,
+				group: { eventId, name: eventNames[eventId] ?? 'Event', members: sorted }
+			};
+		});
+
+	return sortBookings([...bookings.filter((booking) => !grouped.has(booking)), ...stands]);
+}
 
 // A pending booking as the list shows it. It has no number from the booking system yet.
 export type PendingRow = {

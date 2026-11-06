@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { pendingBookingsTable } from '$lib/db/schema/bookings';
+import { eventsTable } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
 import { seedAvailableCredentials, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
@@ -139,6 +140,31 @@ describe('/bookings load', () => {
 
 		expect(data.bookings).toHaveLength(1);
 		expect(data.manageable).toEqual([]);
+	});
+
+	it('names the events that event bookings belong to, and nothing else about them', async () => {
+		await db.insert(eventsTable).values({
+			id: 'event-9',
+			name: 'Never Dull',
+			type: 'home',
+			rosterType: 'open',
+			description: 'A private description.',
+			startTime: new Date(Date.now() + 24 * HOUR),
+			endTime: new Date(Date.now() + 27 * HOUR),
+			isPublished: true,
+			isRosterPublished: true
+		});
+		const worker = stubWorker([
+			listed({ id: 1, externalId: 'ev_event-9_0123456789abcdef', type: 'event' })
+		]);
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001'),
+			platform: { env: { BOOKINGS: worker } }
+		});
+
+		expect(data.eventNames).toEqual({ 'event-9': 'Never Dull' });
+		expect(JSON.stringify(data)).not.toContain('A private description');
 	});
 
 	it('shows a pending booking, and clears it once the list has it', async () => {

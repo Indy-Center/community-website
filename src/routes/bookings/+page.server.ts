@@ -10,6 +10,7 @@ import {
 	cancelBooking,
 	createBooking,
 	fetchBookingsWithPending,
+	fetchEventNames,
 	updateBooking
 } from '$lib/server/bookings';
 import type { AtcBooking, BookingsWorker, WorkerPosition } from '$lib/types/bookings';
@@ -81,6 +82,7 @@ export const load = async ({ locals, platform }) => {
 		return {
 			loggedIn: false,
 			bookings: [] as AtcBooking[],
+			eventNames: {} as Record<string, string>,
 			names: {} as Record<string, string>,
 			positions: {} as Record<string, PositionLabel>,
 			bookablePositions: [] as BookablePosition[],
@@ -97,6 +99,8 @@ export const load = async ({ locals, platform }) => {
 		fetchPositions(worker),
 		fetchQualifications(locals.db, locals.user.cid)
 	]);
+
+	const eventNames = await fetchEventNames(locals.db, bookings);
 
 	// Labels for the booked positions only; one no longer in the feed falls back to its callsign
 	const allLabels = getPositionLabels(feed);
@@ -139,6 +143,7 @@ export const load = async ({ locals, platform }) => {
 	return {
 		loggedIn: true,
 		bookings,
+		eventNames,
 		names,
 		positions,
 		bookablePositions,

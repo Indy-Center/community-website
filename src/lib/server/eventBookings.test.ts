@@ -4,6 +4,7 @@ import { eventPositionsTable, eventsTable, type Event } from '$lib/db/schema/eve
 import type { Database } from '$lib/server/db';
 import { seedMember, testDb } from '$lib/testing/db';
 import type { BookingsWorker } from '$lib/types/bookings';
+import { eventIdOf } from '$lib/utils/bookings';
 import {
 	cancelEvent,
 	eventBookingId,
@@ -89,11 +90,13 @@ const reload = async () =>
 	(await db.query.eventsTable.findFirst({ where: eq(eventsTable.id, EVENT_ID) }))!;
 
 describe('eventBookingId', () => {
-	it('fits the Worker’s 64 characters and differs by controller', async () => {
-		const id = await eventBookingId(crypto.randomUUID(), '01GFTXMTZDDJ9XKMJ7AX0EXKQF', '1000001');
+	it('fits the Worker’s 64 characters, names its event, and differs by controller', async () => {
+		const eventId = crypto.randomUUID();
+		const id = await eventBookingId(eventId, '01GFTXMTZDDJ9XKMJ7AX0EXKQF', '1000001');
 
 		expect(id.length).toBeLessThanOrEqual(64);
-		expect(id).toMatch(/^ev_[0-9a-f]+$/);
+		expect(id).toMatch(/^ev_.+_[0-9a-f]{16}$/);
+		expect(eventIdOf(id)).toBe(eventId);
 		expect(await eventBookingId('e', 'p', '1000001')).not.toBe(
 			await eventBookingId('e', 'p', '1000002')
 		);
