@@ -6,7 +6,12 @@
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
 
 	type Props = {
-		bookings: { callsign: string; type: string; start: string }[];
+		bookings: {
+			callsign: string;
+			type: string;
+			start: string;
+			group?: { eventId: string; name: string; count: number };
+		}[];
 		positions: Record<string, PositionLabel>;
 	};
 
@@ -29,10 +34,18 @@
 
 <Panel title="Controllers Starting Soon" icon={IconCalendarClock}>
 	<ul class="divide-y divide-slate-700/60">
-		{#each bookings as booking (booking.callsign + booking.start)}
+		{#each bookings as booking (booking.group?.eventId ?? booking.callsign + booking.start)}
 			<li class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-				<span class="min-w-0 truncate font-semibold text-white" title={booking.callsign}>
-					{describePosition(booking.callsign, positions[booking.callsign])}
+				<span
+					class="min-w-0 truncate font-semibold text-white"
+					title={booking.group ? booking.group.name : booking.callsign}
+				>
+					{#if booking.group}
+						{booking.group.name}
+						<span class="font-normal text-slate-400">· {booking.group.count} positions</span>
+					{:else}
+						{describePosition(booking.callsign, positions[booking.callsign])}
+					{/if}
 				</span>
 				<span class="shrink-0 text-right">
 					<span class="font-mono text-white">{zulu(booking.start)}</span>

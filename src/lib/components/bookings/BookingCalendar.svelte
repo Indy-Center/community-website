@@ -22,9 +22,11 @@
 		// ExternalIds of the bookings the viewer may change
 		manageable: string[];
 		onEdit?: (booking: AtcBooking) => void;
+		// Opens an event's block to list its positions
+		onOpenGroup?: (booking: AtcBooking) => void;
 	};
 
-	let { bookings, names, positions, manageable, onEdit }: Props = $props();
+	let { bookings, names, positions, manageable, onEdit, onOpenGroup }: Props = $props();
 
 	// How tall an hour is, in pixels. A taller hour gives a booking room for more lines of text.
 	const ZOOM_LEVELS = [28, 40, 56, 72];
@@ -170,22 +172,30 @@
 						{@const height = ((segment.endMinute - segment.startMinute) / 60) * hourHeight}
 						{@const label = positions[booking.callsign]}
 						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - 1)}
+						{@const group = booking.group}
 						{@const compact = segment.lanes >= COMPACT_LANES}
 						{@const lines = (
-							compact
+							group
 								? [
-										`${zulu(booking.start)}–${zulu(booking.end)}`,
-										names[booking.cid] ?? String(booking.cid)
-									]
-								: [
-										names[booking.cid] ?? String(booking.cid),
-										...(label?.detail ? [label.detail] : []),
+										`${group.members.length} positions`,
 										`${zulu(booking.start)}–${zulu(booking.end)}`
 									]
+								: compact
+									? [
+											`${zulu(booking.start)}–${zulu(booking.end)}`,
+											names[booking.cid] ?? String(booking.cid)
+										]
+									: [
+											names[booking.cid] ?? String(booking.cid),
+											...(label?.detail ? [label.detail] : []),
+											`${zulu(booking.start)}–${zulu(booking.end)}`
+										]
 						).slice(0, fit)}
-						{@const title = `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
-							names[booking.cid] ?? booking.cid
-						}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}${booking.pending ? ' · pending' : ''}`}
+						{@const title = group
+							? `${group.name} · ${group.members.length} positions · ${zulu(booking.start)}–${zulu(booking.end)}`
+							: `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
+									names[booking.cid] ?? booking.cid
+								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}${booking.pending ? ' · pending' : ''}`}
 						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]} ${booking.pending ? 'border-dashed opacity-60' : ''}`}
 						{@const style = `top: ${(segment.startMinute / 60) * hourHeight}px; height: ${
 							height - 1
@@ -193,7 +203,9 @@
 							100 / segment.lanes
 						}% - 4px)`}
 						{#snippet content()}
-							{#if label && !compact}
+							{#if group}
+								<div class="truncate font-semibold">{group.name}</div>
+							{:else if label && !compact}
 								<div class="truncate font-semibold">{label.title}</div>
 							{:else}
 								<div class="truncate font-mono font-semibold">{booking.callsign}</div>
@@ -202,7 +214,17 @@
 								<div class="truncate opacity-80">{line}</div>
 							{/each}
 						{/snippet}
-						{#if editable}
+						{#if group}
+							<button
+								type="button"
+								onclick={() => onOpenGroup?.(booking)}
+								{title}
+								class="{classes} cursor-pointer hover:brightness-125"
+								{style}
+							>
+								{@render content()}
+							</button>
+						{:else if editable}
 							<button
 								type="button"
 								onclick={() => onEdit?.(booking)}

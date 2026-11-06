@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
+	eventIdOf,
 	findBookingConflict,
 	getBookablePositions,
 	getUpcomingBookings,
+	groupEventBookings,
 	groupPositions,
 	isListed,
 	meetsRequirements,
@@ -255,5 +257,67 @@ describe('isListed', () => {
 		expect(isListed(position('ATCT', false), false)).toBe(false);
 		expect(isListed(position('TRACON', false), true)).toBe(true);
 		expect(isListed(position('ARTCC', false), false)).toBe(true);
+	});
+});
+
+describe('groupEventBookings', () => {
+	const EVENT = '327cfa5e-2090-4ff7-9f59-0e017bef6923';
+	const eventBooking = (n: number, eventId = EVENT, overrides: Partial<AtcBooking> = {}) =>
+		booking({
+			id: n,
+			externalId: `ev_${eventId}_${String(n).padStart(16, '0')}`,
+			type: 'event',
+			callsign: `IND_${n}_TWR`,
+			start: '2026-12-01 04:00:00',
+			end: '2026-12-01 06:00:00',
+			...overrides
+		});
+	const names = { [EVENT]: 'Never Dull' };
+
+	it('reads the event from a booking’s ID, and only from an event booking', () => {
+		expect(eventIdOf(`ev_${EVENT}_0123456789abcdef`)).toBe(EVENT);
+		expect(eventIdOf('0123-not-an-event')).toBeNull();
+		expect(eventIdOf(null)).toBeNull();
+	});
+
+	it('folds an event with enough positions into one block that lists them', () => {
+		const grouped = groupEventBookings(
+			[1, 2, 3, 4, 5].map((n) => eventBooking(n)),
+			names
+		);
+
+		expect(grouped).toHaveLength(1);
+		expect(grouped[0]).toMatchObject({
+			externalId: `group:${EVENT}`,
+			type: 'event',
+			start: '2026-12-01 04:00:00',
+			end: '2026-12-01 06:00:00',
+			group: { eventId: EVENT, name: 'Never Dull' }
+		});
+		expect(grouped[0].group?.members).toHaveLength(5);
+	});
+
+	it('leaves small events and ordinary bookings as they are', () => {
+		const small = [1, 2, 3].map((n) => eventBooking(n));
+		const ordinary = booking({ id: 99, start: '2026-12-01 01:00:00' });
+
+		const result = groupEventBookings([...small, ordinary], names);
+
+		expect(result.map((b) => b.id)).toEqual([99, 1, 2, 3]);
+		expect(result.every((b) => !b.group)).toBe(true);
+	});
+
+	it('groups each event separately, and names one it has no name for "Event"', () => {
+		const other = '11111111-2222-3333-4444-555555555555';
+		const bookings = [
+			...[1, 2, 3, 4].map((n) => eventBooking(n)),
+			...[5, 6, 7, 8].map((n) =>
+				eventBooking(n, other, { start: '2026-12-02 04:00:00', end: '2026-12-02 06:00:00' })
+			)
+		];
+
+		const grouped = groupEventBookings(bookings, names);
+
+		expect(grouped.map((b) => b.group?.name)).toEqual(['Never Dull', 'Event']);
 	});
 });

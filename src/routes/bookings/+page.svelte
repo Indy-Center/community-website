@@ -15,6 +15,7 @@
 		describePosition,
 		formatZuluRange,
 		getBookedPositions,
+		groupEventBookings,
 		parseBookingTime
 	} from '$lib/utils/bookings';
 	import type { AtcBooking, BookingType } from '$lib/types/bookings';
@@ -79,9 +80,12 @@
 		training: 'green'
 	};
 
+	// An event with many positions shows as one block, opened to list them
+	const displayBookings = $derived(groupEventBookings(data.bookings, data.eventNames));
+
 	// Bookings arrive sorted by start, so days come out in order
 	const days = $derived(
-		data.bookings.reduce<Map<string, AtcBooking[]>>((groups, booking) => {
+		displayBookings.reduce<Map<string, AtcBooking[]>>((groups, booking) => {
 			const day = booking.start.slice(0, 10);
 			groups.set(day, [...(groups.get(day) ?? []), booking]);
 			return groups;
@@ -103,6 +107,14 @@
 	const selectedConflict = $derived(bookedPositions.get($createForm.callsign));
 
 	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
+
+	let groupModal: Modal | undefined = $state();
+	let openedGroup: AtcBooking | undefined = $state();
+
+	function openGroup(booking: AtcBooking) {
+		openedGroup = booking;
+		groupModal?.open();
+	}
 
 	function openEdit(booking: AtcBooking) {
 		editing = booking;
@@ -217,7 +229,8 @@
 
 	{#if view === 'calendar'}
 		<BookingCalendar
-			bookings={data.bookings}
+			bookings={displayBookings}
+			onOpenGroup={openGroup}
 			names={data.names}
 			positions={data.positions}
 			manageable={data.manageable}
@@ -232,65 +245,103 @@
 				>
 					<ul class="divide-y divide-slate-700/60">
 						{#each bookings as booking (booking.externalId ?? booking.id)}
-							{@const label = data.positions[booking.callsign]}
-							<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
-							<li
-								class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_1fr_auto_3.5rem]"
-							>
-								<div class="flex min-w-0 items-center gap-3">
-									<div class="min-w-0" title={booking.callsign}>
-										{#if label}
-											<div class="truncate font-semibold text-white">{label.title}</div>
-											{#if label.detail}
-												<div class="truncate text-sm text-slate-400">{label.detail}</div>
+							{#if booking.group}
+								<li class="px-4 py-3">
+									<details>
+										<summary class="flex cursor-pointer items-center justify-between gap-4 text-sm">
+											<span class="flex min-w-0 items-center gap-3">
+												<span class="truncate font-semibold text-white">{booking.group.name}</span>
+												<Badge label="event" color="purple" size="sm" />
+												<span class="shrink-0 text-slate-400">
+													{booking.group.members.length} positions
+												</span>
+											</span>
+											<span class="shrink-0 font-mono text-white">
+												{zulu(booking.start)} – {zulu(booking.end)}
+											</span>
+										</summary>
+										<ul class="mt-3 divide-y divide-slate-700/40 text-sm">
+											{#each booking.group.members as member (member.externalId)}
+												<li class="flex items-center justify-between gap-4 py-1.5">
+													<span class="text-slate-200">{positionOf(member)}</span>
+													<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
+												</li>
+											{/each}
+										</ul>
+										<a
+											href="/events/{booking.group.eventId}"
+											class="mt-3 inline-block text-xs font-medium text-sky-400 hover:text-sky-300"
+										>
+											View event →
+										</a>
+									</details>
+								</li>
+							{:else}
+								\1
+								<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
+								<li
+									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_1fr_auto_3.5rem]"
+								>
+									<div class="flex min-w-0 items-center gap-3">
+										<div class="min-w-0" title={booking.callsign}>
+											{#if label}
+												<div class="truncate font-semibold text-white">{label.title}</div>
+												{#if label.detail}
+													<div class="truncate text-sm text-slate-400">{label.detail}</div>
+												{/if}
+											{:else}
+												<span class="font-mono font-semibold text-white">{booking.callsign}</span>
 											{/if}
-										{:else}
-											<span class="font-mono font-semibold text-white">{booking.callsign}</span>
+										</div>
+										{#if booking.pending}
+											<Badge label="pending" color="orange" size="sm" />
+										{/if}
+										{#if booking.type !== 'booking'}
+											<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
 										{/if}
 									</div>
-									{#if booking.pending}
-										<Badge label="pending" color="orange" size="sm" />
-									{/if}
-									{#if booking.type !== 'booking'}
-										<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
-									{/if}
-								</div>
-								{#if data.names[booking.cid]}
-									<a
-										href="/profile/{booking.cid}"
-										class="truncate text-right text-sm text-slate-300 hover:text-white sm:text-left"
-									>
-										{data.names[booking.cid]}
-									</a>
-								{:else}
-									<span class="text-right text-sm text-slate-400 sm:text-left">{booking.cid}</span>
-								{/if}
-								<span class="font-mono text-sm text-white">
-									{zulu(booking.start)} – {zulu(booking.end)}
-								</span>
-								<div class="flex items-center justify-end gap-3">
-									{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
-										<button
-											type="button"
-											onclick={() => openEdit(booking)}
-											class="cursor-pointer text-slate-400 hover:text-white"
-											aria-label="Edit {positionOf(booking)} booking"
+									{#if data.names[booking.cid]}
+										<a
+											href="/profile/{booking.cid}"
+											class="truncate text-right text-sm text-slate-300 hover:text-white sm:text-left"
 										>
-											<IconPencil class="h-4 w-4" />
-										</button>
-										<form method="POST" action="?/delete" use:formEnhance={confirmDelete(booking)}>
-											<input type="hidden" name="externalId" value={booking.externalId} />
-											<button
-												type="submit"
-												class="cursor-pointer text-slate-400 hover:text-red-400"
-												aria-label="Delete {positionOf(booking)} booking"
-											>
-												<IconTrash class="h-4 w-4" />
-											</button>
-										</form>
+											{data.names[booking.cid]}
+										</a>
+									{:else}
+										<span class="text-right text-sm text-slate-400 sm:text-left">{booking.cid}</span
+										>
 									{/if}
-								</div>
-							</li>
+									<span class="font-mono text-sm text-white">
+										{zulu(booking.start)} – {zulu(booking.end)}
+									</span>
+									<div class="flex items-center justify-end gap-3">
+										{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
+											<button
+												type="button"
+												onclick={() => openEdit(booking)}
+												class="cursor-pointer text-slate-400 hover:text-white"
+												aria-label="Edit {positionOf(booking)} booking"
+											>
+												<IconPencil class="h-4 w-4" />
+											</button>
+											<form
+												method="POST"
+												action="?/delete"
+												use:formEnhance={confirmDelete(booking)}
+											>
+												<input type="hidden" name="externalId" value={booking.externalId} />
+												<button
+													type="submit"
+													class="cursor-pointer text-slate-400 hover:text-red-400"
+													aria-label="Delete {positionOf(booking)} booking"
+												>
+													<IconTrash class="h-4 w-4" />
+												</button>
+											</form>
+										{/if}
+									</div>
+								</li>
+							{/if}
 						{/each}
 					</ul>
 				</Panel>
@@ -304,6 +355,32 @@
 		</div>
 	{/if}
 {/if}
+
+<Modal title={openedGroup?.group?.name ?? 'Event'} bind:this={groupModal}>
+	{#if openedGroup?.group}
+		<div class="max-h-[70vh] w-[480px] max-w-[90vw] overflow-y-auto p-2">
+			<p class="mb-3 text-sm text-slate-400">
+				{openedGroup.group.members.length} positions, {zulu(openedGroup.start)} – {zulu(
+					openedGroup.end
+				)}
+			</p>
+			<ul class="divide-y divide-slate-700/60 text-sm">
+				{#each openedGroup.group.members as member (member.externalId)}
+					<li class="flex items-center justify-between gap-4 py-2">
+						<span class="text-slate-200">{positionOf(member)}</span>
+						<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
+					</li>
+				{/each}
+			</ul>
+			<a
+				href="/events/{openedGroup.group.eventId}"
+				class="mt-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
+			>
+				View event →
+			</a>
+		</div>
+	{/if}
+</Modal>
 
 <Modal title="Book a Position" bind:this={createModal}>
 	<form
