@@ -17,11 +17,12 @@
 		bookings: AtcBooking[];
 		names: Record<string, string>;
 		positions: Record<string, PositionLabel>;
-		manageableIds: number[];
+		// ExternalIds of the bookings the viewer may change
+		manageable: string[];
 		onEdit?: (booking: AtcBooking) => void;
 	};
 
-	let { bookings, names, positions, manageableIds, onEdit }: Props = $props();
+	let { bookings, names, positions, manageable, onEdit }: Props = $props();
 
 	const HOUR_HEIGHT = 28;
 	const DAY_MS = 86400000;
@@ -117,15 +118,16 @@
 						HOUR_HEIGHT}px; background-image: repeating-linear-gradient(to bottom, rgb(51 65 85 / 0.35) 0 1px, transparent 1px {2 *
 						HOUR_HEIGHT}px)"
 				>
-					{#each segments as segment (segment.booking.id)}
+					{#each segments as segment (segment.booking.externalId ?? segment.booking.id)}
 						{@const booking = segment.booking}
-						{@const editable = onEdit && manageableIds.includes(booking.id)}
+						{@const editable =
+							onEdit && booking.externalId !== null && manageable.includes(booking.externalId)}
 						{@const height = ((segment.endMinute - segment.startMinute) / 60) * HOUR_HEIGHT}
 						{@const label = positions[booking.callsign]}
 						{@const title = `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
 							names[booking.cid] ?? booking.cid
-						}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}`}
-						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]}`}
+						}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}${booking.pending ? ' · pending' : ''}`}
+						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]} ${booking.pending ? 'border-dashed opacity-60' : ''}`}
 						{@const style = `top: ${(segment.startMinute / 60) * HOUR_HEIGHT}px; height: ${
 							height - 1
 						}px; left: calc(${(segment.lane / segment.lanes) * 100}% + 2px); width: calc(${

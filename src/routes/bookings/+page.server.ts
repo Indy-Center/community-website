@@ -8,19 +8,16 @@ import { readMemberCredentials } from '$lib/server/roster';
 import {
 	cancelBooking,
 	createBooking,
-	fetchBookings,
+	fetchBookingsWithPending,
 	updateBooking
 } from '$lib/server/bookings';
-import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient';
-import type { AtcBooking } from '$lib/types/bookings';
+import type { AtcBooking, BookingsWorker, WorkerPosition } from '$lib/types/bookings';
 import {
-	canBookPosition,
-	filterFacilityBookings,
 	findBookingConflict,
 	formatZuluRange,
 	getBookablePositions,
-	getCallsignPrefixes,
 	getPositionLabels,
+	meetsRequirements,
 	type BookablePosition,
 	type PositionLabel
 } from '$lib/utils/bookings';
@@ -32,18 +29,34 @@ async function fetchQualifications(db: App.Locals['db'], cid: string | undefined
 	if (!cid) return null;
 
 	try {
-		const { held, credentials } = await readMemberCredentials(db, cid);
-		return held ? { ...held, credentials } : null;
+		const { held } = await readMemberCredentials(db, cid);
+		return held;
 	} catch (error) {
 		logger.error(`Failed to read credentials for ${cid}`, { error });
 		return null;
 	}
 }
 
-// Only bookings with our ID (made through this site) can be changed; the bookings Worker
-// addresses them by it
+// The bookable positions from the CMS feed. When it can't be read nothing is bookable.
+async function fetchPositions(worker: BookingsWorker | undefined) {
+	if (!worker) return [] as WorkerPosition[];
+
+	try {
+		return await worker.getPositions();
+	} catch (error) {
+		logger.error('Failed to read the bookable positions', { error });
+		return [] as WorkerPosition[];
+	}
+}
+
+// Only bookings with our ID (made through this site) that the list shows can be changed; the
+// bookings Worker addresses them by it. A pending one can be changed once it is listed.
 function canManageBooking(booking: AtcBooking, cid: string | undefined, roles: string[]) {
-	return booking.externalId !== null && (isAdmin(roles) || String(booking.cid) === cid);
+	return (
+		booking.externalId !== null &&
+		!booking.pending &&
+		(isAdmin(roles) || String(booking.cid) === cid)
+	);
 }
 
 const SUBMITTED = 'Submitted. It can take a minute for the calendar to catch up.';
@@ -67,7 +80,7 @@ export const load = async ({ locals, platform }) => {
 			names: {} as Record<string, string>,
 			positions: {} as Record<string, PositionLabel>,
 			bookablePositions: [] as BookablePosition[],
-			manageableIds: [] as number[],
+			manageable: [] as string[],
 			canBook: false,
 			bookingEnabled: false,
 			createForm,
@@ -75,15 +88,14 @@ export const load = async ({ locals, platform }) => {
 		};
 	}
 
-	const [allBookings, artcc, qualifications] = await Promise.all([
-		worker ? fetchBookings(worker) : ([] as AtcBooking[]),
-		fetchArtccInformation(),
+	const [bookings, feed, qualifications] = await Promise.all([
+		worker ? fetchBookingsWithPending(worker, locals.db) : ([] as AtcBooking[]),
+		fetchPositions(worker),
 		fetchQualifications(locals.db, locals.user.cid)
 	]);
 
-	const bookings = filterFacilityBookings(allBookings, getCallsignPrefixes(artcc.facility));
-	// Labels for booked positions only; anything not in vNAS falls back to its callsign
-	const allLabels = getPositionLabels(artcc.facility);
+	// Labels for the booked positions only; one no longer in the feed falls back to its callsign
+	const allLabels = getPositionLabels(feed);
 	const positions = Object.fromEntries(
 		bookings
 			.filter((booking) => allLabels[booking.callsign])
@@ -92,14 +104,7 @@ export const load = async ({ locals, platform }) => {
 	// Without roster credentials nothing is bookable
 	const bookablePositions =
 		isRostered(locals.user) && qualifications
-			? getBookablePositions(artcc.facility).filter(({ callsign }) =>
-					canBookPosition(
-						callsign,
-						qualifications.certification,
-						qualifications.endorsements,
-						qualifications.credentials
-					)
-				)
+			? getBookablePositions(feed, qualifications.certification, qualifications.endorsements)
 			: [];
 
 	// Names depend on which CIDs booked, so this lookup has to follow the fetches above
@@ -121,9 +126,9 @@ export const load = async ({ locals, platform }) => {
 		users.map((user) => [user.cid, user.preferredName || `${user.firstName} ${user.lastName}`])
 	);
 
-	const manageableIds = bookings
+	const manageable = bookings
 		.filter((booking) => canManageBooking(booking, locals.user?.cid, locals.roles))
-		.map((booking) => booking.id);
+		.flatMap((booking) => booking.externalId ?? []);
 
 	return {
 		loggedIn: true,
@@ -131,7 +136,7 @@ export const load = async ({ locals, platform }) => {
 		names,
 		positions,
 		bookablePositions,
-		manageableIds,
+		manageable,
 		canBook: isRostered(locals.user),
 		bookingEnabled: Boolean(worker),
 		createForm,
@@ -151,10 +156,10 @@ export const actions = {
 		const worker = platform?.env.BOOKINGS;
 		if (!worker) return setError(form, '', UNAVAILABLE, { status: 503 });
 
-		const [artcc, qualifications, bookings] = await Promise.all([
-			fetchArtccInformation(),
+		const [feed, qualifications, bookings] = await Promise.all([
+			fetchPositions(worker),
 			fetchQualifications(locals.db, locals.user.cid),
-			fetchBookings(worker)
+			fetchBookingsWithPending(worker, locals.db)
 		]);
 
 		if (!qualifications) {
@@ -164,14 +169,10 @@ export const actions = {
 		}
 
 		const { callsign, start, end } = form.data;
+		const position = feed.find((candidate) => candidate.callsign === callsign);
 		const allowed =
-			getBookablePositions(artcc.facility).some((position) => position.callsign === callsign) &&
-			canBookPosition(
-				callsign,
-				qualifications.certification,
-				qualifications.endorsements,
-				qualifications.credentials
-			);
+			position !== undefined &&
+			meetsRequirements(position, qualifications.certification, qualifications.endorsements);
 
 		if (!allowed) return setError(form, 'callsign', "You aren't certified for this position");
 		if (start < new Date()) return setError(form, 'start', 'Start time must be in the future');
@@ -182,7 +183,7 @@ export const actions = {
 		}
 
 		try {
-			const externalId = await createBooking(worker, {
+			const externalId = await createBooking(worker, locals.db, {
 				callsign,
 				cid: Number(locals.user.cid),
 				start,
@@ -206,7 +207,7 @@ export const actions = {
 		if (!worker) return setError(form, '', UNAVAILABLE, { status: 503 });
 
 		const { externalId, start, end } = form.data;
-		const bookings = await fetchBookings(worker);
+		const bookings = await fetchBookingsWithPending(worker, locals.db);
 		const booking = bookings.find((candidate) => candidate.externalId === externalId);
 
 		if (!booking || !canManageBooking(booking, locals.user.cid, locals.roles)) {
@@ -239,7 +240,7 @@ export const actions = {
 		if (!worker) return fail(503, { message: UNAVAILABLE });
 
 		const externalId = String((await request.formData()).get('externalId') ?? '');
-		const bookings = await fetchBookings(worker);
+		const bookings = await fetchBookingsWithPending(worker, locals.db);
 		const booking = bookings.find((candidate) => candidate.externalId === externalId);
 
 		if (!booking || !canManageBooking(booking, locals.user.cid, locals.roles)) {

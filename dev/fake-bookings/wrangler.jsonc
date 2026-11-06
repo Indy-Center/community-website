@@ -1,0 +1,8 @@
+// The fake bookings Worker for local development; see the README's "Bookings from a fake worker".
+// Named as the real Worker so the site's `BOOKINGS` service binding finds it under `wrangler dev`.
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "bookings",
+	"main": "worker.ts",
+	"compatibility_date": "2025-08-30"
+}

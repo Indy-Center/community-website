@@ -99,6 +99,13 @@
 			"when": 1793330890371,
 			"tag": "0013_event_positions_drop_solo_endorsements",
 			"breakpoints": true
+		},
+		{
+			"idx": 14,
+			"version": "6",
+			"when": 1793926623010,
+			"tag": "0014_pending_bookings",
+			"breakpoints": true
 		}
 	]
 }
