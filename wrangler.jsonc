@@ -53,7 +53,9 @@
 	"services": [
 		// The controller roster and credentials, from the training app (see the README)
 		{ "binding": "TRAINING", "service": "training-tools", "entrypoint": "TrainingRpc" },
-		// Discord messages sent as Larry, such as staffing requests (see the README)
-		{ "binding": "LARRY", "service": "indy-larry" }
+		// Discord messages sent as Larry, such as staffing requests and booking reminders (see the README)
+		{ "binding": "LARRY", "service": "indy-larry" },
+		// The bookings Worker, which wraps the booking system (Indy-Center/bookings-worker)
+		{ "binding": "BOOKINGS", "service": "bookings" }
 	]
 }
