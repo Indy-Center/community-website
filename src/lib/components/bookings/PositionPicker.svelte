@@ -1,6 +1,8 @@
 <script lang="ts">
 	import {
 		POSITION_TYPES,
+		POSITION_TYPE_LABELS,
+		plainFacilityName,
 		groupPositions,
 		formatZuluRange,
 		getPositionLabel,
@@ -108,7 +110,7 @@
 							? 'cursor-pointer border-slate-600 bg-slate-700 text-slate-300 hover:text-white'
 							: 'cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600'}"
 				>
-					{type}
+					{POSITION_TYPE_LABELS[type]}
 				</button>
 			{/each}
 		</div>
@@ -161,19 +163,19 @@
 		<div
 			class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900/40"
 			role="radiogroup"
-			aria-label="{activeType} positions"
+			aria-label="{activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions"
 		>
 			{#each groups as group (group.label)}
 				<div
 					class="sticky top-0 bg-slate-800 px-3 py-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
 				>
-					{group.label}
+					{plainFacilityName(group.label)}
 				</div>
 				{#each group.facilities as facility (facility.id)}
 					<!-- A field under a parent facility gets its own line; a facility with no parent is its own heading -->
 					{#if facility.label !== group.label}
 						<div class="bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-400">
-							{facility.label}
+							{plainFacilityName(facility.label)}
 						</div>
 					{/if}
 					{#each facility.positions as position (position.callsign)}
@@ -204,12 +206,21 @@
 								>
 									Booked {formatZuluRange(conflict)}
 								</span>
+							{:else if position.primary && activeType === 'ARTCC'}
+								<!-- TRACON and ATCT facilities are small enough that a badge would only add noise -->
+								<span
+									class="ml-auto shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300"
+								>
+									Primary
+								</span>
 							{/if}
 						</label>
 					{/each}
 				{/each}
 			{:else}
-				<p class="px-3 py-4 text-sm text-slate-400">No {activeType} positions match "{query}".</p>
+				<p class="px-3 py-4 text-sm text-slate-400">
+					No {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions match "{query}".
+				</p>
 			{/each}
 		</div>
 
@@ -220,7 +231,7 @@
 					<button
 						type="button"
 						class="cursor-pointer text-sky-400 hover:underline"
-						onclick={() => selectType(type)}>{count} in {type}</button
+						onclick={() => selectType(type)}>{count} in {POSITION_TYPE_LABELS[type]}</button
 					>{i < otherMatches.length - 1 ? ', ' : ''}
 				{/each}
 			</p>
