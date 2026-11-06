@@ -1,12 +1,43 @@
+import { BOOKING_REMINDER_HOURS } from '$lib/config/bookings';
 import { eventsTable } from '$lib/db/schema/events';
+import { logger } from '$lib/server/logger';
+import { fetchBookings } from '$lib/server/bookings';
+import type { AtcBooking, BookingsWorker } from '$lib/types/bookings';
+import { getPositionLabels, getUpcomingBookings } from '$lib/utils/bookings';
 import { fetchMetars } from '$lib/server/vatsim/vatsimDataClient';
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt, inArray } from 'drizzle-orm';
 
-export const load = async ({ locals }) => {
-	const metars = await fetchMetars();
+// Bookings starting soon, with the position names to show. The home page doesn't depend on the
+// booking system: if the Worker is missing or fails, there are simply none to show.
+async function fetchUpcomingBookings(worker: BookingsWorker | undefined) {
+	if (!worker) return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
 
-	const controllers = await fetchControllers();
+	try {
+		const [bookings, positions] = await Promise.all([fetchBookings(worker), worker.getPositions()]);
+		const upcomingBookings = getUpcomingBookings(bookings, new Date(), BOOKING_REMINDER_HOURS);
+		const labels = getPositionLabels(positions);
+
+		return {
+			upcomingBookings,
+			bookingPositions: Object.fromEntries(
+				upcomingBookings
+					.filter((booking) => labels[booking.callsign])
+					.map((booking) => [booking.callsign, labels[booking.callsign]])
+			)
+		};
+	} catch (error) {
+		logger.error('Failed to read upcoming bookings for the home page', { error });
+		return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
+	}
+}
+
+export const load = async ({ locals, platform }) => {
+	const [metars, controllers, bookings] = await Promise.all([
+		fetchMetars(),
+		fetchControllers(),
+		fetchUpcomingBookings(platform?.env.BOOKINGS)
+	]);
 
 	const events = await locals.db.query.eventsTable.findMany({
 		orderBy: asc(eventsTable.startTime),
@@ -21,6 +52,13 @@ export const load = async ({ locals }) => {
 	return {
 		events,
 		metars,
-		controllers
+		controllers,
+		// Position and time only: names stay on /bookings, which asks people to sign in
+		upcomingBookings: bookings.upcomingBookings.map(({ callsign, type, start }) => ({
+			callsign,
+			type,
+			start
+		})),
+		bookingPositions: bookings.bookingPositions
 	};
 };

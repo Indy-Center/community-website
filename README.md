@@ -138,7 +138,7 @@ unchanged. The copy stays in `.wrangler/state` between runs.
 ## Bookings from a fake worker
 
 `/bookings` reads and writes through the `BOOKINGS` service binding to the `bookings` Worker. To try
-it locally, run `dev/fake-bookings/`, a stand-in with five made-up positions and one booking, in a
+it locally, run `dev/fake-bookings/`, a stand-in with nine made-up positions (some under child fields, as the real feed nests them) and one booking, in a
 third terminal next to the two above, and restart `npm run dev:worker` so it finds the binding:
 
 ```bash

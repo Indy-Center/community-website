@@ -10,6 +10,17 @@ import type { BookingsWorker, WorkerBooking, WorkerPosition } from '../../src/li
 const QUEUE_DELAY_MS = 8000;
 
 const facility = { id: 'IND', name: 'Indianapolis ATCT/TRACON', parent: null };
+// Fields under Indianapolis, as the real feed nests them
+const anderson = {
+	id: 'AID',
+	name: 'Anderson Muni ATCT',
+	parent: { id: 'IND', name: facility.name }
+};
+const columbus = {
+	id: 'BAK',
+	name: 'Columbus Muni ATCT',
+	parent: { id: 'IND', name: facility.name }
+};
 
 const POSITIONS: WorkerPosition[] = [
 	{
@@ -35,6 +46,38 @@ const POSITIONS: WorkerPosition[] = [
 		frequency: 118300000,
 		facility,
 		requiredCredentials: [{ anyOf: ['A-LC'] }]
+	},
+	{
+		callsign: 'AID_GND',
+		name: 'Ground Control',
+		radioName: 'Anderson Ground',
+		frequency: 121600000,
+		facility: anderson,
+		requiredCredentials: [{ anyOf: ['A-GC'] }]
+	},
+	{
+		callsign: 'AID_TWR',
+		name: 'Local Control',
+		radioName: 'Anderson Tower',
+		frequency: 126000000,
+		facility: anderson,
+		requiredCredentials: [{ anyOf: ['A-LC'] }]
+	},
+	{
+		callsign: 'BAK_GND',
+		name: 'Ground Control',
+		radioName: 'Columbus Ground',
+		frequency: 121950000,
+		facility: columbus,
+		requiredCredentials: [{ anyOf: ['A-GC'] }]
+	},
+	{
+		callsign: 'BAK_TWR',
+		name: 'Local Control',
+		radioName: 'Columbus Tower',
+		frequency: 118600000,
+		facility: columbus,
+		requiredCredentials: [{ anyOf: ['S-LC'] }]
 	},
 	{
 		callsign: 'IND_APP',

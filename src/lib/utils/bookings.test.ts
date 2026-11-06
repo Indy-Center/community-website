@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
 	findBookingConflict,
+	getUpcomingBookings,
+	groupPositions,
 	meetsRequirements,
 	mergePendingBookings,
 	PENDING_MAX_MINUTES,
+	type BookablePosition,
 	type PendingRow
 } from './bookings';
 
@@ -116,5 +119,77 @@ describe('mergePendingBookings', () => {
 
 		expect(findBookingConflict(bookings, 'IND_GND', start, end)?.externalId).toBe('pending-1');
 		expect(findBookingConflict(bookings, 'IND_TWR', start, end)).toBeUndefined();
+	});
+});
+
+describe('groupPositions', () => {
+	const ind = { id: 'IND', name: 'Indianapolis ATCT/TRACON', parent: null };
+	const field = (id: string, name: string) => ({
+		id,
+		name,
+		parent: { id: 'IND', name: ind.name }
+	});
+	const at = (callsign: string, facility: BookablePosition['facility']): BookablePosition => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		type: 'ATCT',
+		facility
+	});
+
+	it('puts fields under their parent facility, and a parentless facility under itself', () => {
+		const groups = groupPositions([
+			at('BAK_TWR', field('BAK', 'Columbus Muni ATCT')),
+			at('IND_TWR', ind),
+			at('AID_GND', field('AID', 'Anderson Muni ATCT')),
+			at('AID_TWR', field('AID', 'Anderson Muni ATCT')),
+			at('ZZZ_TWR', { id: 'ZZZ', name: 'Another Field', parent: null })
+		]);
+
+		expect(
+			groups.map((g) => [
+				g.label,
+				g.facilities.map((f) => [f.label, f.positions.map((p) => p.callsign)])
+			])
+		).toEqual([
+			['Another Field', [['Another Field', ['ZZZ_TWR']]]],
+			[
+				'Indianapolis ATCT/TRACON',
+				[
+					['Anderson Muni ATCT', ['AID_GND', 'AID_TWR']],
+					['Columbus Muni ATCT', ['BAK_TWR']],
+					['Indianapolis ATCT/TRACON', ['IND_TWR']]
+				]
+			]
+		]);
+	});
+});
+
+describe('getUpcomingBookings', () => {
+	const now = new Date('2026-12-01T12:00:00Z');
+	const starting = (start: string) =>
+		booking({ id: Math.random(), start, end: '2026-12-02 23:00:00' });
+
+	it('keeps bookings starting within the lead time, soonest first, and drops the rest', () => {
+		const later = starting('2026-12-01 14:30:00');
+		const sooner = starting('2026-12-01 12:30:00');
+		const upcoming = getUpcomingBookings(
+			[
+				later,
+				starting('2026-12-01 15:00:01'),
+				starting('2026-12-01 11:59:59'),
+				starting('2026-12-01 12:00:00'),
+				sooner,
+				starting('2026-12-01 15:00:00')
+			],
+			now,
+			3
+		);
+
+		expect(upcoming.map((b) => b.start)).toEqual([
+			'2026-12-01 12:30:00',
+			'2026-12-01 14:30:00',
+			'2026-12-01 15:00:00'
+		]);
 	});
 });

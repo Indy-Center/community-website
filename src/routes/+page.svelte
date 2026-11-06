@@ -1,6 +1,7 @@
 <script lang="ts">
 	import EventGridCard from '$lib/components/events/EventGridCard.svelte';
 	import WeatherPanel from '$lib/components/status/WeatherPanel.svelte';
+	import UpcomingBookings from '$lib/components/status/UpcomingBookings.svelte';
 	import ControllersPanel from '$lib/components/status/ControllersPanel.svelte';
 	import Panel from '$lib/components/Panel.svelte';
 	import PageHero from '$lib/components/PageHero.svelte';
@@ -61,6 +62,11 @@
 						</a>
 					</div>
 				</Panel>
+			{/if}
+
+			<!-- Bookings starting within the reminder window -->
+			{#if data.upcomingBookings.length > 0}
+				<UpcomingBookings bookings={data.upcomingBookings} positions={data.bookingPositions} />
 			{/if}
 
 			<!-- Status Section - Two Columns -->
