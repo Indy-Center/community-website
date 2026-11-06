@@ -181,7 +181,14 @@ export function groupPositions(positions: BookablePosition[]): PositionGroup[] {
 	return [...groups]
 		.map(([label, facilities]) => ({
 			label,
-			facilities: [...facilities.values()].sort((a, b) => a.label.localeCompare(b.label))
+			facilities: [...facilities.values()]
+				.map((facility) => ({
+					...facility,
+					positions: [...facility.positions].sort(
+						(a, b) => positionRank(a.callsign) - positionRank(b.callsign)
+					)
+				}))
+				.sort((a, b) => a.label.localeCompare(b.label))
 		}))
 		.sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -210,6 +217,18 @@ export function searchPositions(positions: BookablePosition[], query: string) {
 export const sortBookings = (bookings: AtcBooking[]) =>
 	[...bookings].sort((a, b) => a.start.localeCompare(b.start));
 
+// Where a position sits on a roster, by the end of its callsign: TMU on top, then Center,
+// Approach and Departure, Tower, Ground, Ramp and Clearance. Anything else goes last.
+const POSITION_ORDER = [['TMU'], ['CTR'], ['APP', 'DEP'], ['TWR'], ['GND'], ['RMP'], ['DEL']];
+
+export function positionRank(callsign: string) {
+	const index = POSITION_ORDER.findIndex((suffixes) => suffixes.includes(callsignSuffix(callsign)));
+	return index === -1 ? POSITION_ORDER.length : index;
+}
+
+export const comparePositions = (a: string, b: string) =>
+	positionRank(a) - positionRank(b) || a.localeCompare(b);
+
 // Folds each event's bookings into one stand-in booking once there are `min` or more of them, so
 // an event with twenty positions is one block, not twenty. Everything else is left as it was.
 // `eventNames` is by event ID; an event we have no name for is called "Event".
@@ -230,6 +249,8 @@ export function groupEventBookings(
 		.map(([eventId, members]): AtcBooking => {
 			members.forEach((member) => grouped.add(member));
 			const sorted = sortBookings(members);
+			// The panel lists them in roster order
+			const roster = [...members].sort((a, b) => comparePositions(a.callsign, b.callsign));
 
 			return {
 				id: -1,
@@ -243,7 +264,7 @@ export function groupEventBookings(
 						.map((member) => member.end)
 						.sort()
 						.at(-1) ?? sorted[0].end,
-				group: { eventId, name: eventNames[eventId] ?? 'Event', members: sorted }
+				group: { eventId, name: eventNames[eventId] ?? 'Event', members: roster }
 			};
 		});
 
