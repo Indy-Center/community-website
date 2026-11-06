@@ -49,6 +49,12 @@
 			"migrations_dir": "./drizzle/migrations"
 		}
 	],
-	// The controller roster and credentials, from the training app (see the README)
-	"services": [{ "binding": "TRAINING", "service": "training-tools", "entrypoint": "TrainingRpc" }]
+	"services": [
+		// The controller roster and credentials, from the training app (see the README)
+		{ "binding": "TRAINING", "service": "training-tools", "entrypoint": "TrainingRpc" },
+		// Indy Larry's send Worker, for booking reminder DMs
+		{ "binding": "LARRY", "service": "indy-larry" },
+		// The bookings Worker, which wraps the booking system (Indy-Center/bookings-worker)
+		{ "binding": "BOOKINGS", "service": "bookings" }
+	]
 }

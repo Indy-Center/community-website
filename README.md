@@ -102,6 +102,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `IDENTITY_CLIENT_SECRET` — sign-in through the identity server (`IDENTITY_URL` points it at another one). `CONNECT_CLIENT_SECRET` instead when `AUTH_PROVIDER` isn't `identity`.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
+- `ATC_BOOKINGS_API_KEY` — creating, editing and deleting bookings (reading is public). `ATC_BOOKINGS_API_URL` is the base URL (`https://bookings.zlcartcc.org/api`); point it at a mock instead if you like.
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 
 `adapter-cloudflare` proxies the `DB` binding via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally.
@@ -169,7 +170,7 @@ npm run build && npm run deploy
 
 The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-Production secrets (OAuth client secrets, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`.
+Production secrets (OAuth client secrets, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`. The booking system's `ATC_BOOKINGS_API_KEY` secret and `ATC_BOOKINGS_API_URL` var are GitHub repo settings (Settings → Secrets and variables → Actions); the deploy workflow passes them to Cloudflare.
 
 ## Disclaimer
 

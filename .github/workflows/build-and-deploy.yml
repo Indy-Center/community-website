@@ -26,10 +26,19 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: npm run build
 
-      - name: Deploy
+      - name: Apply migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_KEY }}
-          command: |
-            d1 migrations apply website-db --remote
-            deploy
+          command: d1 migrations apply website-db --remote
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        env:
+          ATC_BOOKINGS_API_URL: ${{ vars.ATC_BOOKINGS_API_URL }}
+          ATC_BOOKINGS_API_KEY: ${{ secrets.ATC_BOOKINGS_API_KEY }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_KEY }}
+          vars: ATC_BOOKINGS_API_URL
+          secrets: ATC_BOOKINGS_API_KEY
+          command: deploy

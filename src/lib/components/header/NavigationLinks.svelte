@@ -18,6 +18,7 @@
 	import IconEmail from '~icons/mdi/email-outline';
 	import IconAccountPlus from '~icons/mdi/account-plus';
 	import IconSchool from '~icons/mdi/school';
+	import IconCalendarClock from '~icons/mdi/calendar-clock';
 
 	type NavLink = { label: string; href: string; icon: Component; external?: boolean };
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
@@ -56,6 +57,11 @@
 					label: 'Roster',
 					href: '/roster',
 					icon: IconAccountGroup
+				},
+				{
+					label: 'Bookings',
+					href: '/bookings',
+					icon: IconCalendarClock
 				},
 				{
 					label: 'Join Indy Center',
