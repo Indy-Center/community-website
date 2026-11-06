@@ -36,6 +36,8 @@ export type WorkerPosition = {
 	name: string;
 	radioName: string;
 	frequency: number;
+	// The CMS stars each facility's primary position
+	starred?: boolean;
 	facility: { id: string; name: string; parent: { id: string; name: string } | null };
 	requiredCredentials: { anyOf: string[] }[];
 };

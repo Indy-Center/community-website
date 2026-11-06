@@ -6,6 +6,9 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { BookingsWorker, WorkerBooking, WorkerPosition } from '../../src/lib/types/bookings';
 
+// Public, no key needed
+const CMS_POSITIONS_URL = 'https://cms.flyindycenter.com/api/public/v1/positions';
+
 // How long a write takes to show up in the list
 const QUEUE_DELAY_MS = 8000;
 
@@ -117,8 +120,31 @@ export default class FakeBookings extends WorkerEntrypoint implements BookingsWo
 		return bookings;
 	}
 
+	// The live CMS feed, as the real Worker reads it (retired positions left out), so the site shows
+	// the ARTCC's real positions. The made-up list answers if the CMS can't be reached.
 	async getPositions() {
-		return POSITIONS;
+		try {
+			const response = await fetch(CMS_POSITIONS_URL);
+			if (!response.ok) throw new Error(`CMS answered ${response.status}`);
+			const feed = (await response.json()) as (WorkerPosition & { retired?: boolean })[];
+
+			return feed
+				.filter((position) => position.retired !== true)
+				.map(
+					({ callsign, name, radioName, frequency, starred, facility, requiredCredentials }) => ({
+						callsign,
+						name,
+						radioName,
+						frequency,
+						starred,
+						facility,
+						requiredCredentials
+					})
+				);
+		} catch (error) {
+			console.warn('Could not read the CMS positions; using the made-up list', error);
+			return POSITIONS;
+		}
 	}
 
 	// A timer dies with the call that set it, so the delay is held open with waitUntil

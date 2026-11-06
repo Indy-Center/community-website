@@ -1,15 +1,31 @@
-import { CREDENTIAL_LADDER } from '$lib/config/bookings';
+import {
+	CREDENTIAL_LADDER,
+	EXTRA_PRIMARY_POSITIONS,
+	UNBOOKABLE_POSITIONS
+} from '$lib/config/bookings';
 import type { AtcBooking, WorkerPosition } from '$lib/types/bookings';
 
 export type PositionType = 'ARTCC' | 'TRACON' | 'ATCT';
 
 export const POSITION_TYPES: PositionType[] = ['ARTCC', 'TRACON', 'ATCT'];
 
+// What people call each type; nobody says ARTCC
+export const POSITION_TYPE_LABELS: Record<PositionType, string> = {
+	ARTCC: 'Center',
+	TRACON: 'TRACON',
+	ATCT: 'ATCT'
+};
+
+// Facility names from the CMS say "ARTCC" too
+export const plainFacilityName = (name: string) => name.replace(/ARTCC/g, 'Center');
+
 export type BookablePosition = {
 	callsign: string;
 	name: string;
 	radioName: string;
 	type: PositionType;
+	// The facility's main position; these head their list
+	primary: boolean;
 	// The facility the position belongs to, and its parent (e.g. Anderson under Indianapolis)
 	facility: { id: string; name: string; parent: { id: string; name: string } | null };
 };
@@ -77,16 +93,23 @@ export function meetsRequirements(
 	return position.requiredCredentials.every(({ anyOf }) => anyOf.some(holds));
 }
 
-// The feed's positions this controller may book, in the feed's order. Positions with a callsign
-// we can't place in a position type are left out.
+// The feed's positions this controller may book, primary ones first and otherwise in the feed's
+// order. Emergency positions and ones with a callsign we can't place in a position type are left
+// out.
 export function getBookablePositions(
 	positions: WorkerPosition[],
 	certification: string | null,
 	endorsements: string[]
 ): BookablePosition[] {
-	return positions.flatMap((position) => {
+	const bookable = positions.flatMap((position) => {
 		const type = getPositionType(position.callsign);
-		if (!type || !meetsRequirements(position, certification, endorsements)) return [];
+		if (
+			!type ||
+			UNBOOKABLE_POSITIONS.test(position.callsign) ||
+			!meetsRequirements(position, certification, endorsements)
+		) {
+			return [];
+		}
 
 		return [
 			{
@@ -94,10 +117,14 @@ export function getBookablePositions(
 				name: position.name,
 				radioName: position.radioName,
 				type,
+				primary: position.starred === true || EXTRA_PRIMARY_POSITIONS.includes(position.callsign),
 				facility: position.facility
 			}
 		];
 	});
+
+	// Array.sort is stable, so the feed's order holds within each half
+	return bookable.sort((a, b) => Number(b.primary) - Number(a.primary));
 }
 
 export type PositionGroup = {

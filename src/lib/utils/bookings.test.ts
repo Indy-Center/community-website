@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
 	findBookingConflict,
+	getBookablePositions,
 	getUpcomingBookings,
 	groupPositions,
 	meetsRequirements,
@@ -134,6 +135,7 @@ describe('groupPositions', () => {
 		name: callsign,
 		radioName: callsign,
 		type: 'ATCT',
+		primary: false,
 		facility
 	});
 
@@ -190,6 +192,49 @@ describe('getUpcomingBookings', () => {
 			'2026-12-01 12:30:00',
 			'2026-12-01 14:30:00',
 			'2026-12-01 15:00:00'
+		]);
+	});
+});
+
+describe('getBookablePositions', () => {
+	const facility = { id: 'ZID', name: 'Indianapolis ARTCC', parent: null };
+	const feed = (callsign: string, extra: object = {}) => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		frequency: 1,
+		facility,
+		requiredCredentials: [],
+		...extra
+	});
+
+	it('leaves out emergency (guard) positions', () => {
+		const offered = getBookablePositions(
+			[feed('IND_EM_CTR'), feed('IND_20_CTR'), feed('CMH_EM_APP'), feed('CMH_GND')],
+			null,
+			[]
+		);
+
+		expect(offered.map((p) => p.callsign)).toEqual(['IND_20_CTR', 'CMH_GND']);
+	});
+
+	it('puts primary positions first: the CMS star, or Falmouth 83 from config', () => {
+		const offered = getBookablePositions(
+			[
+				feed('IND_17_CTR'),
+				feed('IND_83_CTR'),
+				feed('IND_18_CTR'),
+				feed('IND_19_CTR', { starred: true })
+			],
+			null,
+			[]
+		);
+
+		expect(offered.map((p) => [p.callsign, p.primary])).toEqual([
+			['IND_83_CTR', true],
+			['IND_19_CTR', true],
+			['IND_17_CTR', false],
+			['IND_18_CTR', false]
 		]);
 	});
 });
