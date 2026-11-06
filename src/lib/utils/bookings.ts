@@ -87,7 +87,10 @@ export function getPositionLabel(position: {
 }): PositionLabel {
 	return getPositionType(position.callsign) === 'ARTCC'
 		? { title: position.name, detail: null }
-		: { title: position.radioName, detail: position.name };
+		: {
+				title: position.radioName,
+				detail: position.name === position.radioName ? null : position.name
+			};
 }
 
 // Labels for the positions in the feed, keyed by callsign

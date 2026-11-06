@@ -5,6 +5,7 @@ import {
 	eventIdOf,
 	findBookingConflict,
 	getBookablePositions,
+	getPositionLabel,
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
@@ -408,5 +409,24 @@ describe('groupPositions order', () => {
 			'IND_FX_RMP',
 			'IND_DEL'
 		]);
+	});
+});
+
+describe('TMU', () => {
+	const tmu = {
+		callsign: 'ZID_TMU',
+		name: 'ZID TMU',
+		radioName: 'ZID TMU',
+		frequency: 1,
+		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
+		requiredCredentials: []
+	};
+
+	it('is not offered in the booking form, whatever the member holds', () => {
+		expect(getBookablePositions([tmu], 'E-RC', ['T2-CTR'])).toEqual([]);
+	});
+
+	it('is labelled once, not "ZID TMU · ZID TMU"', () => {
+		expect(getPositionLabel(tmu)).toEqual({ title: 'ZID TMU', detail: null });
 	});
 });
