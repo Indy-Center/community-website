@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { ADVANCED_FIELDS } from '$lib/config/bookings';
 	import {
 		POSITION_TYPES,
 		formatZuluRange,
@@ -70,18 +69,19 @@
 			: []
 	);
 
-	// Only tower cab positions split by field; radar positions are one list each
+	// Positions sit under the facility they belong to, e.g. Indianapolis ATCT/TRACON
 	const groups = $derived.by(() => {
-		if (activeType === 'ARTCC') return [{ label: 'Center', positions: typeMatches }];
-		if (activeType === 'TRACON') return [{ label: 'Approach / Departure', positions: typeMatches }];
+		const byFacility = new Map<string, BookablePosition[]>();
+		for (const position of typeMatches) {
+			byFacility.set(position.facility.name, [
+				...(byFacility.get(position.facility.name) ?? []),
+				position
+			]);
+		}
 
-		return [
-			{
-				label: `Advanced (${ADVANCED_FIELDS.join(', ')})`,
-				positions: typeMatches.filter((position) => position.advanced)
-			},
-			{ label: 'Simple', positions: typeMatches.filter((position) => !position.advanced) }
-		].filter((group) => group.positions.length > 0);
+		return [...byFacility]
+			.map(([label, positions]) => ({ label, positions }))
+			.sort((a, b) => a.label.localeCompare(b.label));
 	});
 
 	function selectType(type: PositionType) {
@@ -208,13 +208,6 @@
 								class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"
 							>
 								Booked {formatZuluRange(conflict)}
-							</span>
-						{:else if position.primary && activeType === 'ARTCC'}
-							<!-- TRACON and ATCT only list primary positions, so the badge only tells centers apart -->
-							<span
-								class="ml-auto shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300"
-							>
-								Primary
 							</span>
 						{/if}
 					</label>

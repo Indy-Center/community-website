@@ -213,7 +213,7 @@
 			bookings={data.bookings}
 			names={data.names}
 			positions={data.positions}
-			manageableIds={data.manageableIds}
+			manageable={data.manageable}
 			onEdit={data.bookingEnabled ? openEdit : undefined}
 		/>
 	{:else}
@@ -224,7 +224,7 @@
 					icon={IconCalendarClock}
 				>
 					<ul class="divide-y divide-slate-700/60">
-						{#each bookings as booking (booking.id)}
+						{#each bookings as booking (booking.externalId ?? booking.id)}
 							{@const label = data.positions[booking.callsign]}
 							<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
 							<li
@@ -241,6 +241,9 @@
 											<span class="font-mono font-semibold text-white">{booking.callsign}</span>
 										{/if}
 									</div>
+									{#if booking.pending}
+										<Badge label="pending" color="orange" size="sm" />
+									{/if}
 									{#if booking.type !== 'booking'}
 										<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
 									{/if}
@@ -259,7 +262,7 @@
 									{zulu(booking.start)} – {zulu(booking.end)}
 								</span>
 								<div class="flex items-center justify-end gap-3">
-									{#if data.bookingEnabled && data.manageableIds.includes(booking.id)}
+									{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
 										<button
 											type="button"
 											onclick={() => openEdit(booking)}

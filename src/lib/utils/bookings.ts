@@ -1,17 +1,5 @@
-import {
-	ADVANCED_FIELDS,
-	EXTRA_PRIMARY_POSITIONS,
-	UNBOOKABLE_POSITIONS
-} from '$lib/config/bookings';
-import { credentialOrder, type AvailableCredential } from '$lib/credentials';
-import type { AtcBooking } from '$lib/types/bookings';
-import type { VnasFacility } from '$lib/types/vnas';
-
-type FacilityNode = {
-	id: string;
-	childFacilities: FacilityNode[];
-	positions: { callsign: string; name: string; radioName: string; starred: boolean }[];
-};
+import { CREDENTIAL_LADDER } from '$lib/config/bookings';
+import type { AtcBooking, WorkerPosition } from '$lib/types/bookings';
 
 export type PositionType = 'ARTCC' | 'TRACON' | 'ATCT';
 
@@ -22,14 +10,9 @@ export type BookablePosition = {
 	name: string;
 	radioName: string;
 	type: PositionType;
-	primary: boolean;
-	// Owning facility is IND, CVG, SDF or CMH; the picker splits ATCT positions on this
-	advanced: boolean;
+	// The facility the position belongs to; the picker groups on it
+	facility: { id: string; name: string };
 };
-
-// VnasFacility types top-level positions with the controller-feed shape, but the ARTCC
-// endpoint returns this shape at every level
-const asFacilityNode = (facility: VnasFacility) => facility as unknown as FacilityNode;
 
 const callsignSuffix = (callsign: string) => callsign.split('_').at(-1) ?? '';
 
@@ -50,13 +33,6 @@ export function getPositionType(callsign: string): PositionType | null {
 	}
 }
 
-// Every facility ID under the ARTCC (ZID, IND, SDF, CVG, ...) is a callsign prefix we own
-export function getCallsignPrefixes(facility: VnasFacility): string[] {
-	const walk = (f: FacilityNode): string[] => [f.id, ...f.childFacilities.flatMap(walk)];
-
-	return walk(asFacilityNode(facility));
-}
-
 export type PositionLabel = { title: string; detail: string | null };
 
 // Centers go by sector name alone ("Falmouth 83"); everything else by radio name with the
@@ -71,17 +47,11 @@ export function getPositionLabel(position: {
 		: { title: position.radioName, detail: position.name };
 }
 
-// Labels for every position in the ARTCC, keyed by callsign
-export function getPositionLabels(facility: VnasFacility): Record<string, PositionLabel> {
-	const walk = (f: FacilityNode): [string, PositionLabel][] => [
-		...f.positions.map((position): [string, PositionLabel] => [
-			position.callsign,
-			getPositionLabel(position)
-		]),
-		...f.childFacilities.flatMap(walk)
-	];
-
-	return Object.fromEntries(walk(asFacilityNode(facility)));
+// Labels for the positions in the feed, keyed by callsign
+export function getPositionLabels(positions: WorkerPosition[]): Record<string, PositionLabel> {
+	return Object.fromEntries(
+		positions.map((position) => [position.callsign, getPositionLabel(position)])
+	);
 }
 
 // One-line form for titles and dialogs, falling back to the callsign
@@ -90,38 +60,44 @@ export function describePosition(callsign: string, label: PositionLabel | undefi
 	return label.detail ? `${label.title} · ${label.detail}` : label.title;
 }
 
-export function getBookablePositions(facility: VnasFacility): BookablePosition[] {
-	const walk = (f: FacilityNode): BookablePosition[] => [
-		...f.positions.flatMap((position) => {
-			const type = getPositionType(position.callsign);
-			const primary = position.starred || EXTRA_PRIMARY_POSITIONS.includes(position.callsign);
-			// Every center sector is bookable; elsewhere only the primary positions
-			const bookable = primary || type === 'ARTCC';
-			if (!type || !bookable || UNBOOKABLE_POSITIONS.test(position.callsign)) {
-				return [];
+// Whether held credentials meet a position's requirements: every entry must be met, and an entry
+// is met by holding any one of its credentials or a higher one on the ladder. The booking system
+// makes the final decision; this only hides positions the controller can't book.
+export function meetsRequirements(
+	position: Pick<WorkerPosition, 'requiredCredentials'>,
+	certification: string | null,
+	endorsements: string[]
+) {
+	const held = [...(certification ? [certification] : []), ...endorsements];
+	const rank = (code: string) => CREDENTIAL_LADDER.indexOf(code);
+
+	const holds = (code: string) =>
+		held.some((have) => have === code || (rank(code) !== -1 && rank(have) >= rank(code)));
+
+	return position.requiredCredentials.every(({ anyOf }) => anyOf.some(holds));
+}
+
+// The feed's positions this controller may book, in the feed's order. Positions with a callsign
+// we can't place in a position type are left out.
+export function getBookablePositions(
+	positions: WorkerPosition[],
+	certification: string | null,
+	endorsements: string[]
+): BookablePosition[] {
+	return positions.flatMap((position) => {
+		const type = getPositionType(position.callsign);
+		if (!type || !meetsRequirements(position, certification, endorsements)) return [];
+
+		return [
+			{
+				callsign: position.callsign,
+				name: position.name,
+				radioName: position.radioName,
+				type,
+				facility: { id: position.facility.id, name: position.facility.name }
 			}
-			return [
-				{
-					callsign: position.callsign,
-					name: position.name,
-					radioName: position.radioName,
-					type,
-					primary,
-					advanced: ADVANCED_FIELDS.includes(f.id)
-				}
-			];
-		}),
-		...f.childFacilities.flatMap(walk)
-	];
-
-	const unique = new Map(
-		walk(asFacilityNode(facility)).map((position) => [position.callsign, position])
-	);
-
-	// Primary positions first, e.g. Falmouth 83 heads the center list
-	return [...unique.values()].sort(
-		(a, b) => Number(b.primary) - Number(a.primary) || a.callsign.localeCompare(b.callsign)
-	);
+		];
+	});
 }
 
 export function searchPositions(positions: BookablePosition[], query: string) {
@@ -140,49 +116,49 @@ export function searchPositions(positions: BookablePosition[], query: string) {
 	});
 }
 
-export function filterFacilityBookings(bookings: AtcBooking[], prefixes: string[]) {
-	const prefixSet = new Set(prefixes);
+export const sortBookings = (bookings: AtcBooking[]) =>
+	[...bookings].sort((a, b) => a.start.localeCompare(b.start));
 
-	return bookings
-		.filter((booking) => prefixSet.has(booking.callsign.split('_')[0]))
-		.sort((a, b) => a.start.localeCompare(b.start));
-}
+// A pending booking as the list shows it. It has no number from the booking system yet.
+export type PendingRow = {
+	externalId: string;
+	callsign: string;
+	cid: string;
+	start: Date;
+	end: Date;
+	createdAt: Date;
+};
 
-// A controller holds one certification (their highest) plus any endorsements
-export function canBookPosition(
-	callsign: string,
-	certification: string | null,
-	endorsements: string[],
-	credentials: AvailableCredential[]
-): boolean {
-	const advanced = ADVANCED_FIELDS.includes(callsign.split('_')[0]);
-	// A required certification the training app doesn't offer can't be held
-	const atLeast = (cert: string) =>
-		certification !== null &&
-		credentials.some(({ code }) => code === cert) &&
-		credentialOrder(credentials, certification) >= credentialOrder(credentials, cert);
+// How long a booking may stay pending before it is taken as refused by the booking system
+export const PENDING_MAX_MINUTES = 10;
 
-	switch (callsignSuffix(callsign)) {
-		// S-GC can work clearance anywhere, advanced fields included
-		case 'DEL':
-			return atLeast('S-GC');
-		// Ground: S-GC at simple fields, A-GC at advanced ones
-		case 'GND':
-		case 'RMP':
-			return atLeast(advanced ? 'A-GC' : 'S-GC');
-		// A-LC works every tower; S-LC only the simple ones
-		case 'TWR':
-			return atLeast('A-LC') || (!advanced && endorsements.includes('S-LC'));
-		// T-RC and E-RC work every TRACON
-		case 'APP':
-		case 'DEP':
-			return atLeast('T-RC');
-		// T2-CTR already requires E-RC in training-tools
-		case 'CTR':
-			return endorsements.includes('T2-CTR');
-		default:
-			return false;
-	}
+// The list with pending bookings added, and the pending rows that are done: now in the list, or
+// too old. A pending row is only a stand-in until the real booking shows up.
+export function mergePendingBookings(bookings: AtcBooking[], rows: PendingRow[], now: Date) {
+	const listed = new Set(bookings.flatMap((booking) => booking.externalId ?? []));
+	const oldest = now.getTime() - PENDING_MAX_MINUTES * 60000;
+	const isDone = (row: PendingRow) =>
+		listed.has(row.externalId) || row.createdAt.getTime() < oldest;
+
+	const pending = rows
+		.filter((row) => !isDone(row))
+		.map(
+			(row): AtcBooking => ({
+				id: -1,
+				externalId: row.externalId,
+				callsign: row.callsign,
+				cid: Number(row.cid),
+				type: 'booking',
+				start: formatBookingTime(row.start),
+				end: formatBookingTime(row.end),
+				pending: true
+			})
+		);
+
+	return {
+		bookings: sortBookings([...bookings, ...pending]),
+		doneIds: rows.filter(isDone).map((row) => row.externalId)
+	};
 }
 
 // Bookings carry UTC times without a zone marker; the API client converts from its ISO 8601

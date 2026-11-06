@@ -1,13 +1,10 @@
 import { BOOKING_REMINDER_HOURS, BOOKINGS_URL } from '$lib/config/bookings';
 import { logger } from '$lib/server/logger';
 import { fetchBookings } from '$lib/server/bookings';
-import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient';
 import { fetchRosterDiscordIds } from '$lib/server/vatsim/vatusaDataClient';
 import type { AtcBooking, BookingsWorker } from '$lib/types/bookings';
 import {
 	describePosition,
-	filterFacilityBookings,
-	getCallsignPrefixes,
 	getDueReminders,
 	getPositionLabels,
 	parseBookingTime,
@@ -38,21 +35,20 @@ export async function runRemindBookings(
 ) {
 	if (!larry || !bookings) return;
 
-	const [allBookings, artcc, discordIds] = await Promise.all([
+	const [allBookings, positions, discordIds] = await Promise.all([
 		fetchBookings(bookings),
-		fetchArtccInformation(),
+		bookings.getPositions().catch((error) => {
+			// Reminders still go out, naming positions by callsign
+			logger.error('Failed to read the bookable positions for reminders', { error });
+			return [];
+		}),
 		fetchRosterDiscordIds()
 	]);
 
-	const due = getDueReminders(
-		filterFacilityBookings(allBookings, getCallsignPrefixes(artcc.facility)),
-		runTime,
-		BOOKING_REMINDER_HOURS,
-		CRON_INTERVAL_MINUTES
-	);
+	const due = getDueReminders(allBookings, runTime, BOOKING_REMINDER_HOURS, CRON_INTERVAL_MINUTES);
 	if (due.length === 0) return;
 
-	const labels = getPositionLabels(artcc.facility);
+	const labels = getPositionLabels(positions);
 
 	await Promise.all(
 		due.map(async (booking) => {

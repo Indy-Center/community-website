@@ -340,7 +340,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `IDENTITY_API_CLIENT_SECRET` — writes to identity; see "Identity API client". Without it those writes are refused locally and logged.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
-- `ATC_BOOKINGS_API_KEY` — creating, editing and deleting bookings (reading is public). `ATC_BOOKINGS_API_URL` is the base URL (`https://bookings.zlcartcc.org/api`); point it at a mock instead if you like.
+- Bookings need no key here: the site reaches the booking system through the `BOOKINGS` service binding to the `bookings` Worker ([Indy-Center/bookings-worker](https://github.com/Indy-Center/bookings-worker)), which holds the API key. Without the binding the bookings page loads empty and booking is disabled.
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Link Discord on the profile, through the "Indy Center" Discord app; see [Linked accounts](#linked-accounts). Without them Link Discord says Discord didn't confirm the account.
 
@@ -399,6 +399,20 @@ app`, and `/roster` lists them. Stop the fake and run it again to see a refused 
 says `Keeping the last roster copy` and `Skipping the membership sync`, and `/roster` is
 unchanged. The copy stays in `.wrangler/state` between runs.
 
+## Bookings from a fake worker
+
+`/bookings` reads and writes through the `BOOKINGS` service binding to the `bookings` Worker. To try
+it locally, run `dev/fake-bookings/`, a stand-in with five made-up positions and one booking, in a
+third terminal next to the two above, and restart `npm run dev:worker` so it finds the binding:
+
+```bash
+npm run dev:bookings           # the fake bookings Worker, on port 8790
+```
+
+Bookings sit in its memory and reset when it stops. A write takes about eight seconds to land, as
+the real Worker's queue does, so a new booking shows as pending in the meantime and holds its
+position. Without it the page loads empty and booking is disabled.
+
 ## Tests
 
 ```bash
@@ -434,7 +448,7 @@ npm run build && npm run deploy
 
 The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`. The booking system's `ATC_BOOKINGS_API_KEY` secret and `ATC_BOOKINGS_API_URL` var are GitHub repo settings (Settings → Secrets and variables → Actions); the deploy workflow passes them to Cloudflare.
+Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`. The `bookings` Worker must be deployed before this site: the `BOOKINGS` service binding in `wrangler.jsonc` points at it.
 
 ## Disclaimer
 
