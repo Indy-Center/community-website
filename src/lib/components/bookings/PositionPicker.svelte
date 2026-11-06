@@ -37,8 +37,8 @@
 	const ATCT_ROLES: { role: AtctRole; label: string }[] = [
 		{ role: 'TWR', label: 'Tower' },
 		{ role: 'GND', label: 'Ground' },
-		{ role: 'DEL', label: 'Clearance' },
-		{ role: 'RMP', label: 'Ramp' }
+		{ role: 'RMP', label: 'Ramp' },
+		{ role: 'DEL', label: 'Clearance' }
 	];
 	const roleOf = (position: BookablePosition) => position.callsign.split('_').at(-1);
 

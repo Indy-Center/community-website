@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
+	comparePositions,
 	eventIdOf,
 	findBookingConflict,
 	getBookablePositions,
@@ -161,7 +162,7 @@ describe('groupPositions', () => {
 			[
 				'Indianapolis ATCT/TRACON',
 				[
-					['Anderson Muni ATCT', ['AID_GND', 'AID_TWR']],
+					['Anderson Muni ATCT', ['AID_TWR', 'AID_GND']],
 					['Columbus Muni ATCT', ['BAK_TWR']],
 					['Indianapolis ATCT/TRACON', ['IND_TWR']]
 				]
@@ -319,5 +320,93 @@ describe('groupEventBookings', () => {
 		const grouped = groupEventBookings(bookings, names);
 
 		expect(grouped.map((b) => b.group?.name)).toEqual(['Never Dull', 'Event']);
+	});
+});
+
+describe('comparePositions', () => {
+	it('orders TMU, Center, Approach and Departure, Tower, Ground, Ramp, then Clearance', () => {
+		const callsigns = [
+			'IND_DEL',
+			'CVG_1_RMP',
+			'IND_GND',
+			'IND_E_TWR',
+			'CMH_P_APP',
+			'IND_83_CTR',
+			'ZID_TMU',
+			'EVV_DEL',
+			'SDF_E_APP',
+			'DAY_DEP',
+			'MYSTERY_XYZ',
+			'IND_17_CTR'
+		];
+
+		expect(callsigns.sort(comparePositions)).toEqual([
+			'ZID_TMU',
+			'IND_17_CTR',
+			'IND_83_CTR',
+			'CMH_P_APP',
+			'DAY_DEP',
+			'SDF_E_APP',
+			'IND_E_TWR',
+			'IND_GND',
+			'CVG_1_RMP',
+			'EVV_DEL',
+			'IND_DEL',
+			'MYSTERY_XYZ'
+		]);
+	});
+
+	it('lists an event group’s positions in that order', () => {
+		const EVENT = 'e1';
+		const at = (n: number, callsign: string) =>
+			booking({
+				id: n,
+				externalId: `ev_${EVENT}_${String(n).padStart(16, '0')}`,
+				type: 'event',
+				callsign
+			});
+
+		const [group] = groupEventBookings(
+			[at(1, 'IND_DEL'), at(2, 'IND_GND'), at(3, 'IND_83_CTR'), at(4, 'ZID_TMU')],
+			{}
+		);
+
+		expect(group.group?.members.map((m) => m.callsign)).toEqual([
+			'ZID_TMU',
+			'IND_83_CTR',
+			'IND_GND',
+			'IND_DEL'
+		]);
+	});
+});
+
+describe('groupPositions order', () => {
+	const facility = { id: 'IND', name: 'Indianapolis', parent: null };
+	const at = (callsign: string, primary = false): BookablePosition => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		type: 'ATCT',
+		primary,
+		facility
+	});
+
+	it('lists a facility’s positions in roster order, a primary one first among its own kind', () => {
+		// getBookablePositions hands them over with primary positions first
+		const [group] = groupPositions([
+			at('IND_E_TWR', true),
+			at('IND_DEL'),
+			at('IND_W_TWR'),
+			at('IND_GND'),
+			at('IND_FX_RMP')
+		]);
+
+		expect(group.facilities[0].positions.map((p) => p.callsign)).toEqual([
+			'IND_E_TWR',
+			'IND_W_TWR',
+			'IND_GND',
+			'IND_FX_RMP',
+			'IND_DEL'
+		]);
 	});
 });
