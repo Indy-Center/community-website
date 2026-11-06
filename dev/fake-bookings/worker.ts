@@ -100,20 +100,8 @@ const POSITIONS: WorkerPosition[] = [
 	}
 ];
 
-const hours = (count: number) => new Date(Date.now() + count * 3600000);
-
 let nextId = 100;
-const bookings: WorkerBooking[] = [
-	{
-		id: 1,
-		externalId: null,
-		cid: 1000099,
-		callsign: 'IND_TWR',
-		type: 'event',
-		start: hours(26),
-		end: hours(29)
-	}
-];
+const bookings: WorkerBooking[] = [];
 
 export default class FakeBookings extends WorkerEntrypoint implements BookingsWorker {
 	async listOrgBookings() {
