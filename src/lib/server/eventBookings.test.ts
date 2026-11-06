@@ -24,7 +24,8 @@ vi.mock('$lib/server/vatsim/vnasDataClient', () => ({
 					childFacilities: [],
 					positions: [
 						{ id: 'pos-twr', callsign: 'IND_TWR' },
-						{ id: 'pos-gnd', callsign: 'IND_GND' }
+						{ id: 'pos-gnd', callsign: 'IND_GND' },
+						{ id: 'pos-tmu', callsign: 'ZID_TMU' }
 					]
 				}
 			]
@@ -144,6 +145,17 @@ describe('syncAssignment', () => {
 			start: event.startTime,
 			end: event.endTime
 		});
+	});
+
+	it('books a TMU position held on an event roster, though TMU is not bookable on its own', async () => {
+		const worker = stubWorker();
+		const event = await makeEvent({}, { 'pos-tmu': 'user-jane' });
+
+		await syncAssignment(worker, db, event, 'pos-tmu', { userId: 'user-jane' });
+
+		expect(worker.createBooking).toHaveBeenCalledWith(
+			expect.objectContaining({ cid: 1000001, callsign: 'ZID_TMU', type: 'event' })
+		);
 	});
 
 	it('cancels the old booking and books the new person when a position changes hands', async () => {
