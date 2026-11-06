@@ -14,6 +14,7 @@ import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 import { memberNameColumns } from '$lib/members';
+import { cancelEvent, syncAssignment, syncEvent } from '$lib/server/eventBookings';
 
 // Page data goes to every visitor's browser: of each member, only what the page shows
 const shownUser = { columns: memberNameColumns };
@@ -67,19 +68,29 @@ const requestPositionSchema = z.object({
 });
 
 export const actions = {
-	delete: async ({ locals, params }) => {
+	delete: async ({ locals, params, platform }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
+
+		// Take the roster off the booking calendar while we still know who is on it
+		const doomed = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
+		if (doomed) await cancelEvent(platform?.env.BOOKINGS, locals.db, doomed);
 
 		await locals.db.delete(eventsTable).where(eq(eventsTable.id, params.id));
 
 		return redirect(302, '/events');
 	},
-	togglePublish: async ({ locals, params }) => {
+	togglePublish: async ({ locals, params, platform }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
+
+		const before = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
 
 		await locals.db
 			.update(eventsTable)
@@ -99,10 +110,16 @@ export const actions = {
 				.where(eq(eventsTable.id, params.id));
 		}
 
+		// Publishing puts an open roster's controllers on the booking calendar; hiding takes them off
+		const after = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
+		if (before && after) await syncEvent(platform?.env.BOOKINGS, locals.db, before, after);
+
 		return redirect(302, `/events/${params.id}`);
 	},
 
-	signUpForPosition: async ({ locals, request, params }) => {
+	signUpForPosition: async ({ locals, request, params, platform }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -127,6 +144,14 @@ export const actions = {
 			return fail(400, { error: 'Event roster is not available for sign-up', form });
 		}
 
+		const previous = await locals.db.query.eventPositionsTable.findFirst({
+			where: and(
+				eq(eventPositionsTable.position, form.data.position),
+				eq(eventPositionsTable.eventId, params.id)
+			),
+			columns: { userId: true }
+		});
+
 		// Update the position assignment
 		await locals.db
 			.update(eventPositionsTable)
@@ -141,10 +166,18 @@ export const actions = {
 				)
 			);
 
+		// An open roster books people as they sign up
+		if (event) {
+			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.position, {
+				previousUserId: previous?.userId,
+				userId: locals.session.userId
+			});
+		}
+
 		return { success: true };
 	},
 
-	unassignFromPosition: async ({ locals, request, params }) => {
+	unassignFromPosition: async ({ locals, request, params, platform }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -154,6 +187,17 @@ export const actions = {
 		if (!form.valid) {
 			return fail(400, { form });
 		}
+
+		const [event, previous] = await Promise.all([
+			locals.db.query.eventsTable.findFirst({ where: eq(eventsTable.id, params.id) }),
+			locals.db.query.eventPositionsTable.findFirst({
+				where: and(
+					eq(eventPositionsTable.position, form.data.position),
+					eq(eventPositionsTable.eventId, params.id)
+				),
+				columns: { userId: true }
+			})
+		]);
 
 		// Update the position to unassign
 		await locals.db
@@ -168,6 +212,13 @@ export const actions = {
 					eq(eventPositionsTable.eventId, params.id)
 				)
 			);
+
+		if (event) {
+			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.position, {
+				previousUserId: previous?.userId,
+				userId: null
+			});
+		}
 
 		return { success: true };
 	},

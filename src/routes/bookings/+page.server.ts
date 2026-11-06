@@ -14,6 +14,7 @@ import {
 } from '$lib/server/bookings';
 import type { AtcBooking, BookingsWorker, WorkerPosition } from '$lib/types/bookings';
 import {
+	EVENT_BOOKING_PREFIX,
 	findBookingConflict,
 	formatZuluRange,
 	getBookablePositions,
@@ -55,6 +56,8 @@ async function fetchPositions(worker: BookingsWorker | undefined) {
 function canManageBooking(booking: AtcBooking, cid: string | undefined, roles: string[]) {
 	return (
 		booking.externalId !== null &&
+		// An event booking follows its event's roster, so it is changed from the event
+		!booking.externalId.startsWith(EVENT_BOOKING_PREFIX) &&
 		!booking.pending &&
 		(isAdmin(roles) || String(booking.cid) === cid)
 	);

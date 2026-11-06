@@ -127,6 +127,20 @@ describe('/bookings load', () => {
 		).toEqual(['mine', 'theirs']);
 	});
 
+	it('leaves event bookings to their event: nobody changes them from here, admins included', async () => {
+		const worker = stubWorker([
+			listed({ id: 1, externalId: 'ev_0123456789abcdef', cid: 1000001, type: 'event' })
+		]);
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001', [Role.ADMIN]),
+			platform: { env: { BOOKINGS: worker } }
+		});
+
+		expect(data.bookings).toHaveLength(1);
+		expect(data.manageable).toEqual([]);
+	});
+
 	it('shows a pending booking, and clears it once the list has it', async () => {
 		const worker = stubWorker();
 		const row = {

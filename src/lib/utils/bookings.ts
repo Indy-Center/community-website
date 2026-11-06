@@ -4,6 +4,7 @@ import {
 	UNBOOKABLE_POSITIONS
 } from '$lib/config/bookings';
 import type { AtcBooking, WorkerPosition } from '$lib/types/bookings';
+import type { VnasFacility } from '$lib/types/vnas';
 
 export type PositionType = 'ARTCC' | 'TRACON' | 'ATCT';
 
@@ -18,6 +19,25 @@ export const POSITION_TYPE_LABELS: Record<PositionType, string> = {
 
 // Facility names from the CMS say "ARTCC" too
 export const plainFacilityName = (name: string) => name.replace(/ARTCC/g, 'Center');
+
+// Event rosters book their controllers under IDs that start with this, so /bookings can tell they
+// are managed from the event
+export const EVENT_BOOKING_PREFIX = 'ev_';
+
+type FacilityNode = {
+	childFacilities: FacilityNode[];
+	positions: { id: string; callsign: string }[];
+};
+
+// Callsign by vNAS position ID, for every position in the ARTCC. Event positions are stored by ID.
+export function getPositionCallsigns(facility: VnasFacility): Record<string, string> {
+	const walk = (f: FacilityNode): [string, string][] => [
+		...f.positions.map((position): [string, string] => [position.id, position.callsign]),
+		...f.childFacilities.flatMap(walk)
+	];
+
+	return Object.fromEntries(walk(facility as unknown as FacilityNode));
+}
 
 export type BookablePosition = {
 	callsign: string;

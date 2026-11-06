@@ -50,6 +50,7 @@ export type BookingsWorker = {
 		externalId: string;
 		cid: number;
 		callsign: string;
+		type?: BookingType;
 		start: Date;
 		end: Date;
 	}): Promise<void>;
