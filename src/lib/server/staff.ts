@@ -1,4 +1,3 @@
-import { FACILITY_ID } from '$lib/config';
 import {
 	STAFF_POSITIONS,
 	STAFF_TEAMS,
@@ -6,23 +5,19 @@ import {
 	type StaffTeamSection
 } from '$lib/config/staff';
 import type { StaffBadgeKey } from '$lib/config/staffBadges';
-import type { VatusaRosterMember } from '$lib/types/vatusa';
 
 // Who holds each staff position and team section. Shared by the staff page, the roster,
 // and profiles so they always agree.
 
-type RosterEntry = { cid: string; data: VatusaRosterMember };
+// A member of the roster copy, with their VATUSA facility roles at ZID
+type RosterEntry = { cid: string; roles: string[] };
 type Assignment = { position: string; cid: string };
 type TeamRow = { team: string; cid: string; excluded: boolean };
 type Poc = { position: string; cid: string };
 
 // CIDs holding a role according to VATUSA facility roles
 export function getVatusaHolders(roster: RosterEntry[], role: string) {
-	return roster
-		.filter((member) =>
-			member.data.roles?.some((r) => r.facility === FACILITY_ID && r.role === role)
-		)
-		.map((member) => member.cid);
+	return roster.filter((member) => member.roles.includes(role)).map((member) => member.cid);
 }
 
 // Who VATUSA says holds a position: its point of contact for team leads, otherwise its

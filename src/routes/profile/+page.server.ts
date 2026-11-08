@@ -1,8 +1,8 @@
 import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
+import { readMemberCredentials } from '$lib/server/roster';
+import { customPreferredName } from '$lib/members';
 import { averageRating } from '$lib/utils/feedbackRatings';
 import { signInHref } from '$lib/utils/signIn';
 import { getStaffBadges } from '$lib/server/staff';
@@ -23,8 +23,8 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	const [rows, rosterEntry, certifications, endorsements, assignments, teamRows, pocs] =
-		await Promise.all([
+	const [rows, rosterEntry, { held, credentials }, assignments, teamRows, pocs] = await Promise.all(
+		[
 			// Approved feedback about this user, at every rating
 			locals.db
 				.select({
@@ -47,20 +47,14 @@ export const load = async ({ locals, url }) => {
 			// Only controllers on the roster have a public profile
 			locals.db.query.vatsimControllersTable.findFirst({
 				where: eq(vatsimControllersTable.cid, locals.user.cid),
-				columns: { cid: true, data: true }
+				columns: { cid: true, roles: true }
 			}),
-			locals.db
-				.select({ certification: userCertificationsTable.certification })
-				.from(userCertificationsTable)
-				.where(eq(userCertificationsTable.userId, locals.user.id)),
-			locals.db
-				.select({ endorsement: userEndorsementsTable.endorsement })
-				.from(userEndorsementsTable)
-				.where(eq(userEndorsementsTable.userId, locals.user.id)),
+			readMemberCredentials(locals.db, locals.user.cid),
 			locals.db.query.staffAssignmentsTable.findMany(),
 			locals.db.query.staffTeamMembersTable.findMany(),
 			locals.db.query.staffPocsTable.findMany()
-		]);
+		]
+	);
 
 	// Pilots who gave their callsign are shown by their preferred name, or first name and
 	// last initial ("Tom M.") if they haven't set a custom one; the rest stay anonymous, and
@@ -73,14 +67,9 @@ export const load = async ({ locals, url }) => {
 
 		// Settings pre-fills the preferred name with the full name, so a preferred name that
 		// just matches it isn't a real choice and would expose the full last name
-		const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
-		const preferredName = row.submitterPreferredName?.trim();
-		const hasCustomPreferredName =
-			!!preferredName && normalize(preferredName) !== normalize(`${firstName} ${lastName}`);
+		const preferredName = customPreferredName(row.submitterPreferredName, firstName, lastName);
 
-		const submitterName = callsign
-			? (hasCustomPreferredName ? preferredName : shortName) || null
-			: null;
+		const submitterName = callsign ? (preferredName ?? shortName) || null : null;
 
 		return {
 			id: row.id,
@@ -104,8 +93,9 @@ export const load = async ({ locals, url }) => {
 			getStaffBadges(rosterEntry ? [rosterEntry] : [], assignments, teamRows, pocs).get(
 				locals.user.cid
 			) ?? [],
-		certifications: certifications.map((c) => c.certification),
-		endorsements: endorsements.map((e) => e.endorsement)
+		certifications: held?.certification ? [held.certification] : [],
+		endorsements: held?.endorsements ?? [],
+		credentials: credentials.map(({ code, name }) => ({ code, name }))
 	};
 };
 

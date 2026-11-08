@@ -9,9 +9,7 @@ export const load = async ({ locals }) => {
 	// Get all users with their roles
 	const usersWithRoles = await locals.db.query.usersTable.findMany({
 		with: {
-			roles: true,
-			certifications: true,
-			endorsements: true
+			roles: true
 		}
 	});
 

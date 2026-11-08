@@ -3,14 +3,11 @@ import { and, eq, inArray, isNotNull, not, notInArray } from 'drizzle-orm';
 import type { Database } from './db';
 import { vatsimControllersTable, type VatsimController } from '$lib/db/schema/vatsimControllers';
 import { usersTable } from '$lib/db/schema/users';
-import { userCertificationsTable } from '$lib/db/schema/certifications';
-import { addMonths } from 'date-fns';
 import { userRolesTable } from '$lib/db/schema/roles';
 import { Role } from '$lib/utils/permissions';
-import { userEndorsementsTable } from '$lib/db/schema/endorsements';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
 import { logger } from './logger';
-import { BANNED_TWO_LETTER_COMBINATIONS, FACILITY_ID } from '$lib/config';
+import { BANNED_TWO_LETTER_COMBINATIONS } from '$lib/config';
 
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
@@ -87,12 +84,6 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
 	);
 
-	// Grant Certificates
-	const { certifications, endorsements } = await grantInitialCertificationsAndEndorsements(
-		db,
-		user
-	);
-
 	const operatingInitials = await grantOperatingInitials(db, user);
 
 	await grantRoles(db, user, controller);
@@ -102,20 +93,6 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 		description: `User ${user.firstName} ${user.lastName} (${user.cid}) is now a controller`,
 		color: 0x00ff00,
 		fields: [
-			certifications.length > 0
-				? {
-						name: 'Certifications',
-						value: certifications.join(', '),
-						inline: true
-					}
-				: null,
-			endorsements.length > 0
-				? {
-						name: 'Endorsements and Additional Certifications',
-						value: endorsements.join(', '),
-						inline: true
-					}
-				: null,
 			operatingInitials
 				? {
 						name: 'Operating Initials',
@@ -131,80 +108,6 @@ async function processNewController(db: Database, user: User, controller: Vatsim
 	logger.info(
 		`Processing new controller ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName}) complete.`
 	);
-}
-
-async function grantInitialCertificationsAndEndorsements(db: Database, user: User) {
-	logger.info(
-		`Granting initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-	);
-
-	const { certifications, endorsements } = determineCertificationsAndEndorsementsFromRating(
-		user.data.vatsim.rating.short
-	);
-
-	if (certifications.length > 0) {
-		const result = await db
-			.insert(userCertificationsTable)
-			.values(
-				certifications.map((certification) => ({
-					userId: user.id,
-					certification: certification,
-					createdAt: new Date(),
-					expiresAt: addMonths(new Date(), 6)
-				}))
-			)
-			.onConflictDoNothing()
-			.returning();
-		logger.info(
-			`Granted ${result.length} initial certificates for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
-	}
-
-	if (endorsements.length > 0) {
-		const result = await db
-			.insert(userEndorsementsTable)
-			.values(
-				endorsements.map((endorsement) => ({
-					userId: user.id,
-					endorsement: endorsement,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					expiresAt: addMonths(new Date(), 6)
-				}))
-			)
-			.onConflictDoNothing()
-			.returning();
-		logger.info(
-			`Granted ${result.length} initial endorsements for ${user.id} (${user.cid} -> ${user.firstName} ${user.lastName})`
-		);
-	}
-
-	return { certifications, endorsements };
-}
-
-/**
- * Initial certifications and some endorsements are determined based on your VATSIM Rating.
- *
- * @param rating
- * @returns
- */
-function determineCertificationsAndEndorsementsFromRating(rating: string) {
-	switch (rating) {
-		case 'S1':
-			return { certifications: ['S-GC'], endorsements: [] };
-		case 'S2':
-			return { certifications: ['A-LC'], endorsements: [] };
-		case 'S3':
-		case 'C1':
-		case 'C2':
-		case 'C3':
-		case 'I1':
-		case 'I2':
-		case 'I3':
-			return { certifications: ['T-RC'], endorsements: [] };
-		default:
-			return { certifications: [], endorsements: [] };
-	}
 }
 
 /**
@@ -282,10 +185,8 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		lastName: user.lastName
 	});
 
-	// Get the user's VATUSA roles for this facility
-	const vatsimRoles = controller.data.roles
-		.filter((role) => role.facility === FACILITY_ID)
-		.map((role) => role.role);
+	// The user's VATUSA roles at this facility; the training app sends no others
+	const vatsimRoles = controller.roles;
 
 	logger.debug('VATUSA roles for user', {
 		userId: user.id,

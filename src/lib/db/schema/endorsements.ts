@@ -2,7 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { usersTable } from './users';
 
-// Endorsements for Solo and T2 Center
+// Unread since the roster comes from the training app; drop 30 days after cutover.
 export const userEndorsementsTable = sqliteTable('user_endorsements', {
 	userId: text('user_id').notNull(),
 	endorsement: text('endorsement').notNull(),

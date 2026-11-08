@@ -1,5 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
+import type { TrainingBinding } from '@indy-center/training-tools';
 import type { Cms } from '$lib/server/cms';
 import type { Database } from '$lib/server/db';
 import type { Session } from '$lib/server/session';
@@ -10,6 +11,8 @@ declare global {
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
+			/** The training app's `TrainingRpc` entrypoint: the controller roster; see the README. */
+			TRAINING: TrainingBinding;
 			/** The CMS's server credential; see the README. */
 			COMMUNITY_API_TOKEN?: string;
 		}

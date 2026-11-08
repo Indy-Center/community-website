@@ -6,6 +6,7 @@ import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient.js';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
+import { readAvailableCredentials } from '$lib/server/roster';
 import { memberNameColumns, memberPickerColumns } from '$lib/members';
 
 export const load = async ({ locals, params, depends }) => {
@@ -39,10 +40,12 @@ export const load = async ({ locals, params, depends }) => {
 	});
 
 	const artccInformation = await fetchArtccInformation();
+	const credentials = await readAvailableCredentials(locals.db);
 
 	return {
 		event,
 		users,
+		credentials,
 		artccInformation
 	};
 };

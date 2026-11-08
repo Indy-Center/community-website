@@ -3,10 +3,7 @@
 	import StaffBadges from '$lib/components/StaffBadges.svelte';
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import type { StaffBadgeKey } from '$lib/config/staffBadges';
-	import {
-		getCertificationDisplayName,
-		getEndorsementDisplayName
-	} from '$lib/config/certifications';
+	import { credentialName, type AvailableCredential } from '$lib/credentials';
 	import IconAirplane from '~icons/mdi/airplane';
 	import IconRating from '~icons/mdi/radar';
 
@@ -20,7 +17,8 @@
 		pilotRating,
 		staffBadges = [],
 		certifications = [],
-		endorsements = []
+		endorsements = [],
+		credentials = []
 	}: {
 		name: string;
 		pronouns: string | null;
@@ -32,6 +30,8 @@
 		staffBadges?: StaffBadgeKey[];
 		certifications?: string[];
 		endorsements?: string[];
+		/** The available credentials, to give each chip its full name. */
+		credentials?: Pick<AvailableCredential, 'code' | 'name'>[];
 	} = $props();
 
 	const CHIP =
@@ -73,12 +73,12 @@
 			{/if}
 			<StaffBadges badges={staffBadges} />
 			{#each certifications as certification (certification)}
-				<Tooltip text={getCertificationDisplayName(certification)}>
+				<Tooltip text={credentialName(credentials, certification)}>
 					<span class="{CHIP} bg-emerald-600/80">{certification}</span>
 				</Tooltip>
 			{/each}
 			{#each endorsements as endorsement (endorsement)}
-				<Tooltip text={getEndorsementDisplayName(endorsement)}>
+				<Tooltip text={credentialName(credentials, endorsement)}>
 					<span class="{CHIP} bg-purple-600/80">{endorsement}</span>
 				</Tooltip>
 			{/each}

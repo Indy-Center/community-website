@@ -11,12 +11,14 @@ export const TEST_CMS_TIMEOUT_MS = 20;
  * A stand-in for the CMS's HTTP API: serves `document` at the partners path, 404s anything else,
  * and records every request. `serve()` changes what it serves; `down()` makes every request fail,
  * as an outage would; `hang()` makes every request wait until it is given up on, as a CMS too slow
- * to answer would.
+ * to answer would; `answer(status)` makes every request answered with that error status, as a CMS
+ * refusing the token would with 401.
  */
 export function fakeCms(document: unknown = partners) {
 	const requests: string[] = [];
 	const authorizations: (string | null)[] = [];
 	let state: 'up' | 'down' | 'hanging' = 'up';
+	let errorStatus: number | undefined;
 
 	const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = new URL(String(input));
@@ -28,6 +30,7 @@ export function fakeCms(document: unknown = partners) {
 				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
 			});
 		}
+		if (errorStatus) return new Response('Refused', { status: errorStatus });
 		if (url.pathname !== PARTNERS_PATH) return new Response('Not found', { status: 404 });
 		return Response.json(document);
 	}) as typeof globalThis.fetch;
@@ -44,6 +47,9 @@ export function fakeCms(document: unknown = partners) {
 		},
 		hang() {
 			state = 'hanging';
+		},
+		answer(status: number) {
+			errorStatus = status;
 		}
 	};
 }

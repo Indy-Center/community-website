@@ -16,3 +16,18 @@ export const memberNameColumns = {
 export const memberPickerColumns = { id: true, cid: true, ...memberNameColumns } as const;
 
 export type PickableMember = Pick<User, keyof typeof memberPickerColumns>;
+
+/**
+ * The preferred name a member really chose, or null. Settings pre-fills the preferred name with
+ * "First Last", so one that matches the full name isn't a choice and must not stand in for
+ * name privacy. Every load that shows a display name uses this to decide.
+ */
+export function customPreferredName(
+	preferredName: string | null | undefined,
+	firstName: string | undefined,
+	lastName: string | undefined
+): string | null {
+	const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
+	const trimmed = preferredName?.trim();
+	return trimmed && normalize(trimmed) !== normalize(`${firstName} ${lastName}`) ? trimmed : null;
+}

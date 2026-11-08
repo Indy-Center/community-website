@@ -4,19 +4,12 @@
 	import IconAccount from '~icons/mdi/account';
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import type { User } from '$lib/db/schema/users';
-	import { CERTIFICATIONS, ENDORSEMENTS } from '$lib/config/certifications';
+	import { credentialName, credentialOrder } from '$lib/credentials';
 	import { Role } from '$lib/utils/permissions';
 
 	let { data } = $props();
 
-	const user = $derived.by(
-		() =>
-			data.user as User & {
-				roles: { role: string }[];
-				certifications: { certification: string }[];
-				endorsements: { endorsement: string }[];
-			}
-	);
+	const user = $derived.by(() => data.user as User & { roles: { role: string }[] });
 
 	function getDisplayName(user: User): string {
 		return user.preferredName || `${user.firstName} ${user.lastName}`;
@@ -35,21 +28,11 @@
 		}
 	}
 
-	// Use centralized configuration
-	const availableCertifications = CERTIFICATIONS.map((cert) => cert.key);
-	const availableEndorsements = ENDORSEMENTS.map((endorsement) => endorsement.key);
-
-	function hasCertification(cert: string): boolean {
-		return user.certifications.some((c) => c.certification === cert);
-	}
-
-	function getCurrentCertification(): string | null {
-		return user.certifications.length > 0 ? user.certifications[0].certification : null;
-	}
-
-	function hasEndorsement(endorsement: string): boolean {
-		return user.endorsements.some((e) => e.endorsement === endorsement);
-	}
+	const endorsements = $derived(
+		[...(data.held?.endorsements ?? [])].sort(
+			(a, b) => credentialOrder(data.credentials, a) - credentialOrder(data.credentials, b)
+		)
+	);
 
 	function hasRole(role: string): boolean {
 		return user.roles.some((r) => r.role === role);
@@ -72,14 +55,6 @@
 			description: 'Cannot sign up for event positions'
 		}
 	];
-
-	let certificationForm: HTMLFormElement;
-
-	function handleCertificationChange(event: Event) {
-		if (certificationForm) {
-			certificationForm.requestSubmit();
-		}
-	}
 </script>
 
 <svelte:head>
@@ -91,7 +66,9 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-semibold text-white">{getDisplayName(user)}</h1>
-			<p class="text-sm text-gray-400">Manage user certifications and endorsements</p>
+			<p class="text-sm text-gray-400">
+				Manage this user's roles. Certifications and endorsements are edited in the training app.
+			</p>
 		</div>
 		<div>
 			<a
@@ -158,114 +135,61 @@
 		</div>
 	</div>
 
-	<!-- Certifications Management -->
+	<!-- Certification and endorsements, read-only: the training app owns them -->
 	<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-6">
-		<div class="mb-4">
-			<h2 class="text-lg font-semibold text-white">Certification Level</h2>
-			<p class="text-sm text-gray-400">
-				Select the user's current certification level (only one allowed)
-			</p>
-		</div>
-
-		<form
-			bind:this={certificationForm}
-			method="POST"
-			action="?/setCertification"
-			use:enhance={() => {
-				return async ({ result }) => {
-					if (result.type === 'success') {
-						await invalidateAll();
-					}
-				};
-			}}
-		>
-			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-				<!-- None/Clear Option -->
-				<label class="cursor-pointer">
-					<input
-						type="radio"
-						name="certification"
-						value=""
-						checked={getCurrentCertification() === null}
-						class="sr-only"
-						onchange={handleCertificationChange}
-					/>
-					<div
-						class="w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all duration-200 {getCurrentCertification() ===
-						null
-							? 'border-red-500 bg-red-600/20 text-red-300'
-							: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
-					>
-						<div class="font-semibold">None</div>
-						<div class="text-xs text-gray-400">No certification</div>
-					</div>
-				</label>
-
-				{#each availableCertifications as cert}
-					<label class="cursor-pointer">
-						<input
-							type="radio"
-							name="certification"
-							value={cert}
-							checked={hasCertification(cert)}
-							class="sr-only"
-							onchange={handleCertificationChange}
-						/>
-						<div
-							class="w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all duration-200 {hasCertification(
-								cert
-							)
-								? 'border-green-500 bg-green-600/20 text-green-300'
-								: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
-						>
-							<div class="font-semibold">{cert}</div>
-							<div class="text-xs text-gray-400">
-								{CERTIFICATIONS.find((c) => c.key === cert)?.displayName}
-							</div>
-						</div>
-					</label>
-				{/each}
+		<div class="mb-4 flex items-start justify-between gap-4">
+			<div>
+				<h2 class="text-lg font-semibold text-white">Certification & Endorsements</h2>
+				<p class="text-sm text-gray-400">As last stored from the training app</p>
 			</div>
-		</form>
-	</div>
-
-	<!-- Endorsements Management -->
-	<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-6">
-		<div class="mb-4">
-			<h2 class="text-lg font-semibold text-white">Additional Certifications & Endorsements</h2>
-			<p class="text-sm text-gray-400">Click to toggle endorsements for this user</p>
-		</div>
-
-		<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-			{#each availableEndorsements as endorsement}
-				<form
-					method="POST"
-					action="?/toggleEndorsement"
-					use:enhance={() => {
-						return async ({ result }) => {
-							if (result.type === 'success') {
-								await invalidateAll();
-							}
-						};
-					}}
+			{#if data.held}
+				<a
+					href={`https://training.flyindycenter.com/certifications/${user.cid}`}
+					target="_blank"
+					rel="noopener"
+					class="shrink-0 rounded-lg bg-sky-600/20 px-4 py-2 text-sm text-sky-300 hover:bg-sky-600/30"
 				>
-					<input type="hidden" name="endorsement" value={endorsement} />
-					<button
-						type="submit"
-						class="w-full cursor-pointer rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all duration-200 {hasEndorsement(
-							endorsement
-						)
-							? 'border-sky-500 bg-sky-600/20 text-sky-300 hover:bg-sky-600/30'
-							: 'border-slate-600 bg-slate-700 text-gray-300 hover:bg-slate-600'}"
-					>
-						<div class="font-semibold">{endorsement}</div>
-						<div class="text-xs text-gray-400">
-							{ENDORSEMENTS.find((e) => e.key === endorsement)?.displayName}
-						</div>
-					</button>
-				</form>
-			{/each}
+					Edit in the training app
+				</a>
+			{/if}
 		</div>
+
+		{#if data.held}
+			<div class="space-y-4">
+				<div>
+					<div class="mb-2 text-sm text-gray-400">Certification</div>
+					{#if data.held.certification}
+						<div class="text-white">
+							<span class="font-mono text-green-300">{data.held.certification}</span>
+							<span class="text-sm text-gray-400">
+								{credentialName(data.credentials, data.held.certification)}
+							</span>
+						</div>
+					{:else}
+						<div class="text-sm text-gray-500 italic">No certification</div>
+					{/if}
+				</div>
+				<div>
+					<div class="mb-2 text-sm text-gray-400">Endorsements</div>
+					{#if endorsements.length > 0}
+						<ul class="space-y-1">
+							{#each endorsements as endorsement (endorsement)}
+								<li class="text-white">
+									<span class="font-mono text-sky-300">{endorsement}</span>
+									<span class="text-sm text-gray-400">
+										{credentialName(data.credentials, endorsement)}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<div class="text-sm text-gray-500 italic">No endorsements</div>
+					{/if}
+				</div>
+			</div>
+		{:else}
+			<p class="text-sm text-gray-400">This user isn't on the controller roster.</p>
+		{/if}
 	</div>
 
 	<!-- Roles Management -->

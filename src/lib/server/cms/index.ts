@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { logger } from '$lib/server/logger';
 import { partnersDocument, type ReadPartnersDocument } from './schema';
 
@@ -30,10 +31,43 @@ export type CopyStore = {
 };
 
 export class CmsUnavailableError extends Error {
+	/**
+	 * Why the CMS could not be read, in a line fit for the log: the status it answered with, the
+	 * fields that failed the shape check, the timeout, or the fetch's own error.
+	 */
+	readonly reason: string;
+
 	constructor(cause: unknown) {
 		super('The CMS could not be read for the partners document, and no copy is kept', { cause });
 		this.name = 'CmsUnavailableError';
+		this.reason = cause instanceof Error ? cause.message : String(cause);
 	}
+}
+
+/** How many failed fields a shape-check failure names before it says how many more there are. */
+const FIELDS_NAMED = 5;
+
+/**
+ * The CMS's answer failed the shape check. Names the fields that failed and why, never their
+ * values: the body holds member perks, which must not reach the log.
+ */
+function notAPartnersDocument(error: z.ZodError) {
+	const fields = error.issues.map(
+		(issue) => `${issue.path.length ? issue.path.join('.') : '(the document)'}: ${issue.message}`
+	);
+	const more = fields.length > FIELDS_NAMED ? `; and ${fields.length - FIELDS_NAMED} more` : '';
+	return new Error(
+		`The CMS answered with something that isn't a partners document: ${fields.slice(0, FIELDS_NAMED).join('; ')}${more}`
+	);
+}
+
+/** The CMS's failure as one error whose message says what went wrong. */
+function explain(err: unknown, timeoutMs: number) {
+	if (err instanceof z.ZodError) return notAPartnersDocument(err);
+	if (err instanceof Error && err.name === 'TimeoutError') {
+		return new Error(`The CMS did not answer within ${timeoutMs} ms`, { cause: err });
+	}
+	return err;
 }
 
 /** Where the CMS serves the partners document. */
@@ -98,7 +132,8 @@ export function createCms(options: CmsOptions): Cms {
 					logger.error('Keeping a copy of the partners document failed', err);
 				});
 				return body;
-			} catch (err) {
+			} catch (caught) {
+				const err = explain(caught, timeoutMs);
 				if (kept && age < KEEP_MS) {
 					logger.warn(
 						'Reading the partners document from the CMS failed; serving the kept copy',

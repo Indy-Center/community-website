@@ -14,7 +14,8 @@
 	const adminSections = [
 		{
 			title: 'User Management',
-			description: 'Manage user accounts, roles, certifications, and endorsements.',
+			description:
+				'Manage user accounts and roles. Certifications and endorsements are edited in the training app.',
 			href: '/admin/users',
 			icon: IconAccountGroup,
 			badge: stats.users.total,

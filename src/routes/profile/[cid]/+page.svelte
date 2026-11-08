@@ -25,6 +25,7 @@
 		staffBadges={profile.staffBadges}
 		certifications={profile.certifications}
 		endorsements={profile.endorsements}
+		credentials={profile.credentials}
 	/>
 	{#if data.isOwnProfile}
 		<a

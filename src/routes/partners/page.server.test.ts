@@ -237,6 +237,65 @@ describe('/partners', () => {
 		});
 	});
 
+	describe("the log, when partners couldn't be loaded", () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		/** The message of each error the site's logger writes, from here on. */
+		function errorMessages() {
+			const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+			return () => error.mock.calls.map(([message]) => String(message));
+		}
+
+		/** Everything each error line carries, errors' messages and causes included, as text. */
+		function everythingLogged() {
+			const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+			const text = (value: unknown): string =>
+				value instanceof Error
+					? `${value.message} ${value.stack ?? ''} ${text(value.cause)}`
+					: (JSON.stringify(value) ?? '');
+			return () => error.mock.calls.flat().map(text).join('\n');
+		}
+
+		it('names the status the CMS answered with', async () => {
+			const s = site();
+			s.cms.answer(401);
+			const messages = errorMessages();
+
+			await callLoad(load, s.event('/partners'));
+
+			expect(messages()).toEqual([expect.stringContaining('Partners could not be loaded')]);
+			expect(messages()[0]).toContain('The CMS answered 401');
+		});
+
+		it('says the CMS took too long to answer', async () => {
+			const s = site();
+			s.cms.hang();
+			const messages = errorMessages();
+
+			await callLoad(load, s.event('/partners'));
+
+			expect(messages()).toEqual([expect.stringContaining('did not answer within')]);
+		});
+
+		it('names the fields that failed the shape check, but not what the CMS sent', async () => {
+			const document = structuredClone(partners);
+			const broken: Record<string, unknown> = document.categories[0].partners[0];
+			broken.tagline = 42;
+			delete broken.logo;
+			const s = site({ cms: fakeCms(document) });
+			const logged = everythingLogged();
+
+			await callLoad(load, s.event('/partners'));
+
+			expect(logged()).toContain('categories.0.partners.0.tagline');
+			expect(logged()).toContain('categories.0.partners.0.logo');
+			expect(logged()).not.toContain('SECRET-PERK-1');
+			expect(logged()).not.toContain('Hand-built airports');
+		});
+	});
+
 	describe('the kept copy', () => {
 		it('is served for five minutes without asking the CMS again', async () => {
 			const s = site();
