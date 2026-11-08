@@ -39,7 +39,9 @@ export const load = async ({ locals, params }) => {
 			pronouns: user?.pronouns ?? null,
 			membership: user?.membership ?? ('controller' as const),
 			operatingInitials: user?.operatingInitials ?? null,
-			atcRating: user?.data.vatsim.rating.short ?? controller.rating ?? null,
+			// The roster copy is refreshed from the training app every few minutes; the
+			// account's VATSIM data is only saved at sign-in, so it can be out of date
+			atcRating: controller.rating || user?.data.vatsim.rating.short || null,
 			pilotRating: user?.data.vatsim.pilotrating.short || null,
 			bio: user?.bio ?? null,
 			staffBadges:

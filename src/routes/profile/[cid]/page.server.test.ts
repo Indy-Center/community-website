@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { usersTable } from '$lib/db/schema/users';
 import type { Database } from '$lib/server/db';
 import {
 	AVAILABLE_CREDENTIALS,
@@ -62,6 +64,26 @@ describe('/profile/<cid>', () => {
 		expect(data.profile.name).toBe('Sam Shown');
 		expect(data.profile.certifications).toEqual(['S-GC']);
 		expect(data.profile.endorsements).toEqual([]);
+	});
+
+	it("shows the roster copy's rating, not the one saved on the account at sign-in", async () => {
+		await seedMember(db, {
+			cid: '1000004',
+			firstName: 'Pat',
+			lastName: 'Promoted',
+			rating: 'S3',
+			user: { id: 'user-pat', email: 'pat@private.example.test' }
+		});
+		const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, 'user-pat') });
+		const signInRating = { id: 3, long: 'Ground Controller', short: 'S2' };
+		await db
+			.update(usersTable)
+			.set({ data: { ...user!.data, vatsim: { ...user!.data.vatsim, rating: signInRating } } })
+			.where(eq(usersTable.id, 'user-pat'));
+
+		const data = await visit('1000004');
+
+		expect(data.profile.atcRating).toBe('S3');
 	});
 
 	it('does not serve the last name of a controller with VATUSA name privacy set', async () => {
