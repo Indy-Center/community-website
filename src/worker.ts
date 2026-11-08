@@ -10,4 +10,4 @@ export default {
 		setEnv(env as unknown as Record<string, string | undefined>);
 		await runProcessRoster({ training: env.TRAINING, db: drizzle(env.DB) });
 	}
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Cloudflare.Env>;

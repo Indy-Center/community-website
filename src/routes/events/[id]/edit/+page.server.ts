@@ -33,8 +33,9 @@ export const load = async ({ locals, params }) => {
 			bannerUrl: event.bannerUrl,
 			type: event.type as 'community' | 'support',
 			rosterType: event.rosterType as 'open' | 'assigned' | 'none',
-			startTime: event.startTime,
-			endTime: event.endTime
+			// The schema reads times as the UTC ISO strings the form posts
+			startTime: event.startTime.toISOString(),
+			endTime: event.endTime.toISOString()
 		},
 		zod4(eventSchema)
 	);

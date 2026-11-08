@@ -10,7 +10,7 @@
 		isEligible: boolean;
 	}
 
-	const { checklist, isEligible } = $props<Props>();
+	const { checklist, isEligible }: Props = $props();
 
 	// Compact checklist items
 	const checklistItems = [

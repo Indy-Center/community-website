@@ -308,7 +308,7 @@
 								</div>
 							</div>
 							<div class="text-xs text-slate-500">
-								{new Date(request.createdAt).toLocaleDateString()}
+								{request.createdAt?.toLocaleDateString()}
 							</div>
 						</div>
 					</div>
@@ -690,6 +690,7 @@
 						position,
 						eventId: event.id,
 						userId: null,
+						user: null,
 						requiredCertifications: [],
 						requiredEndorsements: [],
 						createdAt: new Date(),

@@ -38,6 +38,9 @@ function getDisplayName(user: User) {
 
 export async function sendDiscordEmbed(channel: DiscordChannel, embed: DiscordEmbed) {
 	const webhookUrl = DISCORD_CHANNELS[channel]();
+	if (!webhookUrl) {
+		throw new Error(`No Discord webhook is set for ${DiscordChannel[channel]}`);
+	}
 
 	await fetch(webhookUrl, {
 		method: 'POST',

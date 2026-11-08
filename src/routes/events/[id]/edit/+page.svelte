@@ -16,7 +16,7 @@
 <div class="mx-auto">
 	<div class="overflow-hidden rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
 		<div class="px-8 py-6">
-			<EventForm data={data.form} vatsimEvents={data.vatsimEvents} />
+			<EventForm data={data.form} />
 		</div>
 	</div>
 </div>

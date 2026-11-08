@@ -98,7 +98,7 @@
 		};
 	}
 
-	function getFlightConditions(visibility, ceiling) {
+	function getFlightConditions(visibility: number | null, ceiling: number | null) {
 		// Determine the most restrictive condition
 		let ceilingCategory = 'VFR';
 		let visibilityCategory = 'VFR';
