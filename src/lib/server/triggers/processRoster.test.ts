@@ -10,6 +10,13 @@ const facilityInfo = vi.hoisted(() => ({
 	fetch: vi.fn(async () => ({ id: 'ZID', atm: 0, datm: 0, ta: 0, ec: 0, fe: 0, wm: 0 }))
 }));
 vi.mock('$lib/server/vatsim/vatusaDataClient', () => ({ fetchFacilityInfo: facilityInfo.fetch }));
+// The new- and leaving-controller alerts need a webhook to send to
+vi.mock('$env/dynamic/private', async (importOriginal) => {
+	const original = await importOriginal<typeof import('$env/dynamic/private')>();
+	return {
+		env: { ...original.env, DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS: 'https://discord.test/webhook' }
+	};
+});
 
 // Every member here is made up; the repository is public.
 function member(row: Partial<RosterMember> & { cid: string }): RosterMember {

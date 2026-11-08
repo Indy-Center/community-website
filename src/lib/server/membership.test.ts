@@ -7,6 +7,14 @@ import type { Database } from '$lib/server/db';
 import { seedMember, testDb } from '$lib/testing/db';
 import { syncUserMembership } from './membership';
 
+// The senior staff alert needs a webhook to send to
+vi.mock('$env/dynamic/private', async (importOriginal) => {
+	const original = await importOriginal<typeof import('$env/dynamic/private')>();
+	return {
+		env: { ...original.env, DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS: 'https://discord.test/webhook' }
+	};
+});
+
 let db: Database;
 let fetchMock: ReturnType<typeof vi.fn>;
 
