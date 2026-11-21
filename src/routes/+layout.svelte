@@ -2,8 +2,10 @@
 	import '../app.css';
 	import Header from '$lib/components/header/Header.svelte';
 	import { page } from '$app/state';
+	import { setColorScheme } from '@indy-center/centerline-svelte';
 
 	let { children, data } = $props();
+	setColorScheme({ fallback: 'dark' });
 
 	// Check if current page is home
 	let isHomePage = $derived(page.url.pathname === '/');
@@ -13,7 +15,10 @@
 	<title>Indy Center | Welcome to Indy</title>
 </svelte:head>
 
-<div class="flex min-h-screen w-full flex-col bg-gray-900">
+<!-- Dark for everyone until the existing pages move to Centerline's colour roles: they are
+     drawn in fixed dark colours, so a light choice from another Indy Center site would only
+     turn the Centerline parts light. Remove this data-theme then, and add ColorSchemeSetting. -->
+<div data-theme="dark" class="flex min-h-screen w-full flex-col bg-gray-900">
 	<div
 		class="absolute top-0 z-20 w-full border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-lg"
 	>

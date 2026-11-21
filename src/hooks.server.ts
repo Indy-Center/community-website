@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/sveltekit';
 import { instrumentD1WithSentry } from '@sentry/cloudflare';
 import { sequence } from '@sveltejs/kit/hooks';
+import { colorSchemeHandle } from '@indy-center/centerline-svelte/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
@@ -27,10 +28,19 @@ export const handle = sequence(
 		enabled: import.meta.env.PROD
 	}),
 	Sentry.sentryHandle(),
+	colorScheme,
 	dbHandle,
 	cmsHandle,
 	authHandle
 );
+
+// Writes each member's light or dark choice on <html>; dark when they haven't chosen.
+// Centerline types `resolve` as always returning a Promise, where Kit's may return a Response,
+// so it's wrapped to fit `Handle`.
+const centerlineColorScheme = colorSchemeHandle({ fallback: 'dark' });
+function colorScheme({ event, resolve }: Parameters<Handle>[0]) {
+	return centerlineColorScheme({ event, resolve: async (e, opts) => resolve(e, opts) });
+}
 
 async function dbHandle({ event, resolve }: Parameters<Handle>[0]) {
 	event.locals.db = drizzle(instrumentD1WithSentry(event.platform?.env.DB!));

@@ -24,6 +24,19 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/lib/server/discord.ts` — Discord webhook helpers.
 - `src/lib/server/partners.ts` — reads the partners document as the visitor may see it (member perks in full if signed in, only a count for a guest), or null when the CMS is down and no copy is kept. Every page that shows partners reads through it.
 
+## Design system
+
+New UI uses [Indy Centerline](https://centerline.flyindycenter.com), following the
+[design rules](https://tech.flyindycenter.com/design/): components from
+`@indy-center/centerline-svelte`, and colours by role (`bg-card`, `text-foreground`,
+`border-input`…) from `@indy-center/centerline-tokens`, imported in `src/app.css`. Older pages
+still use Tailwind's `slate-*`/`gray-*`/`sky-*` directly; move them to roles when you touch them.
+
+`colorSchemeHandle` in `src/hooks.server.ts` writes the member's light or dark choice (a cookie
+shared across flyindycenter.com) on `<html>`. Until the older pages move to roles, the root
+layout pins the site to dark with `data-theme="dark"`, since those pages are drawn in fixed dark
+colours. Remove it, and add `ColorSchemeSetting` to the user menu and Settings, once they have.
+
 ## Bindings
 
 | Binding               | Type             | Purpose                                                                                 |
