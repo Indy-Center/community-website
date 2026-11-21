@@ -1,6 +1,8 @@
 export type StaffPosition = {
 	key: string;
 	title: string;
+	// Mailbox on the site's domain (VATUSA's Google Workspace) used when no emails are set
+	mailbox: string;
 };
 
 export type StaffTeamSection = {
@@ -17,17 +19,19 @@ export type StaffTeam = {
 	name: string;
 	// Staff position that leads the team
 	lead: string;
+	// Mailbox on the site's domain (VATUSA's Google Workspace) used when no emails are set
+	mailbox: string;
 	sections: StaffTeamSection[];
 };
 
 // Senior staff positions, in display order. Keys match VATUSA facility role codes.
 export const STAFF_POSITIONS: StaffPosition[] = [
-	{ key: 'ATM', title: 'Air Traffic Manager' },
-	{ key: 'DATM', title: 'Deputy Air Traffic Manager' },
-	{ key: 'TA', title: 'Training Administrator' },
-	{ key: 'EC', title: 'Events Team Manager' },
-	{ key: 'FE', title: 'Facility Engineer' },
-	{ key: 'WM', title: 'Tech Team Manager' }
+	{ key: 'ATM', title: 'Air Traffic Manager', mailbox: 'atm' },
+	{ key: 'DATM', title: 'Deputy Air Traffic Manager', mailbox: 'datm' },
+	{ key: 'TA', title: 'Training Administrator', mailbox: 'ta' },
+	{ key: 'EC', title: 'Events Team Manager', mailbox: 'ec' },
+	{ key: 'FE', title: 'Facility Engineer', mailbox: 'fe' },
+	{ key: 'WM', title: 'Tech Team Manager', mailbox: 'wm' }
 ];
 
 export const STAFF_TEAMS: StaffTeam[] = [
@@ -35,6 +39,7 @@ export const STAFF_TEAMS: StaffTeam[] = [
 		key: 'training',
 		name: 'Training Team',
 		lead: 'TA',
+		mailbox: 'training',
 		sections: [
 			{ key: 'instructors', name: 'Instructors', vatusaRole: 'INS' },
 			{ key: 'mentors', name: 'Mentors', vatusaRole: 'MTR' }
@@ -44,18 +49,21 @@ export const STAFF_TEAMS: StaffTeam[] = [
 		key: 'events',
 		name: 'Events Team',
 		lead: 'EC',
+		mailbox: 'events',
 		sections: [{ key: 'events', vatusaRole: 'EC' }]
 	},
 	{
 		key: 'fwg',
 		name: 'Facility Working Group',
 		lead: 'FE',
+		mailbox: 'facilities',
 		sections: [{ key: 'fwg', vatusaRole: 'FE' }]
 	},
 	{
 		key: 'tech',
 		name: 'Tech Team',
 		lead: 'WM',
+		mailbox: 'web',
 		sections: [{ key: 'tech', vatusaRole: 'WM' }]
 	}
 ];
@@ -66,4 +74,9 @@ export const STAFF_TEAM_SECTIONS = STAFF_TEAMS.flatMap((team) => team.sections);
 // lead, so the position follows VATUSA's point of contact for it instead.
 export function isPocPosition(position: string) {
 	return STAFF_TEAM_SECTIONS.some((section) => section.vatusaRole === position);
+}
+
+// Facilities on VATUSA's Google Workspace get role mailboxes on the site's domain
+export function defaultStaffEmail(mailbox: string, hostname: string) {
+	return `${mailbox}@${hostname.replace(/^www\./, '')}`;
 }

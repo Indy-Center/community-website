@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
+	import { defaultStaffEmail } from '$lib/config/staff';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import IconPencil from '~icons/mdi/pencil';
 	import IconClose from '~icons/mdi/close';
@@ -67,7 +69,7 @@
 	</form>
 {/snippet}
 
-{#snippet emailForm(key: string, name: string, emails: string[])}
+{#snippet emailForm(key: string, name: string, emails: string[], mailbox: string)}
 	{#if editing}
 		<form
 			method="POST"
@@ -82,7 +84,7 @@
 				type="text"
 				name="emails"
 				value={emails.join(', ')}
-				placeholder="Emails, separated by commas"
+				placeholder="Defaults to {defaultStaffEmail(mailbox, page.url.hostname)}"
 				class="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-700 px-3 py-1.5 text-sm text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
 			/>
 			<button
@@ -95,10 +97,10 @@
 	{/if}
 {/snippet}
 
-{#snippet emailLinks(emails: string[])}
-	{#if !editing && emails.length > 0}
+{#snippet emailLinks(emails: string[], mailbox: string)}
+	{#if !editing}
 		<div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-			{#each emails as email (email)}
+			{#each emails.length > 0 ? emails : [defaultStaffEmail(mailbox, page.url.hostname)] as email (email)}
 				<a
 					href="mailto:{email}"
 					class="inline-flex min-w-0 items-center gap-1.5 text-sky-400 transition-colors hover:text-sky-300"
@@ -183,7 +185,7 @@
 								)}
 							{/if}
 						</div>
-						{@render emailLinks(position.emails)}
+						{@render emailLinks(position.emails, position.mailbox)}
 						{#if editingBio === bioKey}
 							<form method="POST" action="?/saveBio" use:enhance={closeBioOnSave} class="mt-2">
 								<input type="hidden" name="cid" value={member.cid} />
@@ -280,7 +282,7 @@
 					</div>
 				</div>
 			{/if}
-			{@render emailForm(position.key, position.title, position.emails)}
+			{@render emailForm(position.key, position.title, position.emails, position.mailbox)}
 		</div>
 	{/each}
 </div>
@@ -296,7 +298,7 @@
 						Led by {team.leads.map((m) => m.name).join(', ')}
 					</p>
 				{/if}
-				{@render emailLinks(team.emails)}
+				{@render emailLinks(team.emails, team.mailbox)}
 			</div>
 			{#each team.sections as section (section.key)}
 				{@const label = section.name ?? team.name}
@@ -339,7 +341,7 @@
 					{/if}
 				</div>
 			{/each}
-			{@render emailForm(team.key, team.name, team.emails)}
+			{@render emailForm(team.key, team.name, team.emails, team.mailbox)}
 		</div>
 	{/each}
 </div>
