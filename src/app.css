@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+/* Indy Centerline: the colour roles, page defaults and font, and the classes its components use */
+@import '@indy-center/centerline-tokens/tokens.css';
+@import '@indy-center/centerline-tokens/theme.css';
+@import '@indy-center/centerline-tokens/base.css';
+@import '@indy-center/centerline-tokens/fonts.css';
+@source '../node_modules/@indy-center/centerline-svelte';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
