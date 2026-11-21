@@ -18,6 +18,7 @@
 	import IconEmail from '~icons/mdi/email-outline';
 	import IconAccountPlus from '~icons/mdi/account-plus';
 	import IconSchool from '~icons/mdi/school';
+	import IconRadioTower from '~icons/mdi/radio-tower';
 
 	type NavLink = { label: string; href: string; icon: Component; external?: boolean };
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
@@ -90,6 +91,11 @@
 					href: 'https://charts.flyindycenter.com/',
 					icon: IconMap,
 					external: true
+				},
+				{
+					label: 'Request Staffing',
+					href: '/staffing',
+					icon: IconRadioTower
 				}
 			]
 		},

@@ -1,5 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
+import type { LarryBinding } from '@indy-center/indy-larry-worker';
 import type { TrainingBinding } from '@indy-center/training-tools';
 import type { Cms } from '$lib/server/cms';
 import type { Database } from '$lib/server/db';
@@ -13,6 +14,8 @@ declare global {
 			DB: D1Database;
 			/** The training app's `TrainingRpc` entrypoint: the controller roster; see the README. */
 			TRAINING: TrainingBinding;
+			/** Larry's Worker, which posts Discord messages as the bot; see the README. */
+			LARRY: LarryBinding;
 			/** The CMS's server credential; see the README. */
 			COMMUNITY_API_TOKEN?: string;
 		}
