@@ -67,11 +67,11 @@ page never sends it then.
 
 `/staffing` (under Flying) lets a signed-in pilot organization ask the Events Team to staff an
 event. The request isn't stored: `send()` on the `LARRY` binding posts it as an embed to the
-channel Larry's `SEND_CHANNELS` names `beta-testing` (`STAFFING_CHANNEL`, while the page is in testing), and the pilot is told if that fails. The
+channel Larry's `SEND_CHANNELS` names `events-team` (`STAFFING_CHANNEL`), and the pilot is told if that fails. The
 binding's types come from `@indy-center/indy-larry-worker`; the message is built in
 `src/lib/server/staffing.ts`. Pinging is off, so text a pilot types can't mention anyone.
 
-Larry's deploy needs `beta-testing:<channel ID>` in `SEND_CHANNELS`, and the bot needs View Channel,
+Larry's deploy needs `events-team:<channel ID>` in `SEND_CHANNELS`, and the bot needs View Channel,
 Send Messages and Embed Links there.
 
 ## Vars and secrets for the CMS

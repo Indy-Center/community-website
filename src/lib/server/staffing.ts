@@ -1,9 +1,8 @@
 import type { ChannelSend } from '@indy-center/indy-larry-worker';
 import type { StaffingRequest } from '$lib/forms/staffing';
 
-// Larry's SEND_CHANNELS name for the channel staffing requests go to. Beta testing for now;
-// point it at the events team's channel once the page is live.
-export const STAFFING_CHANNEL = 'beta-testing';
+// Larry's SEND_CHANNELS name for the Events Team's channel, where staffing requests go
+export const STAFFING_CHANNEL = 'events-team';
 
 const ZULU_DAY = new Intl.DateTimeFormat('en-US', {
 	weekday: 'short',

@@ -5,7 +5,7 @@ import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { ChannelSend, Sent } from '@indy-center/indy-larry-worker';
 
 // The SEND_CHANNELS names the site uses
-const CHANNELS = ['beta-testing'];
+const CHANNELS = ['events-team'];
 
 export default class FakeLarry extends WorkerEntrypoint {
 	async send(request: ChannelSend): Promise<Sent> {

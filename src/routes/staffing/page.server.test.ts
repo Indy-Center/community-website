@@ -72,14 +72,14 @@ describe('/staffing', () => {
 		expect((await load({ locals: { roles: [] } } as never)).signedIn).toBe(false);
 	});
 
-	it('posts the request to beta testing as one embed, pinging nobody', async () => {
+	it('posts the request to the Events Team as one embed, pinging nobody', async () => {
 		const larry = fakeLarry();
 		const result = await submit(filledIn, { larry });
 
 		expect(result.form?.message?.type).toBe('success');
 		expect(larry.sent).toHaveLength(1);
 		const [message] = larry.sent;
-		expect(message.channel).toBe('beta-testing');
+		expect(message.channel).toBe('events-team');
 		expect(message.allowedMentions).toEqual({ parse: [] });
 		expect(message.buttons).toEqual([{ label: 'Event page', url: 'https://example.test/fly-in' }]);
 		expect(message.embeds?.[0]).toMatchObject({
