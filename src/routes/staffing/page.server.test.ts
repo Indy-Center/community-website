@@ -14,9 +14,8 @@ const pilot = {
 const filledIn = {
 	organization: 'Example Virtual',
 	eventName: 'Midwest Fly-In',
-	date: '2026-12-14',
-	startTime: '18:00',
-	endTime: '22:00',
+	start: '2030-12-14T18:00:00.000Z',
+	end: '2030-12-14T22:00:00.000Z',
 	airports: 'KIND, KCVG',
 	pilotCount: '40',
 	link: 'https://example.test/fly-in',
@@ -54,11 +53,15 @@ function submit(
 	return actions.default(event as never) as Promise<{
 		status?: number;
 		data?: {
-			form?: { valid: boolean; errors: Record<string, string[]>; message?: { type: string } };
+			form?: {
+				valid: boolean;
+				errors: Record<string, string[] | undefined> & { _errors?: string[] };
+				message?: { type: string };
+			};
 		};
 		form?: {
 			valid: boolean;
-			errors: Record<string, string[]>;
+			errors: Record<string, string[] | undefined> & { _errors?: string[] };
 			message?: { type: string; text: string };
 		};
 	}>;
@@ -85,7 +88,7 @@ describe('/staffing', () => {
 		});
 		expect(Object.fromEntries(message.embeds![0].fields!.map((f) => [f.name, f.value]))).toEqual({
 			Event: 'Midwest Fly-In',
-			When: 'Mon, Dec 14, 2026 · 1800–2200z',
+			When: 'Sat, Dec 14, 2030, 1800Z–2200Z\n<t:1923501600:f> to <t:1923516000:t> your time',
 			Airports: 'KIND, KCVG',
 			'Expected pilots': '40',
 			Contact: 'Email: events@example.test',
@@ -109,10 +112,33 @@ describe('/staffing', () => {
 		const result = await submit({ ...filledIn, email: '', discord: '' }, { larry });
 
 		expect(result.status).toBe(400);
-		expect(result.data?.form?.errors.email).toEqual([
-			'Give an email or a Discord username so we can reach you'
+		expect(result.data?.form?.errors._errors).toEqual([
+			'Give an email, a Discord username, or both'
 		]);
 		expect(larry.sent).toHaveLength(0);
+	});
+
+	it('asks for an end after the start, and a start in the future', async () => {
+		const backwards = await submit({ ...filledIn, end: '2030-12-14T17:00:00.000Z' });
+		expect(backwards.data?.form?.errors.end).toEqual(['Pick an end after the start']);
+
+		const past = await submit({
+			...filledIn,
+			start: '2020-01-01T18:00:00.000Z',
+			end: '2020-01-01T22:00:00.000Z'
+		});
+		expect(past.data?.form?.errors.start).toEqual(['Pick a start in the future']);
+	});
+
+	it('names the end day when the event runs past midnight Zulu', async () => {
+		const larry = fakeLarry();
+		await submit(
+			{ ...filledIn, start: '2030-12-14T23:00:00.000Z', end: '2030-12-15T02:00:00.000Z' },
+			{ larry }
+		);
+
+		const when = larry.sent[0].embeds![0].fields!.find((f) => f.name === 'When')?.value;
+		expect(when?.split('\n')[0]).toBe('Sat, Dec 14, 2030, 2300Z–Sun, Dec 15, 2030, 0200Z');
 	});
 
 	it('refuses a link that is not a web address', async () => {

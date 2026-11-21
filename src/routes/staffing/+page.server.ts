@@ -47,7 +47,7 @@ export const actions = {
 		logger.info(`User ${user.id} requested staffing for "${form.data.eventName}"`);
 		return message(form, {
 			type: 'success',
-			text: 'Request sent! Our Events Team will reach out using the contact details you gave.'
+			text: 'Our Events Team will reach out using the contact details you gave.'
 		} satisfies StaffingMessage);
 	}
 };

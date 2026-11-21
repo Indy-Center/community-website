@@ -5,7 +5,7 @@ import type { StaffingRequest } from '$lib/forms/staffing';
 // point it at the events team's channel once the page is live.
 export const STAFFING_CHANNEL = 'beta-testing';
 
-const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+const ZULU_DAY = new Intl.DateTimeFormat('en-US', {
 	weekday: 'short',
 	month: 'short',
 	day: 'numeric',
@@ -13,10 +13,23 @@ const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
 	timeZone: 'UTC'
 });
 
-/** "Sat, Dec 14, 2026 · 1800–2200z" from the form's date and HH:MM times. */
-export function formatEventTime({ date, startTime, endTime }: StaffingRequest) {
-	const zulu = (time: string) => time.replace(':', '');
-	return `${DATE_FORMAT.format(new Date(`${date}T00:00:00Z`))} · ${zulu(startTime)}–${zulu(endTime)}z`;
+const zuluDay = (date: Date) => ZULU_DAY.format(date);
+const zuluTime = (date: Date) => date.toISOString().slice(11, 16).replace(':', '') + 'Z';
+// Discord shows these in each reader's own time zone
+const discordTime = (date: Date, style: 'f' | 't') =>
+	`<t:${Math.floor(date.getTime() / 1000)}:${style}>`;
+
+/**
+ * "Mon, Dec 14, 2026, 1800Z–2200Z", with the end's day when it differs, then the same span as
+ * Discord timestamps on a second line.
+ */
+export function formatEventTime({ start, end }: Pick<StaffingRequest, 'start' | 'end'>) {
+	const from = new Date(start);
+	const to = new Date(end);
+	const sameDay = zuluDay(from) === zuluDay(to);
+	const zulu = `${zuluDay(from)}, ${zuluTime(from)}–${sameDay ? '' : `${zuluDay(to)}, `}${zuluTime(to)}`;
+	const local = `${discordTime(from, 'f')} to ${discordTime(to, sameDay ? 't' : 'f')} your time`;
+	return `${zulu}\n${local}`;
 }
 
 /** The Discord message for one request, from the signed-in pilot who sent it. */
@@ -35,12 +48,13 @@ export function staffingRequestMessage(
 			{
 				title: `Staffing request: ${request.organization}`,
 				description: request.details,
-				color: 0x0ea5e9,
+				// Sky, the brand accent
+				color: 0x0369a1,
 				fields: [
 					{ name: 'Event', value: request.eventName, inline: false },
 					{ name: 'When', value: formatEventTime(request), inline: false },
 					{ name: 'Airports', value: request.airports, inline: true },
-					{ name: 'Expected pilots', value: String(request.pilotCount), inline: true },
+					{ name: 'Expected pilots', value: String(request.pilotCount ?? ''), inline: true },
 					{ name: 'Contact', value: contact.join('\n'), inline: false },
 					{ name: 'Submitted by', value: `${submitter.name} (${submitter.cid})`, inline: false }
 				]
