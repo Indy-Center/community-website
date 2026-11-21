@@ -22,7 +22,7 @@ export const staffingRequestSchema = z
 			.url({ protocol: /^https?$/, message: 'Enter a full web address, starting with https://' })
 			.max(500)
 			.optional(),
-		email: z.email('Enter an email address, such as you@example.com').max(254).optional(),
+		email: z.email('Enter an email address, such as you@example.com').max(254),
 		discord: z.string().trim().max(40).optional(),
 		details: z.string().trim().min(1, 'Tell us about the event').max(1000)
 	})
@@ -37,10 +37,6 @@ export const staffingRequestSchema = z
 	.refine((request) => !request.start || !request.end || request.end > request.start, {
 		message: 'Pick an end after the start',
 		path: ['end']
-	})
-	// No path: a form-level error, shown on the contact group
-	.refine((request) => request.email || request.discord, {
-		message: 'Give an email, a Discord username, or both'
 	});
 
 export type StaffingRequest = z.infer<typeof staffingRequestSchema>;

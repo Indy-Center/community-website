@@ -7,7 +7,6 @@
 		Card,
 		DateTimeInput,
 		Field,
-		Fieldset,
 		Input,
 		PageHeader,
 		Textarea
@@ -143,35 +142,38 @@
 				{/snippet}
 			</Field>
 
-			<Fieldset
-				legend="How can we reach you?"
-				hint="Give an email, a Discord username, or both."
-				error={$errors._errors?.[0]}
-			>
-				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-					<Field label="Email" error={$errors.email?.[0]}>
-						{#snippet children(control)}
-							<Input
-								{...control}
-								inputmode="email"
-								name="email"
-								bind:value={$form.email}
-								autocomplete="email"
-							/>
-						{/snippet}
-					</Field>
-					<Field label="Discord username" error={$errors.discord?.[0]}>
-						{#snippet children(control)}
-							<Input
-								{...control}
-								name="discord"
-								bind:value={$form.discord}
-								maxlength={$constraints.discord?.maxlength}
-							/>
-						{/snippet}
-					</Field>
-				</div>
-			</Fieldset>
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+				<Field
+					label="Email"
+					hint="Where our Events Team will reply."
+					error={$errors.email?.[0]}
+					required
+				>
+					{#snippet children(control)}
+						<Input
+							{...control}
+							inputmode="email"
+							name="email"
+							bind:value={$form.email}
+							autocomplete="email"
+						/>
+					{/snippet}
+				</Field>
+				<Field
+					label="Discord username"
+					hint="If you'd also like us to reach you there."
+					error={$errors.discord?.[0]}
+				>
+					{#snippet children(control)}
+						<Input
+							{...control}
+							name="discord"
+							bind:value={$form.discord}
+							maxlength={$constraints.discord?.maxlength}
+						/>
+					{/snippet}
+				</Field>
+			</div>
 
 			<Field
 				label="About the event"

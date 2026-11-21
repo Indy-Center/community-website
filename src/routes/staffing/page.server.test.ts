@@ -55,13 +55,13 @@ function submit(
 		data?: {
 			form?: {
 				valid: boolean;
-				errors: Record<string, string[] | undefined> & { _errors?: string[] };
+				errors: Record<string, string[] | undefined>;
 				message?: { type: string };
 			};
 		};
 		form?: {
 			valid: boolean;
-			errors: Record<string, string[] | undefined> & { _errors?: string[] };
+			errors: Record<string, string[] | undefined>;
 			message?: { type: string; text: string };
 		};
 	}>;
@@ -96,24 +96,24 @@ describe('/staffing', () => {
 		});
 	});
 
-	it('takes a Discord username alone, and leaves out the button without a link', async () => {
+	it('adds a Discord username under the email, and leaves out the button without a link', async () => {
 		const larry = fakeLarry();
-		await submit({ ...filledIn, email: '', link: '', discord: 'pilot_pat' }, { larry });
+		await submit({ ...filledIn, link: '', discord: 'pilot_pat' }, { larry });
 
 		const [message] = larry.sent;
 		expect(message.buttons).toBeUndefined();
 		expect(message.embeds![0].fields!.find((f) => f.name === 'Contact')?.value).toBe(
-			'Discord: pilot_pat'
+			'Email: events@example.test\nDiscord: pilot_pat'
 		);
 	});
 
-	it('asks for a way to reach the pilot when both are blank, and sends nothing', async () => {
+	it('asks for an email even with a Discord username, and sends nothing', async () => {
 		const larry = fakeLarry();
-		const result = await submit({ ...filledIn, email: '', discord: '' }, { larry });
+		const result = await submit({ ...filledIn, email: '', discord: 'pilot_pat' }, { larry });
 
 		expect(result.status).toBe(400);
-		expect(result.data?.form?.errors._errors).toEqual([
-			'Give an email, a Discord username, or both'
+		expect(result.data?.form?.errors.email).toEqual([
+			'Enter an email address, such as you@example.com'
 		]);
 		expect(larry.sent).toHaveLength(0);
 	});
