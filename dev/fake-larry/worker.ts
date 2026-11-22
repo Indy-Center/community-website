@@ -6,7 +6,7 @@ import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { ChannelSend, Sent } from '@indy-center/indy-larry-worker';
 
 // The SEND_CHANNELS names the site uses
-const CHANNELS = ['events-team', 'senior-staff-alerts', 'feedback'];
+const CHANNELS = ['events-team', 'senior-staff-alerts', 'controller-feedback'];
 
 function check(request: ChannelSend) {
 	if (!CHANNELS.includes(request.channel)) {

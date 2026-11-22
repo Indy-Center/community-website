@@ -5,6 +5,6 @@ export type LarryMessage = ChannelSend;
 
 // Names from Larry's SEND_CHANNELS setting, not channel IDs
 export enum LarryChannel {
-	FEEDBACK = 'feedback',
+	FEEDBACK = 'controller-feedback',
 	SENIOR_STAFF_ALERTS = 'senior-staff-alerts'
 }

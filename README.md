@@ -109,7 +109,7 @@ noted in the log and shown to the reviewer. Larry's deploy needs these in `SEND_
 | Name                  | What goes there                                |
 | --------------------- | ---------------------------------------------- |
 | `senior-staff-alerts` | New feedback, and follow ups to work           |
-| `feedback`            | Feedback published as identified, without CIDs |
+| `controller-feedback` | Feedback published as identified, without CIDs |
 
 ## Vars and secrets for the CMS
 
