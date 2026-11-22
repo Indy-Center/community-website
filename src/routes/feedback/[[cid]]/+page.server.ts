@@ -5,7 +5,8 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { eq } from 'drizzle-orm';
 import { usersTable } from '$lib/db/schema/users.js';
-import { notifyDiscordOfFeedback } from '$lib/server/discord';
+import { enqueueWithLarry, newFeedbackAlert } from '$lib/server/discord';
+import { fetchAlertPeople } from '$lib/server/feedback';
 import { logger } from '$lib/server/logger';
 import { memberPickerColumns } from '$lib/members';
 
@@ -39,7 +40,7 @@ export const load = async ({ locals, params, url }) => {
 };
 
 export const actions = {
-	default: async ({ request, locals }) => {
+	default: async ({ request, locals, platform }) => {
 		// You must be logged in to submit feedback
 		if (!locals.user) {
 			return fail(401, { message: 'Unauthorized' });
@@ -69,7 +70,15 @@ export const actions = {
 			})
 			.returning();
 
-		await notifyDiscordOfFeedback(locals.larry, locals.db, feedback);
+		const people = await fetchAlertPeople(locals.db, [feedback.submitterId, feedback.controllerId]);
+		const submitter = people.get(feedback.submitterId);
+		const controller = people.get(feedback.controllerId);
+		if (submitter && controller) {
+			await enqueueWithLarry(
+				platform?.env.LARRY,
+				newFeedbackAlert(feedback, { submitter, controller })
+			);
+		}
 
 		form.message = 'Feedback submitted successfully!';
 		return { form };

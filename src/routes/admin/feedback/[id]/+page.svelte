@@ -146,7 +146,7 @@
 		<div
 			class="rounded-lg border border-yellow-500/40 bg-yellow-600/10 px-4 py-3 text-sm text-yellow-200"
 		>
-			Published to the profile, but the Discord post failed. Check the logs.
+			Published to the profile, but the Discord post couldn't be queued. Check the logs.
 		</div>
 	{/if}
 

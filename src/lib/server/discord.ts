@@ -1,8 +1,6 @@
 import type { Feedback, FeedbackStatus } from '$lib/db/schema/feedback';
 import { env } from '$env/dynamic/private';
-import { usersTable, type User } from '$lib/db/schema/users';
-import { eq } from 'drizzle-orm';
-import type { Database } from '$lib/server/db';
+import type { User } from '$lib/db/schema/users';
 import { logger } from './logger';
 import { ratingLabel } from '$lib/utils/feedbackRatings';
 import { statusLabel } from '$lib/utils/feedbackReview';
@@ -34,8 +32,7 @@ export type DiscordEmbed = {
 	timestamp: string;
 };
 
-function getDisplayName(user: User) {
-	if (!user) return 'Unknown User';
+function getDisplayName(user: Pick<User, 'cid' | 'firstName' | 'lastName' | 'preferredName'>) {
 	const name = user.preferredName || `${user.firstName} ${user.lastName}`;
 	return `${name} (${user.cid})`;
 }
@@ -58,27 +55,28 @@ export async function sendDiscordEmbed(channel: DiscordChannel, embed: DiscordEm
 }
 
 /**
- * Sends through Larry (the indy-larry Worker) instead of a webhook. Never throws, so a Discord
- * problem can't fail the action that triggered it. Returns whether the message went out.
+ * Queues a message with Larry, which retries rate limits and Discord outages itself. Never throws,
+ * so a Discord problem can't fail the action that triggered it. Returns whether Larry took the
+ * message: false when the binding is missing or Larry refused it, e.g. for a channel that isn't
+ * in its SEND_CHANNELS.
  */
-async function sendViaLarry(
-	larry: LarryBinding | undefined,
-	message: LarryMessage,
-	mode: 'send' | 'enqueue'
-) {
+export async function enqueueWithLarry(larry: LarryBinding | undefined, message: LarryMessage) {
 	if (!larry) {
 		logger.warn(`LARRY binding is not set, skipping message to ${message.channel}`);
 		return false;
 	}
 
 	try {
-		await larry[mode](message);
+		await larry.enqueue(message);
 		return true;
 	} catch (error) {
-		logger.error(`Larry message to ${message.channel} failed`, error);
+		logger.error(`Larry wouldn't queue the message to ${message.channel}`, error);
 		return false;
 	}
 }
+
+/** The people a feedback alert names, as fetched by the caller. */
+type AlertPerson = Pick<User, 'cid' | 'firstName' | 'lastName' | 'preferredName'>;
 
 const STATUS_COLORS: Partial<Record<FeedbackStatus, number>> = {
 	approved: 0x5865f2,
@@ -86,125 +84,63 @@ const STATUS_COLORS: Partial<Record<FeedbackStatus, number>> = {
 	rejected: 0xed4245
 };
 
-export async function notifyDiscordOfFeedbackStatusChange(
-	larry: LarryBinding | undefined,
-	db: Database,
+/** Senior staff's alert for new feedback. */
+export function newFeedbackAlert(
 	feedback: Feedback,
-	adminUser: User
-) {
-	const submitter = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, feedback.submitterId)
-	});
-	const controller = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, feedback.controllerId)
-	});
-	const admin = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, adminUser.id)
-	});
-
-	const assignee = feedback.assigneeId
-		? await db.query.usersTable.findFirst({
-				where: eq(usersTable.id, feedback.assigneeId)
-			})
-		: undefined;
-
-	if (submitter && controller && admin) {
-		const fields = [
+	people: { submitter: AlertPerson; controller: AlertPerson }
+): LarryMessage {
+	return {
+		channel: LarryChannel.SENIOR_STAFF_ALERTS,
+		embeds: [
 			{
-				name: '👤 Controller',
-				value: getDisplayName(controller),
-				inline: true
-			},
-			{
-				name: '⭐ Rating',
-				value: feedback.rating.toUpperCase(),
-				inline: true
-			},
-			{
-				name: '👤 Reviewed by',
-				value: getDisplayName(admin),
-				inline: true
-			},
-			{
-				name: '🔄 Review Status',
-				value: statusLabel(feedback.status).toUpperCase(),
-				inline: true
+				title: '🎯 New Controller Feedback',
+				description: feedback.feedback ?? undefined,
+				color: 0x5865f2,
+				fields: [
+					{ name: '👤 Controller', value: getDisplayName(people.controller), inline: true },
+					{ name: '⭐ Rating', value: ratingLabel(feedback.rating).toUpperCase(), inline: true },
+					{ name: '📝 Submitted by', value: getDisplayName(people.submitter), inline: true }
+				],
+				footer: { text: `Feedback ID: ${feedback.id}` },
+				timestamp: feedback.createdAt?.toISOString()
 			}
-		];
-
-		if (feedback.status === 'follow_up') {
-			fields.push({
-				name: '📌 Assigned to',
-				value: assignee ? getDisplayName(assignee) : 'Unassigned',
-				inline: true
-			});
-		}
-
-		const embed = {
-			title: '🎯 Feedback Status Changed',
-			description: feedback.feedback ?? undefined,
-			color: STATUS_COLORS[feedback.status] ?? 0x5865f2,
-			fields,
-			footer: {
-				text: `Feedback ID: ${feedback.id}`
-			},
-			timestamp: feedback.createdAt!.toISOString()
-		};
-
-		await sendViaLarry(
-			larry,
-			{ channel: LarryChannel.SENIOR_STAFF_ALERTS, embeds: [embed] },
-			'enqueue'
-		);
-	}
+		]
+	};
 }
 
-export async function notifyDiscordOfFeedback(
-	larry: LarryBinding | undefined,
-	db: Database,
-	feedback: Feedback
-) {
-	const submitter = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, feedback.submitterId)
-	});
-	const controller = await db.query.usersTable.findFirst({
-		where: eq(usersTable.id, feedback.controllerId)
-	});
+/** Senior staff's alert that a reviewer moved feedback to a new status. */
+export function feedbackStatusAlert(
+	feedback: Feedback,
+	people: { controller: AlertPerson; reviewer: AlertPerson; assignee?: AlertPerson }
+): LarryMessage {
+	const fields = [
+		{ name: '👤 Controller', value: getDisplayName(people.controller), inline: true },
+		{ name: '⭐ Rating', value: ratingLabel(feedback.rating).toUpperCase(), inline: true },
+		{ name: '👤 Reviewed by', value: getDisplayName(people.reviewer), inline: true },
+		{ name: '🔄 Review Status', value: statusLabel(feedback.status).toUpperCase(), inline: true }
+	];
 
-	if (submitter && controller) {
-		const embed = {
-			title: '🎯 New Controller Feedback',
-			description: feedback.feedback ?? undefined,
-			color: 0x5865f2,
-			fields: [
-				{
-					name: '👤 Controller',
-					value: getDisplayName(controller),
-					inline: true
-				},
-				{
-					name: '⭐ Rating',
-					value: feedback.rating.toUpperCase(),
-					inline: true
-				},
-				{
-					name: '📝 Submitted by',
-					value: getDisplayName(submitter),
-					inline: true
-				}
-			],
-			footer: {
-				text: `Feedback ID: ${feedback.id}`
-			},
-			timestamp: feedback.createdAt!.toISOString()
-		};
-
-		await sendViaLarry(
-			larry,
-			{ channel: LarryChannel.SENIOR_STAFF_ALERTS, embeds: [embed] },
-			'enqueue'
-		);
+	if (feedback.status === 'follow_up') {
+		fields.push({
+			name: '📌 Assigned to',
+			value: people.assignee ? getDisplayName(people.assignee) : 'Unassigned',
+			inline: true
+		});
 	}
+
+	return {
+		channel: LarryChannel.SENIOR_STAFF_ALERTS,
+		embeds: [
+			{
+				title: '🎯 Feedback Status Changed',
+				description: feedback.feedback ?? undefined,
+				color: STATUS_COLORS[feedback.status] ?? 0x5865f2,
+				fields,
+				footer: { text: `Feedback ID: ${feedback.id}` },
+				timestamp: feedback.createdAt?.toISOString()
+			}
+		]
+	};
 }
 
 // Discord caps embed field values at 1024 characters
@@ -213,68 +149,45 @@ function fieldValue(value: string) {
 }
 
 /**
- * Posts identified published feedback to the feedback channel, using the values staff chose
- * to publish rather than the original submission. De-identified feedback is never posted.
- * Like the old website's post, it never includes CIDs, the reviewer, or the feedback ID.
- *
- * Never throws, so a Discord problem can't fail publishing. Returns whether the post went out.
+ * The public post for feedback published as identified, using the values staff chose to publish
+ * rather than the original submission. De-identified feedback is never posted. Like the old
+ * website's post, it never includes CIDs, the reviewer, or the feedback ID.
  */
-export async function announcePublishedFeedback(
-	larry: LarryBinding | undefined,
-	db: Database,
-	feedback: Feedback
-) {
-	if (feedback.publishMode !== 'identified') return false;
+export function publishedFeedbackPost(
+	feedback: Feedback,
+	controller: Pick<User, 'firstName' | 'lastName' | 'preferredName' | 'operatingInitials'>
+): LarryMessage {
+	// Matches the old website's post: "Braden Kearney (BK)"
+	const name = controller.preferredName || `${controller.firstName} ${controller.lastName}`;
+	const controllerName = controller.operatingInitials
+		? `${name} (${controller.operatingInitials})`
+		: name;
 
-	try {
-		const controller = await db.query.usersTable.findFirst({
-			where: eq(usersTable.id, feedback.controllerId)
-		});
-
-		if (!controller) {
-			logger.warn(`Controller ${feedback.controllerId} not found, skipping feedback announcement`);
-			return false;
+	const fields = [
+		{ name: 'Controller', value: controllerName, inline: true },
+		{ name: 'Position', value: feedback.publishedPosition || feedback.position, inline: true },
+		{
+			name: 'Rating',
+			value: ratingLabel(feedback.publishedRating || feedback.rating),
+			inline: true
 		}
+	];
 
-		// Matches the old website's post: "Braden Kearney (BK)"
-		const name = controller.preferredName || `${controller.firstName} ${controller.lastName}`;
-		const controllerName = controller.operatingInitials
-			? `${name} (${controller.operatingInitials})`
-			: name;
-
-		const fields = [
-			{ name: 'Controller', value: controllerName, inline: true },
-			{ name: 'Position', value: feedback.publishedPosition || feedback.position, inline: true },
-			{
-				name: 'Rating',
-				value: ratingLabel(feedback.publishedRating || feedback.rating),
-				inline: true
-			}
-		];
-
-		const pilot = [feedback.publishedPilotName?.trim(), feedback.publishedCallsign?.trim()]
-			.filter(Boolean)
-			.join(' · ');
-		if (pilot) {
-			fields.push({ name: 'Pilot', value: fieldValue(pilot), inline: false });
-		}
-
-		const comments = feedback.publishedFeedback?.trim();
-		if (comments) {
-			fields.push({ name: 'Comments', value: fieldValue(comments), inline: false });
-		}
-
-		return await sendViaLarry(
-			larry,
-			{
-				channel: LarryChannel.FEEDBACK,
-				content: 'New feedback received!',
-				embeds: [{ color: 0x2ecc71, fields }]
-			},
-			'send'
-		);
-	} catch (error) {
-		logger.error('Feedback announcement failed', error);
-		return false;
+	const pilot = [feedback.publishedPilotName?.trim(), feedback.publishedCallsign?.trim()]
+		.filter(Boolean)
+		.join(' · ');
+	if (pilot) {
+		fields.push({ name: 'Pilot', value: fieldValue(pilot), inline: false });
 	}
+
+	const comments = feedback.publishedFeedback?.trim();
+	if (comments) {
+		fields.push({ name: 'Comments', value: fieldValue(comments), inline: false });
+	}
+
+	return {
+		channel: LarryChannel.FEEDBACK,
+		content: 'New feedback received!',
+		embeds: [{ color: 0x2ecc71, fields }]
+	};
 }

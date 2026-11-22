@@ -1,9 +1,14 @@
-import { feedbackTable, type Feedback } from '$lib/db/schema/feedback';
+import { feedbackEventsTable, feedbackTable, type Feedback } from '$lib/db/schema/feedback';
+import type { User } from '$lib/db/schema/users';
+import type { Database } from '$lib/server/db';
+import { enqueueWithLarry, feedbackStatusAlert, publishedFeedbackPost } from '$lib/server/discord';
 import {
-	announcePublishedFeedback,
-	notifyDiscordOfFeedbackStatusChange
-} from '$lib/server/discord';
-import { getFeedbackReviewers, logFeedbackEvent, pilotDisplayName } from '$lib/server/feedback';
+	feedbackEventInsert,
+	fetchAlertPeople,
+	getFeedbackReviewers,
+	pilotDisplayName
+} from '$lib/server/feedback';
+import type { LarryBinding } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
 import { RATING_STARS } from '$lib/utils/feedbackRatings';
 import { PUBLISH_MODES, type FeedbackStatus, type PublishMode } from '$lib/utils/feedbackReview';
@@ -17,20 +22,23 @@ export const load = async ({ locals, params }) => {
 		return redirect(302, '/admin');
 	}
 
-	const feedback = await locals.db.query.feedbackTable.findFirst({
-		where: eq(feedbackTable.id, params.id),
-		with: {
-			submitter: true,
-			controller: true,
-			assignee: true,
-			events: {
-				orderBy: (event, { asc }) => [asc(event.createdAt)],
-				with: {
-					user: { columns: { firstName: true, lastName: true, preferredName: true } }
+	const [feedback, reviewers] = await Promise.all([
+		locals.db.query.feedbackTable.findFirst({
+			where: eq(feedbackTable.id, params.id),
+			with: {
+				submitter: true,
+				controller: true,
+				assignee: true,
+				events: {
+					orderBy: (event, { asc }) => [asc(event.createdAt)],
+					with: {
+						user: { columns: { firstName: true, lastName: true, preferredName: true } }
+					}
 				}
 			}
-		}
-	});
+		}),
+		getFeedbackReviewers(locals.db)
+	]);
 
 	if (!feedback) {
 		error(404, 'Feedback not found');
@@ -48,7 +56,7 @@ export const load = async ({ locals, params }) => {
 	return {
 		feedback,
 		publishDraft,
-		reviewers: await getFeedbackReviewers(locals.db),
+		reviewers,
 		userId: locals.user?.id
 	};
 };
@@ -83,6 +91,8 @@ const acceptAndPublishSchema = noteSchema.extend({
 	mode: z.enum(PUBLISH_MODES)
 });
 
+type PublishValues = Omit<z.infer<typeof publishSchema>, 'mode'>;
+
 // Read a form with a schema, returning the parsed data or a 400 with the first error
 async function parseForm<T extends z.ZodType>(request: Request, schema: T) {
 	const formData = Object.fromEntries(await request.formData());
@@ -93,8 +103,18 @@ async function parseForm<T extends z.ZodType>(request: Request, schema: T) {
 	return { data: result.data as z.infer<T> };
 }
 
-async function getFeedback(locals: App.Locals, id: string) {
-	return locals.db.query.feedbackTable.findFirst({ where: eq(feedbackTable.id, id) });
+async function getFeedback(db: Database, id: string) {
+	return db.query.feedbackTable.findFirst({ where: eq(feedbackTable.id, id) });
+}
+
+// The signed-in user, if they may work feedback
+function reviewer(locals: App.Locals) {
+	return canReviewFeedback(locals.roles) ? locals.user : undefined;
+}
+
+async function isReviewer(db: Database, userId: string) {
+	const reviewers = await getFeedbackReviewers(db);
+	return reviewers.some((r) => r.id === userId);
 }
 
 // Status changes allowed from each status. Published feedback can't change status because
@@ -110,100 +130,187 @@ function canMoveTo(feedback: Feedback, status: FeedbackStatus) {
 	return !feedback.publishMode && TRANSITIONS[feedback.status]?.includes(status);
 }
 
+// The columns a status change sets. Only follow ups have an assignee.
+function statusColumns(status: FeedbackStatus, assigneeId?: string | null) {
+	return { status, assigneeId: status === 'follow_up' ? assigneeId || null : null };
+}
+
+// The columns publishing sets. De-identified feedback never stores the pilot's details, so they
+// can't leak later.
+function publishColumns(mode: PublishMode, values: PublishValues) {
+	const identified = mode === 'identified';
+	return {
+		publishMode: mode,
+		publishedAt: new Date(),
+		publishedRating: values.rating,
+		publishedPosition: values.position,
+		publishedCallsign: identified ? values.callsign || null : null,
+		publishedPilotName: identified ? values.pilotName || null : null,
+		publishedFeedback: values.feedback || null
+	};
+}
+
+// Queues senior staff's alert for a status change that has been saved
+async function queueStatusAlert(
+	db: Database,
+	larry: LarryBinding | undefined,
+	feedback: Feedback,
+	by: User
+) {
+	const people = await fetchAlertPeople(db, [feedback.controllerId, feedback.assigneeId]);
+	const controller = people.get(feedback.controllerId);
+	if (!controller) {
+		logger.warn(`Controller ${feedback.controllerId} not found, skipping feedback status alert`);
+		return;
+	}
+	await enqueueWithLarry(
+		larry,
+		feedbackStatusAlert(feedback, {
+			controller,
+			reviewer: by,
+			assignee: feedback.assigneeId ? people.get(feedback.assigneeId) : undefined
+		})
+	);
+}
+
+/**
+ * Queues the public Discord post for feedback that has been published as identified. Returns
+ * whether Larry took it, or null for de-identified feedback, which isn't posted. If it fails, the
+ * publish log entry (`publishedEventId`) says so; the feedback stays published either way.
+ */
+async function queuePublishedPost(
+	db: Database,
+	larry: LarryBinding | undefined,
+	feedback: Feedback,
+	publishedEventId: string
+) {
+	if (feedback.publishMode !== 'identified') return null;
+
+	const people = await fetchAlertPeople(db, [feedback.controllerId]);
+	const controller = people.get(feedback.controllerId);
+	if (!controller) {
+		logger.warn(`Controller ${feedback.controllerId} not found, skipping feedback announcement`);
+	}
+	const posted =
+		!!controller && (await enqueueWithLarry(larry, publishedFeedbackPost(feedback, controller)));
+
+	if (!posted) {
+		try {
+			await db
+				.update(feedbackEventsTable)
+				.set({ body: "The Discord post couldn't be queued; the feedback is still on the profile." })
+				.where(eq(feedbackEventsTable.id, publishedEventId));
+		} catch (err) {
+			logger.error(`Couldn't note the failed Discord post on feedback ${feedback.id}`, err);
+		}
+	}
+	return posted;
+}
+
 async function changeStatus(
 	locals: App.Locals,
+	larry: LarryBinding | undefined,
 	id: string,
 	status: FeedbackStatus,
 	note: string | undefined,
 	assigneeId?: string | null
 ) {
-	if (!canReviewFeedback(locals.roles) || !locals.user) {
+	const user = reviewer(locals);
+	if (!user) {
 		logger.warn(`Unauthorized feedback status change attempt by user ${locals.user?.id}`);
 		return fail(403, { message: 'Unauthorized' });
 	}
 
-	const existing = await getFeedback(locals, id);
+	const db = locals.db;
+	const existing = await getFeedback(db, id);
 	if (!existing) return fail(404, { message: 'Feedback not found' });
 	if (!canMoveTo(existing, status)) {
 		return fail(400, { message: `This feedback can't be moved to that status` });
 	}
 
-	logger.info(`Reviewer ${locals.user.id} moving feedback ${id} to ${status}`);
+	logger.info(`Reviewer ${user.id} moving feedback ${id} to ${status}`);
 
+	const columns = statusColumns(status, assigneeId);
+	let feedback: Feedback;
 	try {
-		const [feedback] = await locals.db
-			.update(feedbackTable)
-			.set({
-				status,
-				// Only follow ups have an assignee
-				assigneeId: status === 'follow_up' ? assigneeId || null : null,
-				updatedAt: new Date()
-			})
-			.where(eq(feedbackTable.id, id))
-			.returning();
-
-		await logFeedbackEvent(locals.db, {
-			feedbackId: id,
-			userId: locals.user.id,
-			type: 'status',
-			value: status,
-			body: note
-		});
-
-		if (status === 'follow_up' && feedback.assigneeId) {
-			await logFeedbackEvent(locals.db, {
+		// The change and its log entries are saved together or not at all
+		const [[updated]] = await db.batch([
+			db
+				.update(feedbackTable)
+				.set({ ...columns, updatedAt: new Date() })
+				.where(eq(feedbackTable.id, id))
+				.returning(),
+			feedbackEventInsert(db, {
 				feedbackId: id,
-				userId: locals.user.id,
-				type: 'assigned',
-				value: feedback.assigneeId
-			});
-		}
-
-		await notifyDiscordOfFeedbackStatusChange(locals.larry, locals.db, feedback, locals.user);
-		return { success: true };
+				userId: user.id,
+				type: 'status',
+				value: status,
+				body: note
+			}),
+			...(columns.assigneeId
+				? [
+						feedbackEventInsert(db, {
+							feedbackId: id,
+							userId: user.id,
+							type: 'assigned',
+							value: columns.assigneeId
+						})
+					]
+				: [])
+		]);
+		feedback = updated;
 	} catch (err) {
 		logger.error(`Failed to move feedback ${id} to ${status}`, err);
 		return fail(500, { message: 'Failed to update feedback' });
 	}
+
+	await queueStatusAlert(db, larry, feedback, user);
+	return { success: true };
 }
 
 export const actions = {
-	accept: async ({ request, locals, params }) => {
+	accept: async ({ request, locals, params, platform }) => {
 		const form = await parseForm(request, noteSchema);
 		if (form.error) return form.error;
-		return changeStatus(locals, params.id, 'approved', form.data.note);
+		return changeStatus(locals, platform?.env.LARRY, params.id, 'approved', form.data.note);
 	},
 
-	reject: async ({ request, locals, params }) => {
+	reject: async ({ request, locals, params, platform }) => {
 		const form = await parseForm(request, noteSchema);
 		if (form.error) return form.error;
-		return changeStatus(locals, params.id, 'rejected', form.data.note);
+		return changeStatus(locals, platform?.env.LARRY, params.id, 'rejected', form.data.note);
 	},
 
-	followUp: async ({ request, locals, params }) => {
+	followUp: async ({ request, locals, params, platform }) => {
 		const form = await parseForm(request, followUpSchema);
 		if (form.error) return form.error;
 
 		const assigneeId = form.data.assigneeId || null;
-		if (assigneeId) {
-			const reviewers = await getFeedbackReviewers(locals.db);
-			if (!reviewers.some((r) => r.id === assigneeId)) {
-				return fail(400, { message: 'Assignee must be a feedback reviewer' });
-			}
+		if (assigneeId && !(await isReviewer(locals.db, assigneeId))) {
+			return fail(400, { message: 'Assignee must be a feedback reviewer' });
 		}
 
-		return changeStatus(locals, params.id, 'follow_up', form.data.note, assigneeId);
+		return changeStatus(
+			locals,
+			platform?.env.LARRY,
+			params.id,
+			'follow_up',
+			form.data.note,
+			assigneeId
+		);
 	},
 
 	assign: async ({ request, locals, params }) => {
-		if (!canReviewFeedback(locals.roles) || !locals.user) {
+		const user = reviewer(locals);
+		if (!user) {
 			return fail(403, { message: 'Unauthorized' });
 		}
 
 		const form = await parseForm(request, assignSchema);
 		if (form.error) return form.error;
 
-		const existing = await getFeedback(locals, params.id);
+		const db = locals.db;
+		const existing = await getFeedback(db, params.id);
 		if (!existing) return fail(404, { message: 'Feedback not found' });
 		if (existing.status !== 'follow_up') {
 			return fail(400, { message: 'Only follow ups can be assigned' });
@@ -211,43 +318,42 @@ export const actions = {
 
 		const assigneeId = form.data.assigneeId || null;
 		if (assigneeId === existing.assigneeId) return { success: true };
-		if (assigneeId) {
-			const reviewers = await getFeedbackReviewers(locals.db);
-			if (!reviewers.some((r) => r.id === assigneeId)) {
-				return fail(400, { message: 'Assignee must be a feedback reviewer' });
-			}
+		if (assigneeId && !(await isReviewer(db, assigneeId))) {
+			return fail(400, { message: 'Assignee must be a feedback reviewer' });
 		}
 
-		await locals.db
-			.update(feedbackTable)
-			.set({ assigneeId, updatedAt: new Date() })
-			.where(eq(feedbackTable.id, params.id));
+		await db.batch([
+			db
+				.update(feedbackTable)
+				.set({ assigneeId, updatedAt: new Date() })
+				.where(eq(feedbackTable.id, params.id)),
+			feedbackEventInsert(db, {
+				feedbackId: params.id,
+				userId: user.id,
+				type: 'assigned',
+				value: assigneeId
+			})
+		]);
 
-		await logFeedbackEvent(locals.db, {
-			feedbackId: params.id,
-			userId: locals.user.id,
-			type: 'assigned',
-			value: assigneeId
-		});
-
-		logger.info(`Reviewer ${locals.user.id} assigned feedback ${params.id} to ${assigneeId}`);
+		logger.info(`Reviewer ${user.id} assigned feedback ${params.id} to ${assigneeId}`);
 		return { success: true };
 	},
 
 	comment: async ({ request, locals, params }) => {
-		if (!canReviewFeedback(locals.roles) || !locals.user) {
+		const user = reviewer(locals);
+		if (!user) {
 			return fail(403, { message: 'Unauthorized' });
 		}
 
 		const form = await parseForm(request, commentSchema);
 		if (form.error) return form.error;
 
-		const existing = await getFeedback(locals, params.id);
+		const existing = await getFeedback(locals.db, params.id);
 		if (!existing) return fail(404, { message: 'Feedback not found' });
 
-		await logFeedbackEvent(locals.db, {
+		await feedbackEventInsert(locals.db, {
 			feedbackId: params.id,
-			userId: locals.user.id,
+			userId: user.id,
 			type: form.data.type,
 			body: form.data.body
 		});
@@ -255,8 +361,9 @@ export const actions = {
 		return { success: true };
 	},
 
-	publish: async ({ request, locals, params }) => {
-		if (!canReviewFeedback(locals.roles) || !locals.user) {
+	publish: async ({ request, locals, params, platform }) => {
+		const user = reviewer(locals);
+		if (!user) {
 			logger.warn(`Unauthorized feedback publish attempt by user ${locals.user?.id}`);
 			return fail(403, { message: 'Unauthorized' });
 		}
@@ -264,7 +371,8 @@ export const actions = {
 		const form = await parseForm(request, publishSchema);
 		if (form.error) return form.error;
 
-		const existing = await getFeedback(locals, params.id);
+		const db = locals.db;
+		const existing = await getFeedback(db, params.id);
 		if (!existing) return fail(404, { message: 'Feedback not found' });
 		if (existing.status !== 'approved') {
 			return fail(400, { message: 'Only accepted feedback can be published' });
@@ -274,74 +382,103 @@ export const actions = {
 		}
 
 		const { mode, ...values } = form.data;
-		const posted = await publishFeedback(locals, params.id, mode, values);
+		logger.info(`Reviewer ${user.id} publishing feedback ${params.id} as ${mode}`);
+
+		const publishedEventId = crypto.randomUUID();
+		let feedback: Feedback;
+		try {
+			const [[updated]] = await db.batch([
+				db
+					.update(feedbackTable)
+					.set({ ...publishColumns(mode, values), updatedAt: new Date() })
+					.where(eq(feedbackTable.id, params.id))
+					.returning(),
+				feedbackEventInsert(db, {
+					id: publishedEventId,
+					feedbackId: params.id,
+					userId: user.id,
+					type: 'published',
+					value: mode
+				})
+			]);
+			feedback = updated;
+		} catch (err) {
+			logger.error(`Failed to publish feedback ${params.id}`, err);
+			return fail(500, { message: 'Failed to publish feedback' });
+		}
+
+		const posted = await queuePublishedPost(db, platform?.env.LARRY, feedback, publishedEventId);
 		return { success: true, posted };
 	},
 
-	// Quick action for new feedback: accept, then publish the submission as it was sent
-	acceptAndPublish: async ({ request, locals, params }) => {
+	// Quick action for new feedback: accept it and publish the submission as it was sent. Both
+	// are saved in one write, so it's never left accepted but unpublished.
+	acceptAndPublish: async ({ request, locals, params, platform }) => {
+		const user = reviewer(locals);
+		if (!user) {
+			logger.warn(`Unauthorized feedback accept and publish attempt by user ${locals.user?.id}`);
+			return fail(403, { message: 'Unauthorized' });
+		}
+
 		const form = await parseForm(request, acceptAndPublishSchema);
 		if (form.error) return form.error;
 
-		const accepted = await changeStatus(locals, params.id, 'approved', form.data.note);
-		if (!('success' in accepted)) return accepted;
-
-		const feedback = await locals.db.query.feedbackTable.findFirst({
+		const db = locals.db;
+		const existing = await db.query.feedbackTable.findFirst({
 			where: eq(feedbackTable.id, params.id),
 			with: { submitter: true }
 		});
-		if (!feedback) return fail(404, { message: 'Feedback not found' });
+		if (!existing) return fail(404, { message: 'Feedback not found' });
+		if (!canMoveTo(existing, 'approved')) {
+			return fail(400, { message: `This feedback can't be accepted` });
+		}
 
-		const posted = await publishFeedback(locals, params.id, form.data.mode, {
-			rating: feedback.rating,
-			position: feedback.position,
-			callsign: feedback.callsign ?? undefined,
-			pilotName: pilotDisplayName(feedback.submitter) ?? undefined,
-			feedback: feedback.feedback ?? undefined
-		});
+		const { mode, note } = form.data;
+		logger.info(`Reviewer ${user.id} accepting and publishing feedback ${params.id} as ${mode}`);
+
+		const publishedEventId = crypto.randomUUID();
+		let feedback: Feedback;
+		try {
+			const [[updated]] = await db.batch([
+				db
+					.update(feedbackTable)
+					.set({
+						...statusColumns('approved'),
+						...publishColumns(mode, {
+							rating: existing.rating,
+							position: existing.position,
+							callsign: existing.callsign ?? undefined,
+							pilotName: pilotDisplayName(existing.submitter) ?? undefined,
+							feedback: existing.feedback ?? undefined
+						}),
+						updatedAt: new Date()
+					})
+					.where(eq(feedbackTable.id, params.id))
+					.returning(),
+				feedbackEventInsert(db, {
+					feedbackId: params.id,
+					userId: user.id,
+					type: 'status',
+					value: 'approved',
+					body: note
+				}),
+				feedbackEventInsert(db, {
+					id: publishedEventId,
+					feedbackId: params.id,
+					userId: user.id,
+					type: 'published',
+					value: mode
+				})
+			]);
+			feedback = updated;
+		} catch (err) {
+			logger.error(`Failed to accept and publish feedback ${params.id}`, err);
+			return fail(500, { message: 'Failed to update feedback' });
+		}
+
+		const larry = platform?.env.LARRY;
+		await queueStatusAlert(db, larry, feedback, user);
+		const posted = await queuePublishedPost(db, larry, feedback, publishedEventId);
 		return { success: true, posted };
 	}
 };
-
-// Saves what gets published, posts identified feedback to Discord, and logs it. Returns
-// whether Discord got it, or null for de-identified feedback, which isn't posted.
-async function publishFeedback(
-	locals: App.Locals,
-	id: string,
-	mode: PublishMode,
-	values: Omit<z.infer<typeof publishSchema>, 'mode'>
-) {
-	const identified = mode === 'identified';
-
-	logger.info(`Reviewer ${locals.user!.id} publishing feedback ${id} as ${mode}`);
-
-	// De-identified feedback never stores the pilot's details, so they can't leak later
-	const [feedback] = await locals.db
-		.update(feedbackTable)
-		.set({
-			publishMode: mode,
-			publishedAt: new Date(),
-			publishedRating: values.rating,
-			publishedPosition: values.position,
-			publishedCallsign: identified ? values.callsign || null : null,
-			publishedPilotName: identified ? values.pilotName || null : null,
-			publishedFeedback: values.feedback || null,
-			updatedAt: new Date()
-		})
-		.where(eq(feedbackTable.id, id))
-		.returning();
-
-	const posted = identified
-		? await announcePublishedFeedback(locals.larry, locals.db, feedback)
-		: null;
-
-	await logFeedbackEvent(locals.db, {
-		feedbackId: id,
-		userId: locals.user!.id,
-		type: 'published',
-		value: mode,
-		body: posted === false ? 'The Discord post failed; the feedback is still on the profile.' : null
-	});
-
-	return posted;
-}

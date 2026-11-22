@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { ChannelSend } from '@indy-center/indy-larry-worker';
 import type { Database } from '$lib/server/db';
 import { expectNothingPrivate, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
-import { load } from './+page.server';
+import { LarryChannel } from '$lib/server/larry';
+import { actions, load } from './+page.server';
 
 let db: Database;
 
@@ -70,5 +72,40 @@ describe('/feedback', () => {
 
 	it("sends no controller's email or Connect record to a visitor", async () => {
 		expectNothingPrivate(await visit());
+	});
+});
+
+describe('submitting feedback', () => {
+	async function submit(fields: Record<string, string>) {
+		const queued: ChannelSend[] = [];
+		const user = await db.query.usersTable.findFirst({
+			where: (users, { eq }) => eq(users.id, 'user-casey')
+		});
+		await actions.default({
+			request: new Request('https://flyindycenter.com/feedback', {
+				method: 'POST',
+				body: new URLSearchParams(fields)
+			}),
+			locals: { db, user, roles: [] },
+			platform: { env: { LARRY: { enqueue: async (m: ChannelSend) => void queued.push(m) } } }
+		} as never);
+		return queued;
+	}
+
+	it('always saves new feedback for review, whatever status the form sends', async () => {
+		const queued = await submit({
+			controllerId: 'user-jane',
+			rating: 'very_good',
+			position: 'IND_GND',
+			status: 'approved'
+		});
+
+		const [saved] = await db.query.feedbackTable.findMany();
+		expect(saved).toMatchObject({
+			controllerId: 'user-jane',
+			rating: 'very_good',
+			status: 'pending'
+		});
+		expect(queued.map((m) => m.channel)).toEqual([LarryChannel.SENIOR_STAFF_ALERTS]);
 	});
 });
