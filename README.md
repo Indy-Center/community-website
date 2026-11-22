@@ -11,6 +11,7 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/routes/roster/` — controller roster page.
 - `src/routes/events/` — events listing.
 - `src/routes/feedback/` — member feedback submission.
+- `src/routes/admin/feedback/` — the feedback review queue; `[id]/` reviews one item. See [Feedback review](#feedback-review).
 - `src/routes/visit/` — visiting controller request form.
 - `src/routes/partners/` — partner cards, from the CMS.
 - `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
@@ -21,7 +22,8 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/lib/server/identity.ts` — OAuth client for the identity server, and its userinfo lookup.
 - `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
-- `src/lib/server/discord.ts` — Discord webhook helpers.
+- `src/lib/server/discord.ts` — Discord messages: the feedback alerts and post Larry queues, and the older webhook helper.
+- `src/lib/server/feedback.ts` — feedback review helpers: the review log, reviewers, and how a pilot is named when feedback is published.
 - `src/lib/server/partners.ts` — reads the partners document as the visitor may see it (member perks in full if signed in, only a count for a guest), or null when the CMS is down and no copy is kept. Every page that shows partners reads through it.
 
 ## Design system
@@ -73,6 +75,34 @@ binding's types come from `@indy-center/indy-larry-worker`; the message is built
 
 Larry's deploy needs `events-team:<channel ID>` in `SEND_CHANNELS`, and the bot needs View Channel,
 Send Messages and Embed Links there.
+
+## Feedback review
+
+Pilots submit feedback at `/feedback`; it always starts as **New**, whatever the form sends.
+Reviewers work it at `/admin/feedback`: **Accept**, **Follow Up** (assigned to a reviewer, who
+logs comments and actions) or **Reject**. Every change is written to the item's log
+(`feedback_events`) in the same `db.batch` as the change itself, which D1 runs as one
+transaction, so a failed save changes nothing.
+
+Accepted feedback shows on the controller's private `/profile`. Staff can then publish it, after
+editing what goes out (the original submission is kept as it was, in its own columns):
+
+- **Identified**: with the pilot's name and callsign, and posted to Discord.
+- **De-identified**: without pilot details, which are never stored; not posted to Discord.
+
+New feedback can be accepted and published in one step; both are saved in one write.
+
+Reviewers are admins and anyone with the `feedback:reviewer` role (`community:feedback:reviewer`
+from identity). Reviewers who aren't admins see only the feedback section of admin.
+
+Discord messages go through Larry's `enqueue()`, since nobody waits on them: Larry retries rate
+limits and outages. The review still saves if Larry won't take a message; a failed public post is
+noted in the log and shown to the reviewer. Larry's deploy needs these in `SEND_CHANNELS`:
+
+| Name                  | What goes there                                |
+| --------------------- | ---------------------------------------------- |
+| `senior-staff-alerts` | New feedback, and each status change           |
+| `feedback`            | Feedback published as identified, without CIDs |
 
 ## Vars and secrets for the CMS
 
@@ -133,15 +163,16 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 
 ### Discord messages from a fake Larry
 
-To send a staffing request locally, run `dev/fake-larry/`, which prints each message instead of
-posting it, beside the site:
+To send a staffing request or a feedback alert locally, run `dev/fake-larry/`, which prints each
+message instead of posting it, beside the site:
 
 ```bash
 npm run dev:larry   # 1: the fake Larry, on port 8789
 npm run dev         # 2: the site
 ```
 
-Start the fake first. Without it the form says the request couldn't be sent.
+Start the fake first. Without it the staffing form says the request couldn't be sent, and
+feedback alerts are skipped with an error in the log.
 
 ### Roster from a fake training app
 
