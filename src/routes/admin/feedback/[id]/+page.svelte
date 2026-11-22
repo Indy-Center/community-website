@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import {
@@ -30,6 +31,7 @@
 		PUBLISH_MODE_LABELS,
 		RATING_BADGES,
 		STATUS_BADGES,
+		localDateTime,
 		reviewSteps,
 		statusLabel,
 		type FeedbackStatus,
@@ -95,7 +97,12 @@
 	};
 
 	// The audit trail: everything done to this feedback, then what happens next
-	const steps = $derived(reviewSteps(feedback, reviewerName));
+	// The reviewer's zone, which only the browser knows; until then the dates are Zulu, as `Time` does
+	let zone = $state<string>();
+	onMount(() => {
+		zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	});
+	const steps = $derived(reviewSteps(feedback, reviewerName, (at) => localDateTime(at, zone)));
 </script>
 
 <svelte:head>

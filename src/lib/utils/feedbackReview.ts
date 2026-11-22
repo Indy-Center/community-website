@@ -88,6 +88,35 @@ export function zuluDateTime(at: Date | string | number) {
 	return `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}${parts.minute}Z`;
 }
 
+/**
+ * A date and time in the reviewer's zone, written as Centerline's `Time` writes them:
+ * "Sat 21 Nov, 7:57 PM CST", with the year when it isn't this year. The server doesn't know the
+ * reviewer's zone, so like `Time` it writes Zulu until the browser gives one.
+ */
+export function localDateTime(at: Date | string | number, zone: string | undefined) {
+	if (!zone) return zuluDateTime(at);
+	const date = new Date(at);
+	const sameYear = date.getFullYear() === new Date().getFullYear();
+	const day = new Intl.DateTimeFormat('en-GB', {
+		timeZone: zone,
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		year: sameYear ? undefined : 'numeric'
+	})
+		.format(date)
+		.replace(',', '')
+		// Some runtimes write September as 'Sept'; Time writes 'Sep'
+		.replace('Sept', 'Sep');
+	const time = new Intl.DateTimeFormat('en-US', {
+		timeZone: zone,
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZoneName: 'short'
+	}).format(date);
+	return `${day}, ${time}`;
+}
+
 export type ReviewStep = {
 	label: string;
 	state: 'done' | 'current' | 'upcoming';
@@ -119,7 +148,8 @@ function withBody(who: string, body: string | null) {
 
 /**
  * A feedback item's audit trail for `Steps`: when it came in, everything reviewers did, then what
- * happens next. `reviewerName` names an assignee from their user ID.
+ * happens next. `reviewerName` names an assignee from their user ID; `formatDate` writes each
+ * step's date, in the reviewer's zone (see `localDateTime`).
  */
 export function reviewSteps(
 	feedback: {
@@ -130,14 +160,15 @@ export function reviewSteps(
 		assignee: Named;
 		events: LogEvent[];
 	},
-	reviewerName: (id: string) => string
+	reviewerName: (id: string) => string,
+	formatDate: (at: Date) => string
 ): ReviewStep[] {
 	const steps: ReviewStep[] = [
 		{
 			label: 'Submitted',
 			state: 'done',
 			detail: `By ${memberName(feedback.submitter)}`,
-			date: feedback.createdAt ? zuluDateTime(feedback.createdAt) : null
+			date: feedback.createdAt ? formatDate(feedback.createdAt) : null
 		}
 	];
 
@@ -148,7 +179,7 @@ export function reviewSteps(
 	);
 	for (const event of events) {
 		const who = memberName(event.user);
-		const date = event.createdAt ? zuluDateTime(event.createdAt) : null;
+		const date = event.createdAt ? formatDate(event.createdAt) : null;
 		const step = { state: 'done' as const, date };
 		switch (event.type) {
 			case 'status':

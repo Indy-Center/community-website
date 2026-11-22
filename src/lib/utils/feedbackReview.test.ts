@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reviewSteps, zuluDateTime } from './feedbackReview';
+import { localDateTime, reviewSteps, zuluDateTime } from './feedbackReview';
 
 const riley = { firstName: 'Riley', lastName: 'Reviewer', preferredName: null };
 const pat = { firstName: 'Pat', lastName: 'Pilot', preferredName: null };
@@ -26,7 +26,7 @@ describe('zuluDateTime', () => {
 
 describe('reviewSteps', () => {
 	it('shows new feedback as submitted, waiting on triage', () => {
-		expect(reviewSteps(item(), names)).toEqual([
+		expect(reviewSteps(item(), names, zuluDateTime)).toEqual([
 			{ label: 'Submitted', state: 'done', detail: 'By Pat Pilot', date: '20 Nov 2026, 1805Z' },
 			{ label: 'Triage', state: 'current', detail: 'Accept, follow up or reject' }
 		]);
@@ -58,7 +58,8 @@ describe('reviewSteps', () => {
 					}
 				]
 			}),
-			names
+			names,
+			zuluDateTime
 		);
 
 		expect(steps.map((s) => [s.label, s.detail])).toEqual([
@@ -94,7 +95,8 @@ describe('reviewSteps', () => {
 					}
 				]
 			}),
-			names
+			names,
+			zuluDateTime
 		);
 
 		expect(steps.slice(-3)).toEqual([
@@ -105,11 +107,23 @@ describe('reviewSteps', () => {
 	});
 
 	it('offers publishing as the next step for accepted feedback that is not published', () => {
-		const steps = reviewSteps(item({ status: 'approved' }), names);
+		const steps = reviewSteps(item({ status: 'approved' }), names, zuluDateTime);
 		expect(steps.at(-1)).toEqual({
 			label: 'Publish',
 			state: 'upcoming',
 			detail: 'Optional: identified or de-identified'
 		});
+	});
+});
+
+describe('localDateTime', () => {
+	it("writes the time in the reviewer's zone, with the year when it isn't this year", () => {
+		expect(localDateTime('2025-08-31T00:30:00Z', 'America/Chicago')).toBe(
+			'Sat 30 Aug 2025, 7:30 PM CDT'
+		);
+	});
+
+	it('writes Zulu while the zone is unknown, as on the server', () => {
+		expect(localDateTime('2025-08-31T00:30:00Z', undefined)).toBe('31 Aug 2025, 0030Z');
 	});
 });
