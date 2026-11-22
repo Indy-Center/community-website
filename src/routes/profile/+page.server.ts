@@ -2,7 +2,6 @@ import { usersTable } from '$lib/db/schema/users';
 import { feedbackTable } from '$lib/db/schema/feedback';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { readMemberCredentials } from '$lib/server/roster';
-import { customPreferredName } from '$lib/members';
 import { averageRating } from '$lib/utils/feedbackRatings';
 import { signInHref } from '$lib/utils/signIn';
 import { getStaffBadges } from '$lib/server/staff';
@@ -10,11 +9,8 @@ import { profileSchema } from '$lib/forms/profile';
 import { redirect } from '@sveltejs/kit';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { and, desc, eq } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/sqlite-core';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { logger } from '$lib/server/logger';
-
-const submitter = alias(usersTable, 'submitter');
 
 export const load = async ({ locals, url }) => {
 	if (!locals.user) {
@@ -23,23 +19,25 @@ export const load = async ({ locals, url }) => {
 
 	const form = await superValidate({ bio: locals.user.bio ?? '' }, zod4(profileSchema));
 
-	const [rows, rosterEntry, { held, credentials }, assignments, teamRows, pocs] = await Promise.all(
-		[
-			// Approved feedback about this user, at every rating
+	const [feedback, rosterEntry, { held, credentials }, assignments, teamRows, pocs] =
+		await Promise.all([
+			// Accepted feedback about this user. Published feedback is shown as staff chose to
+			// publish it; unpublished feedback is shown as submitted, without the pilot's name or
+			// callsign.
 			locals.db
 				.select({
 					id: feedbackTable.id,
-					rating: feedbackTable.rating,
-					position: feedbackTable.position,
-					callsign: feedbackTable.callsign,
-					feedback: feedbackTable.feedback,
-					createdAt: feedbackTable.createdAt,
-					submitterFirstName: submitter.firstName,
-					submitterLastName: submitter.lastName,
-					submitterPreferredName: submitter.preferredName
+					rating: sql<string>`coalesce(${feedbackTable.publishedRating}, ${feedbackTable.rating})`,
+					position: sql<string>`coalesce(${feedbackTable.publishedPosition}, ${feedbackTable.position})`,
+					feedback: sql<
+						string | null
+					>`case when ${feedbackTable.publishMode} is null then ${feedbackTable.feedback} else ${feedbackTable.publishedFeedback} end`,
+					callsign: feedbackTable.publishedCallsign,
+					submitterName: feedbackTable.publishedPilotName,
+					publishMode: feedbackTable.publishMode,
+					createdAt: feedbackTable.createdAt
 				})
 				.from(feedbackTable)
-				.leftJoin(submitter, eq(submitter.id, feedbackTable.submitterId))
 				.where(
 					and(eq(feedbackTable.controllerId, locals.user.id), eq(feedbackTable.status, 'approved'))
 				)
@@ -53,34 +51,7 @@ export const load = async ({ locals, url }) => {
 			locals.db.query.staffAssignmentsTable.findMany(),
 			locals.db.query.staffTeamMembersTable.findMany(),
 			locals.db.query.staffPocsTable.findMany()
-		]
-	);
-
-	// Pilots who gave their callsign are shown by their preferred name, or first name and
-	// last initial ("Tom M.") if they haven't set a custom one; the rest stay anonymous, and
-	// their name never leaves the server
-	const feedback = rows.map((row) => {
-		const callsign = row.callsign?.trim() || null;
-		const firstName = row.submitterFirstName?.trim();
-		const lastName = row.submitterLastName?.trim();
-		const shortName = firstName && (lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName);
-
-		// Settings pre-fills the preferred name with the full name, so a preferred name that
-		// just matches it isn't a real choice and would expose the full last name
-		const preferredName = customPreferredName(row.submitterPreferredName, firstName, lastName);
-
-		const submitterName = callsign ? (preferredName ?? shortName) || null : null;
-
-		return {
-			id: row.id,
-			rating: row.rating,
-			position: row.position,
-			feedback: row.feedback,
-			createdAt: row.createdAt,
-			callsign,
-			submitterName
-		};
-	});
+		]);
 
 	return {
 		form,

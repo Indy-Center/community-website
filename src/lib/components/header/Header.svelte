@@ -11,7 +11,7 @@
 	import IconClose from '~icons/mdi/close';
 	import IconCog from '~icons/mdi/cog';
 	import IconAdmin from '~icons/mdi/shield-account';
-	import { isAdmin } from '$lib/utils/permissions';
+	import { canReviewFeedback, isAdmin } from '$lib/utils/permissions';
 	import { signInHref } from '$lib/utils/signIn';
 	import type { User } from '$lib/db/schema/users';
 	import MembershipBadge from '../MembershipBadge.svelte';
@@ -162,6 +162,16 @@
 									>
 										<IconAdmin class="h-4 w-4" />
 										<span>Admin</span>
+									</a>
+								{:else if canReviewFeedback(data.roles)}
+									<!-- Reviewers only have the feedback section of admin -->
+									<a
+										href="/admin/feedback"
+										class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
+										onclick={() => (showMobileMenu = false)}
+									>
+										<IconAdmin class="h-4 w-4" />
+										<span>Reviews</span>
 									</a>
 								{/if}
 								<a

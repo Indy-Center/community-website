@@ -2,10 +2,11 @@
 	import { page } from '$app/state';
 	import IconAccountGroup from '~icons/mdi/account-group';
 	import IconMessage from '~icons/mdi/message';
+	import { isAdmin } from '$lib/utils/permissions';
 
 	let { children, data } = $props();
 
-	const adminLinks = [
+	const allLinks = [
 		{
 			label: 'Manage Users',
 			href: '/admin/users',
@@ -19,6 +20,11 @@
 			description: 'Review and manage controller feedback'
 		}
 	];
+
+	// Feedback reviewers who aren't admins only see the feedback section
+	const adminLinks = $derived(
+		isAdmin(data.roles) ? allLinks : allLinks.filter((link) => link.href === '/admin/feedback')
+	);
 
 	function isActive(href: string) {
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
