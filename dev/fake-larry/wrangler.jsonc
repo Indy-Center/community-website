@@ -1,0 +1,8 @@
+// The fake Larry for local development; see the README's "Discord messages from a fake Larry".
+// Named as the real Worker so the site's `LARRY` service binding finds it.
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "indy-larry",
+	"main": "worker.ts",
+	"compatibility_date": "2025-08-30"
+}

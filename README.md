@@ -39,12 +39,13 @@ colours. Remove it, and add `ColorSchemeSetting` to the user menu and Settings, 
 
 ## Bindings
 
-| Binding               | Type             | Purpose                                                                                 |
-| --------------------- | ---------------- | --------------------------------------------------------------------------------------- |
-| `DB`                  | D1               | Website-local data (sessions, the roster copy, etc.)                                    |
-| `TRAINING`            | Service          | The training app's `TrainingRpc` entrypoint (`training-tools` Worker): the roster below |
-| `ASSETS`              | Assets           | Static files from the SvelteKit build                                                   |
-| `CF_VERSION_METADATA` | Version metadata | Build version tracking                                                                  |
+| Binding               | Type             | Purpose                                                                                    |
+| --------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `DB`                  | D1               | Website-local data (sessions, the roster copy, etc.)                                       |
+| `TRAINING`            | Service          | The training app's `TrainingRpc` entrypoint (`training-tools` Worker): the roster below    |
+| `LARRY`               | Service          | Larry's Worker (`indy-larry`): Discord messages sent as the bot, such as staffing requests |
+| `ASSETS`              | Assets           | Static files from the SvelteKit build                                                      |
+| `CF_VERSION_METADATA` | Version metadata | Build version tracking                                                                     |
 
 ## Where the roster comes from
 
@@ -61,6 +62,17 @@ VATUSA, on their own.
 
 The copy holds a member's last name even when VATUSA name privacy (`namePrivacy`) is set; a
 page never sends it then.
+
+## Staffing requests
+
+`/staffing` (under Flying) lets a signed-in pilot organization ask the Events Team to staff an
+event. The request isn't stored: `send()` on the `LARRY` binding posts it as an embed to the
+channel Larry's `SEND_CHANNELS` names `events-team` (`STAFFING_CHANNEL`), and the pilot is told if that fails. The
+binding's types come from `@indy-center/indy-larry-worker`; the message is built in
+`src/lib/server/staffing.ts`. Pinging is off, so text a pilot types can't mention anyone.
+
+Larry's deploy needs `events-team:<channel ID>` in `SEND_CHANNELS`, and the bot needs View Channel,
+Send Messages and Embed Links there.
 
 ## Vars and secrets for the CMS
 
@@ -118,6 +130,18 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 
 `adapter-cloudflare` proxies the `DB` binding via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally.
+
+### Discord messages from a fake Larry
+
+To send a staffing request locally, run `dev/fake-larry/`, which prints each message instead of
+posting it, beside the site:
+
+```bash
+npm run dev:larry   # 1: the fake Larry, on port 8789
+npm run dev         # 2: the site
+```
+
+Start the fake first. Without it the form says the request couldn't be sent.
 
 ### Roster from a fake training app
 
