@@ -1,9 +1,8 @@
-import type { Feedback, FeedbackStatus } from '$lib/db/schema/feedback';
+import type { Feedback } from '$lib/db/schema/feedback';
 import { env } from '$env/dynamic/private';
 import type { User } from '$lib/db/schema/users';
 import { logger } from './logger';
 import { ratingLabel } from '$lib/utils/feedbackRatings';
-import { statusLabel } from '$lib/utils/feedbackReview';
 import { LarryChannel, type LarryBinding, type LarryMessage } from './larry';
 
 export enum DiscordChannel {
@@ -78,68 +77,77 @@ export async function enqueueWithLarry(larry: LarryBinding | undefined, message:
 /** The people a feedback alert names, as fetched by the caller. */
 type AlertPerson = Pick<User, 'cid' | 'firstName' | 'lastName' | 'preferredName'>;
 
-const STATUS_COLORS: Partial<Record<FeedbackStatus, number>> = {
-	approved: 0x5865f2,
-	follow_up: 0xf1c40f,
-	rejected: 0xed4245
-};
+// Discord caps an embed's description at 4096 characters, and a pilot's comments have no limit
+function description(text: string | null) {
+	if (!text) return undefined;
+	return text.length > 4096 ? `${text.slice(0, 4095)}…` : text;
+}
 
-/** Senior staff's alert for new feedback. */
+// Alerts only go out when someone has to do something: new feedback to triage, and a follow up
+// to work. What reviewers did is shown on each feedback's page, not posted.
+
+/** Senior staff's alert for new feedback, which someone needs to triage. */
 export function newFeedbackAlert(
 	feedback: Feedback,
-	people: { submitter: AlertPerson; controller: AlertPerson }
+	people: { submitter: AlertPerson; controller: AlertPerson },
+	reviewUrl: string
 ): LarryMessage {
 	return {
 		channel: LarryChannel.SENIOR_STAFF_ALERTS,
 		embeds: [
 			{
-				title: '🎯 New Controller Feedback',
-				description: feedback.feedback ?? undefined,
+				title: '🎯 New feedback to triage',
+				description: description(feedback.feedback),
 				color: 0x5865f2,
 				fields: [
 					{ name: '👤 Controller', value: getDisplayName(people.controller), inline: true },
-					{ name: '⭐ Rating', value: ratingLabel(feedback.rating).toUpperCase(), inline: true },
+					{ name: '⭐ Rating', value: ratingLabel(feedback.rating), inline: true },
 					{ name: '📝 Submitted by', value: getDisplayName(people.submitter), inline: true }
 				],
 				footer: { text: `Feedback ID: ${feedback.id}` },
 				timestamp: feedback.createdAt?.toISOString()
 			}
-		]
+		],
+		buttons: [{ label: 'Triage feedback', url: reviewUrl }],
+		// The comments are the pilot's own words: they ping nobody
+		allowedMentions: { parse: [] }
 	};
 }
 
-/** Senior staff's alert that a reviewer moved feedback to a new status. */
-export function feedbackStatusAlert(
+/**
+ * Senior staff's alert that feedback needs a follow up: who it's assigned to, or that nobody has
+ * picked it up yet.
+ */
+export function followUpAlert(
 	feedback: Feedback,
-	people: { controller: AlertPerson; reviewer: AlertPerson; assignee?: AlertPerson }
+	people: { controller: AlertPerson; by: AlertPerson; assignee?: AlertPerson },
+	reviewUrl: string
 ): LarryMessage {
-	const fields = [
-		{ name: '👤 Controller', value: getDisplayName(people.controller), inline: true },
-		{ name: '⭐ Rating', value: ratingLabel(feedback.rating).toUpperCase(), inline: true },
-		{ name: '👤 Reviewed by', value: getDisplayName(people.reviewer), inline: true },
-		{ name: '🔄 Review Status', value: statusLabel(feedback.status).toUpperCase(), inline: true }
-	];
-
-	if (feedback.status === 'follow_up') {
-		fields.push({
-			name: '📌 Assigned to',
-			value: people.assignee ? getDisplayName(people.assignee) : 'Unassigned',
-			inline: true
-		});
-	}
-
 	return {
 		channel: LarryChannel.SENIOR_STAFF_ALERTS,
 		embeds: [
 			{
-				title: '🎯 Feedback Status Changed',
-				description: feedback.feedback ?? undefined,
-				color: STATUS_COLORS[feedback.status] ?? 0x5865f2,
-				fields,
+				title: '📌 Feedback needs a follow up',
+				description: description(feedback.feedback),
+				color: 0xf1c40f,
+				fields: [
+					{ name: '👤 Controller', value: getDisplayName(people.controller), inline: true },
+					{ name: '⭐ Rating', value: ratingLabel(feedback.rating), inline: true },
+					{
+						name: '📌 Assigned to',
+						value: people.assignee
+							? getDisplayName(people.assignee)
+							: 'Nobody yet: a reviewer needs to pick it up',
+						inline: false
+					},
+					{ name: '👤 Flagged by', value: getDisplayName(people.by), inline: true }
+				],
 				footer: { text: `Feedback ID: ${feedback.id}` },
 				timestamp: feedback.createdAt?.toISOString()
 			}
-		]
+		],
+		buttons: [{ label: 'Open feedback', url: reviewUrl }],
+		allowedMentions: { parse: [] }
 	};
 }
 
@@ -188,6 +196,7 @@ export function publishedFeedbackPost(
 	return {
 		channel: LarryChannel.FEEDBACK,
 		content: 'New feedback received!',
-		embeds: [{ color: 0x2ecc71, fields }]
+		embeds: [{ color: 0x2ecc71, fields }],
+		allowedMentions: { parse: [] }
 	};
 }

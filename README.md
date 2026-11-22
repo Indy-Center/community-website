@@ -82,7 +82,9 @@ Pilots submit feedback at `/feedback`; it always starts as **New**, whatever the
 Reviewers work it at `/admin/feedback`: **Accept**, **Follow Up** (assigned to a reviewer, who
 logs comments and actions) or **Reject**. Every change is written to the item's log
 (`feedback_events`) in the same `db.batch` as the change itself, which D1 runs as one
-transaction, so a failed save changes nothing.
+transaction, so a failed save changes nothing. Each item's page shows its log as an audit trail
+(Centerline `Steps`, built by `reviewSteps` in `src/lib/utils/feedbackReview.ts`), ending with
+what happens next.
 
 Accepted feedback shows on the controller's private `/profile`. Staff can then publish it, after
 editing what goes out (the original submission is kept as it was, in its own columns):
@@ -95,13 +97,18 @@ New feedback can be accepted and published in one step; both are saved in one wr
 Reviewers are admins and anyone with the `feedback:reviewer` role (`community:feedback:reviewer`
 from identity). Reviewers who aren't admins see only the feedback section of admin.
 
+Senior staff are only alerted when someone has to do something: new feedback to triage, and a
+follow up to work (when it's flagged or reassigned, naming who works it). Accepting, rejecting
+and publishing aren't alerted; they're on the item's page. Each alert has a button to the item,
+and no message pings anyone.
+
 Discord messages go through Larry's `enqueue()`, since nobody waits on them: Larry retries rate
 limits and outages. The review still saves if Larry won't take a message; a failed public post is
 noted in the log and shown to the reviewer. Larry's deploy needs these in `SEND_CHANNELS`:
 
 | Name                  | What goes there                                |
 | --------------------- | ---------------------------------------------- |
-| `senior-staff-alerts` | New feedback, and each status change           |
+| `senior-staff-alerts` | New feedback, and follow ups to work           |
 | `feedback`            | Feedback published as identified, without CIDs |
 
 ## Vars and secrets for the CMS

@@ -1,7 +1,7 @@
 import { feedbackEventsTable, feedbackTable, type Feedback } from '$lib/db/schema/feedback';
 import type { User } from '$lib/db/schema/users';
 import type { Database } from '$lib/server/db';
-import { enqueueWithLarry, feedbackStatusAlert, publishedFeedbackPost } from '$lib/server/discord';
+import { enqueueWithLarry, followUpAlert, publishedFeedbackPost } from '$lib/server/discord';
 import {
 	feedbackEventInsert,
 	fetchAlertPeople,
@@ -151,26 +151,32 @@ function publishColumns(mode: PublishMode, values: PublishValues) {
 	};
 }
 
-// Queues senior staff's alert for a status change that has been saved
-async function queueStatusAlert(
+// Queues senior staff's alert that a saved follow up needs working: by its assignee, or by
+// whoever picks it up. Nothing else a reviewer does is alerted; it's on the feedback's page.
+async function queueFollowUpAlert(
 	db: Database,
 	larry: LarryBinding | undefined,
 	feedback: Feedback,
-	by: User
+	by: User,
+	origin: string
 ) {
 	const people = await fetchAlertPeople(db, [feedback.controllerId, feedback.assigneeId]);
 	const controller = people.get(feedback.controllerId);
 	if (!controller) {
-		logger.warn(`Controller ${feedback.controllerId} not found, skipping feedback status alert`);
+		logger.warn(`Controller ${feedback.controllerId} not found, skipping follow up alert`);
 		return;
 	}
 	await enqueueWithLarry(
 		larry,
-		feedbackStatusAlert(feedback, {
-			controller,
-			reviewer: by,
-			assignee: feedback.assigneeId ? people.get(feedback.assigneeId) : undefined
-		})
+		followUpAlert(
+			feedback,
+			{
+				controller,
+				by,
+				assignee: feedback.assigneeId ? people.get(feedback.assigneeId) : undefined
+			},
+			`${origin}/admin/feedback/${feedback.id}`
+		)
 	);
 }
 
@@ -208,9 +214,9 @@ async function queuePublishedPost(
 	return posted;
 }
 
+// Saves a status change and its log entries. Returns the saved feedback, or the failure to send
 async function changeStatus(
 	locals: App.Locals,
-	larry: LarryBinding | undefined,
 	id: string,
 	status: FeedbackStatus,
 	note: string | undefined,
@@ -219,23 +225,22 @@ async function changeStatus(
 	const user = reviewer(locals);
 	if (!user) {
 		logger.warn(`Unauthorized feedback status change attempt by user ${locals.user?.id}`);
-		return fail(403, { message: 'Unauthorized' });
+		return { failure: fail(403, { message: 'Unauthorized' }) };
 	}
 
 	const db = locals.db;
 	const existing = await getFeedback(db, id);
-	if (!existing) return fail(404, { message: 'Feedback not found' });
+	if (!existing) return { failure: fail(404, { message: 'Feedback not found' }) };
 	if (!canMoveTo(existing, status)) {
-		return fail(400, { message: `This feedback can't be moved to that status` });
+		return { failure: fail(400, { message: `This feedback can't be moved to that status` }) };
 	}
 
 	logger.info(`Reviewer ${user.id} moving feedback ${id} to ${status}`);
 
 	const columns = statusColumns(status, assigneeId);
-	let feedback: Feedback;
 	try {
 		// The change and its log entries are saved together or not at all
-		const [[updated]] = await db.batch([
+		const [[feedback]] = await db.batch([
 			db
 				.update(feedbackTable)
 				.set({ ...columns, updatedAt: new Date() })
@@ -259,30 +264,29 @@ async function changeStatus(
 					]
 				: [])
 		]);
-		feedback = updated;
+		return { feedback, user };
 	} catch (err) {
 		logger.error(`Failed to move feedback ${id} to ${status}`, err);
-		return fail(500, { message: 'Failed to update feedback' });
+		return { failure: fail(500, { message: 'Failed to update feedback' }) };
 	}
-
-	await queueStatusAlert(db, larry, feedback, user);
-	return { success: true };
 }
 
 export const actions = {
-	accept: async ({ request, locals, params, platform }) => {
+	accept: async ({ request, locals, params }) => {
 		const form = await parseForm(request, noteSchema);
 		if (form.error) return form.error;
-		return changeStatus(locals, platform?.env.LARRY, params.id, 'approved', form.data.note);
+		const saved = await changeStatus(locals, params.id, 'approved', form.data.note);
+		return saved.failure ?? { success: true };
 	},
 
-	reject: async ({ request, locals, params, platform }) => {
+	reject: async ({ request, locals, params }) => {
 		const form = await parseForm(request, noteSchema);
 		if (form.error) return form.error;
-		return changeStatus(locals, platform?.env.LARRY, params.id, 'rejected', form.data.note);
+		const saved = await changeStatus(locals, params.id, 'rejected', form.data.note);
+		return saved.failure ?? { success: true };
 	},
 
-	followUp: async ({ request, locals, params, platform }) => {
+	followUp: async ({ request, locals, params, platform, url }) => {
 		const form = await parseForm(request, followUpSchema);
 		if (form.error) return form.error;
 
@@ -291,17 +295,20 @@ export const actions = {
 			return fail(400, { message: 'Assignee must be a feedback reviewer' });
 		}
 
-		return changeStatus(
-			locals,
+		const saved = await changeStatus(locals, params.id, 'follow_up', form.data.note, assigneeId);
+		if (saved.failure) return saved.failure;
+
+		await queueFollowUpAlert(
+			locals.db,
 			platform?.env.LARRY,
-			params.id,
-			'follow_up',
-			form.data.note,
-			assigneeId
+			saved.feedback,
+			saved.user,
+			url.origin
 		);
+		return { success: true };
 	},
 
-	assign: async ({ request, locals, params }) => {
+	assign: async ({ request, locals, params, platform, url }) => {
 		const user = reviewer(locals);
 		if (!user) {
 			return fail(403, { message: 'Unauthorized' });
@@ -323,11 +330,12 @@ export const actions = {
 			return fail(400, { message: 'Assignee must be a feedback reviewer' });
 		}
 
-		await db.batch([
+		const [[feedback]] = await db.batch([
 			db
 				.update(feedbackTable)
 				.set({ assigneeId, updatedAt: new Date() })
-				.where(eq(feedbackTable.id, params.id)),
+				.where(eq(feedbackTable.id, params.id))
+				.returning(),
 			feedbackEventInsert(db, {
 				feedbackId: params.id,
 				userId: user.id,
@@ -337,6 +345,7 @@ export const actions = {
 		]);
 
 		logger.info(`Reviewer ${user.id} assigned feedback ${params.id} to ${assigneeId}`);
+		await queueFollowUpAlert(db, platform?.env.LARRY, feedback, user, url.origin);
 		return { success: true };
 	},
 
@@ -477,9 +486,7 @@ export const actions = {
 			return fail(500, { message: 'Failed to update feedback' });
 		}
 
-		const larry = platform?.env.LARRY;
-		await queueStatusAlert(db, larry, feedback, user);
-		const posted = await queuePublishedPost(db, larry, feedback, publishedEventId);
+		const posted = await queuePublishedPost(db, platform?.env.LARRY, feedback, publishedEventId);
 		return { success: true, posted };
 	}
 };

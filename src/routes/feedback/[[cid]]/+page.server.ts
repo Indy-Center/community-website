@@ -40,7 +40,7 @@ export const load = async ({ locals, params, url }) => {
 };
 
 export const actions = {
-	default: async ({ request, locals, platform }) => {
+	default: async ({ request, locals, platform, url }) => {
 		// You must be logged in to submit feedback
 		if (!locals.user) {
 			return fail(401, { message: 'Unauthorized' });
@@ -76,7 +76,11 @@ export const actions = {
 		if (submitter && controller) {
 			await enqueueWithLarry(
 				platform?.env.LARRY,
-				newFeedbackAlert(feedback, { submitter, controller })
+				newFeedbackAlert(
+					feedback,
+					{ submitter, controller },
+					`${url.origin}/admin/feedback/${feedback.id}`
+				)
 			);
 		}
 

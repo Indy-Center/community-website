@@ -74,6 +74,7 @@ async function act(
 		}),
 		locals: { db, user, roles },
 		params: { id: FEEDBACK_ID },
+		url: new URL(`https://flyindycenter.com/admin/feedback/${FEEDBACK_ID}`),
 		platform: { env: { LARRY: larry } }
 	};
 	return (await actions[action](event as never)) as {
@@ -89,7 +90,7 @@ const log = () =>
 	db.query.feedbackEventsTable.findMany({ where: (e, { eq }) => eq(e.feedbackId, FEEDBACK_ID) });
 
 describe('accept and publish', () => {
-	it('accepts and publishes identified feedback, then queues the alert and the public post', async () => {
+	it('accepts and publishes identified feedback, then queues only the public post', async () => {
 		const larry = fakeLarry();
 		const result = await act('acceptAndPublish', { mode: 'identified' }, { larry });
 
@@ -107,11 +108,10 @@ describe('accept and publish', () => {
 			['published', 'identified'],
 			['status', 'approved']
 		]);
-		expect(larry.queued.map((m) => m.channel)).toEqual([
-			LarryChannel.SENIOR_STAFF_ALERTS,
-			LarryChannel.FEEDBACK
-		]);
-		expect(larry.queued[1].embeds![0].fields).toContainEqual({
+		// Nobody has to do anything next, so senior staff aren't alerted
+		expect(larry.queued.map((m) => m.channel)).toEqual([LarryChannel.FEEDBACK]);
+		expect(larry.queued[0].allowedMentions).toEqual({ parse: [] });
+		expect(larry.queued[0].embeds![0].fields).toContainEqual({
 			name: 'Controller',
 			value: 'Casey Controller (CC)',
 			inline: true
@@ -151,7 +151,7 @@ describe('accept and publish', () => {
 			publishedCallsign: null,
 			publishedPilotName: null
 		});
-		expect(larry.queued.map((m) => m.channel)).toEqual([LarryChannel.SENIOR_STAFF_ALERTS]);
+		expect(larry.queued).toHaveLength(0);
 	});
 
 	it('refuses feedback that is already published', async () => {
@@ -175,7 +175,7 @@ describe('accept and publish', () => {
 });
 
 describe('status changes', () => {
-	it('saves a follow up with its assignee and logs both', async () => {
+	it('saves a follow up with its assignee, logs both, and alerts senior staff with a link', async () => {
 		const larry = fakeLarry();
 		const result = await act(
 			'followUp',
@@ -189,18 +189,47 @@ describe('status changes', () => {
 			['assigned', 'user-riley', null],
 			['status', 'follow_up', 'Asking the pilot for more']
 		]);
-		expect(larry.queued[0].embeds![0].fields).toContainEqual({
+		expect(larry.queued).toHaveLength(1);
+		const [alert] = larry.queued;
+		expect(alert.channel).toBe(LarryChannel.SENIOR_STAFF_ALERTS);
+		expect(alert.embeds![0].fields).toContainEqual({
 			name: '📌 Assigned to',
 			value: 'Riley Reviewer (1000002)',
-			inline: true
+			inline: false
 		});
+		expect(alert.buttons).toEqual([
+			{ label: 'Open feedback', url: `https://flyindycenter.com/admin/feedback/${FEEDBACK_ID}` }
+		]);
 	});
 
-	it('still saves the change when Larry is unavailable', async () => {
-		const result = await act('reject', {}, { larry: fakeLarry({ refuse: 'senior-staff-alerts' }) });
+	it('alerts senior staff again when a follow up is reassigned', async () => {
+		await act('followUp', {});
+		const larry = fakeLarry();
+		const result = await act('assign', { assigneeId: 'user-riley' }, { larry });
 
 		expect(result).toEqual({ success: true });
+		expect(larry.queued).toHaveLength(1);
+		expect(larry.queued[0].embeds![0].title).toBe('📌 Feedback needs a follow up');
+	});
+
+	it('sends no alert when feedback is accepted or rejected', async () => {
+		const larry = fakeLarry();
+		await act('accept', {}, { larry });
+		await act('reject', {}, { larry });
+
 		expect(await feedback()).toMatchObject({ status: 'rejected' });
+		expect(larry.queued).toHaveLength(0);
+	});
+
+	it('still saves a follow up when Larry is unavailable', async () => {
+		const result = await act(
+			'followUp',
+			{},
+			{ larry: fakeLarry({ refuse: 'senior-staff-alerts' }) }
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(await feedback()).toMatchObject({ status: 'follow_up', assigneeId: null });
 	});
 });
 

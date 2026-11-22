@@ -87,6 +87,7 @@ describe('submitting feedback', () => {
 				body: new URLSearchParams(fields)
 			}),
 			locals: { db, user, roles: [] },
+			url: new URL('https://flyindycenter.com/feedback'),
 			platform: { env: { LARRY: { enqueue: async (m: ChannelSend) => void queued.push(m) } } }
 		} as never);
 		return queued;
@@ -107,5 +108,6 @@ describe('submitting feedback', () => {
 			status: 'pending'
 		});
 		expect(queued.map((m) => m.channel)).toEqual([LarryChannel.SENIOR_STAFF_ALERTS]);
+		expect(queued[0].buttons?.[0].url).toBe(`https://flyindycenter.com/admin/feedback/${saved.id}`);
 	});
 });

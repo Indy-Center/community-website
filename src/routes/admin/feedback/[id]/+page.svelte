@@ -19,23 +19,18 @@
 		Panel,
 		Radio,
 		Select,
+		Steps,
 		Textarea,
 		Time
 	} from '@indy-center/centerline-svelte';
-	import {
-		mdiAccountArrowRight,
-		mdiBullhorn,
-		mdiCommentTextOutline,
-		mdiSendOutline,
-		mdiSwapHorizontal,
-		mdiWrenchOutline
-	} from '@mdi/js';
+	import { mdiBullhorn, mdiSendOutline } from '@mdi/js';
 	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
 	import {
 		memberName,
 		PUBLISH_MODE_LABELS,
 		RATING_BADGES,
 		STATUS_BADGES,
+		reviewSteps,
 		statusLabel,
 		type FeedbackStatus,
 		type PublishMode
@@ -48,8 +43,7 @@
 	const published = $derived(!!feedback.publishMode);
 	const controller = $derived(memberName(feedback.controller));
 
-	function reviewerName(id: string | null) {
-		if (!id) return 'nobody';
+	function reviewerName(id: string) {
 		return data.reviewers.find((r) => r.id === id)?.name ?? 'a former reviewer';
 	}
 
@@ -100,13 +94,8 @@
 		};
 	};
 
-	const LOG_ICONS = {
-		status: mdiSwapHorizontal,
-		assigned: mdiAccountArrowRight,
-		published: mdiBullhorn,
-		action: mdiWrenchOutline,
-		comment: mdiCommentTextOutline
-	};
+	// The audit trail: everything done to this feedback, then what happens next
+	const steps = $derived(reviewSteps(feedback, reviewerName));
 </script>
 
 <svelte:head>
@@ -413,46 +402,7 @@
 	</div>
 
 	<Panel title="Log" level={2} class="h-fit lg:col-span-2">
-		<ol class="mb-6 flex flex-col gap-4 border-l border-border pl-4">
-			<li>
-				<p>Submitted by {memberName(feedback.submitter)}</p>
-				<p class="text-sm text-muted-foreground">
-					<Time value={feedback.createdAt!} show="datetime" />
-				</p>
-			</li>
-			{#each feedback.events as event (event.id)}
-				{@const who = memberName(event.user)}
-				<li>
-					<p class="flex items-baseline gap-2">
-						<!-- Icons take the text colour around them, so the colour goes on a wrapper -->
-						<span class="shrink-0 self-center text-muted-foreground">
-							<Icon path={LOG_ICONS[event.type]} />
-						</span>
-						<span>
-							{#if event.type === 'status'}
-								{who} moved it to <strong>{statusLabel(event.value ?? '')}</strong>
-							{:else if event.type === 'assigned'}
-								{who}
-								{event.value ? `assigned it to ${reviewerName(event.value)}` : 'unassigned it'}
-							{:else if event.type === 'published'}
-								{who} published it
-								{PUBLISH_MODE_LABELS[event.value as PublishMode]?.toLowerCase()}
-							{:else if event.type === 'action'}
-								{who} took action
-							{:else}
-								{who} commented
-							{/if}
-						</span>
-					</p>
-					{#if event.body}
-						<p class="mt-1 rounded-lg bg-muted px-3 py-2 whitespace-pre-line">{event.body}</p>
-					{/if}
-					<p class="mt-1 text-sm text-muted-foreground">
-						<Time value={event.createdAt!} show="datetime" />
-					</p>
-				</li>
-			{/each}
-		</ol>
+		<Steps {steps} class="mb-6" />
 
 		<form method="POST" action="?/comment" use:enhance={submit} class="flex flex-col gap-4">
 			<Fieldset legend="Add to the log">
