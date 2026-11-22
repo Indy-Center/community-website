@@ -1,5 +1,6 @@
 import { feedbackTable } from '$lib/db/schema/feedback';
-import { FEEDBACK_STATUSES, type FeedbackStatus } from '$lib/utils/feedbackReview';
+import { memberPickerColumns } from '$lib/members';
+import { countByStatus, FEEDBACK_STATUSES, type FeedbackStatus } from '$lib/utils/feedbackReview';
 import { canReviewFeedback } from '$lib/utils/permissions';
 import { getFeedbackReviewers } from '$lib/server/feedback';
 import { redirect } from '@sveltejs/kit';
@@ -16,48 +17,37 @@ export const load = async ({ locals, url }) => {
 		: 'pending';
 	const mine = url.searchParams.get('mine') === '1';
 
-	const feedback = await locals.db.query.feedbackTable.findMany({
-		where: (feedback, { and, eq }) =>
-			mine && locals.user
-				? and(eq(feedback.status, status), eq(feedback.assigneeId, locals.user.id))
-				: eq(feedback.status, status),
-		// New and follow up are worked oldest first; the filed ones read newest first
-		orderBy: (feedback, { asc, desc }) =>
-			status === 'pending' || status === 'follow_up'
-				? [asc(feedback.createdAt)]
-				: [desc(feedback.updatedAt)],
-		with: {
-			submitter: {
-				columns: { firstName: true, lastName: true, preferredName: true, cid: true }
-			},
-			controller: {
-				columns: { firstName: true, lastName: true, preferredName: true, cid: true }
-			},
-			assignee: {
-				columns: { firstName: true, lastName: true, preferredName: true }
+	const [feedback, countRows, reviewers] = await Promise.all([
+		locals.db.query.feedbackTable.findMany({
+			where: (feedback, { and, eq }) =>
+				mine && locals.user
+					? and(eq(feedback.status, status), eq(feedback.assigneeId, locals.user.id))
+					: eq(feedback.status, status),
+			// New and follow up are worked oldest first; the filed ones read newest first
+			orderBy: (feedback, { asc, desc }) =>
+				status === 'pending' || status === 'follow_up'
+					? [asc(feedback.createdAt)]
+					: [desc(feedback.updatedAt)],
+			with: {
+				submitter: { columns: memberPickerColumns },
+				controller: { columns: memberPickerColumns },
+				assignee: { columns: memberPickerColumns }
 			}
-		}
-	});
-
-	const counts = Object.fromEntries(FEEDBACK_STATUSES.map((s) => [s, 0])) as Record<
-		FeedbackStatus,
-		number
-	>;
-	const countRows = await locals.db
-		.select({ status: feedbackTable.status, count: count() })
-		.from(feedbackTable)
-		.groupBy(feedbackTable.status);
-	for (const row of countRows) {
-		if (row.status in counts) counts[row.status] = row.count;
-	}
+		}),
+		locals.db
+			.select({ status: feedbackTable.status, count: count() })
+			.from(feedbackTable)
+			.groupBy(feedbackTable.status),
+		// For the follow up menu on new feedback
+		status === 'pending' ? getFeedbackReviewers(locals.db) : []
+	]);
 
 	return {
 		feedback,
 		status,
 		mine,
-		counts,
-		// For the follow up menu on new feedback
-		reviewers: status === 'pending' ? await getFeedbackReviewers(locals.db) : [],
+		counts: countByStatus(countRows),
+		reviewers,
 		userId: locals.user?.id
 	};
 };

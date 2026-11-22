@@ -10,6 +10,7 @@ import {
 } from '$lib/server/feedback';
 import type { LarryBinding } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
+import { memberPickerColumns } from '$lib/members';
 import { RATING_STARS } from '$lib/utils/feedbackRatings';
 import { PUBLISH_MODES, type FeedbackStatus, type PublishMode } from '$lib/utils/feedbackReview';
 import { canReviewFeedback } from '$lib/utils/permissions';
@@ -25,15 +26,15 @@ export const load = async ({ locals, params }) => {
 	const [feedback, reviewers] = await Promise.all([
 		locals.db.query.feedbackTable.findFirst({
 			where: eq(feedbackTable.id, params.id),
+			// Page data reaches the browser: names only, plus the pilot's email so a reviewer can
+			// reach them on a follow up. Never whole user rows.
 			with: {
-				submitter: true,
-				controller: true,
-				assignee: true,
+				submitter: { columns: { ...memberPickerColumns, email: true } },
+				controller: { columns: memberPickerColumns },
+				assignee: { columns: memberPickerColumns },
 				events: {
 					orderBy: (event, { asc }) => [asc(event.createdAt)],
-					with: {
-						user: { columns: { firstName: true, lastName: true, preferredName: true } }
-					}
+					with: { user: { columns: memberPickerColumns } }
 				}
 			}
 		}),

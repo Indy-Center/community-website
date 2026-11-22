@@ -35,3 +35,39 @@ export const PUBLISH_MODE_LABELS: Record<PublishMode, string> = {
 export function statusLabel(status: string) {
 	return STATUS_LABELS[status as FeedbackStatus] ?? status;
 }
+
+// How many items have each status, with a zero for any that has none
+export function countByStatus(rows: { status: string; count: number }[]) {
+	const counts = Object.fromEntries(FEEDBACK_STATUSES.map((s) => [s, 0])) as Record<
+		FeedbackStatus,
+		number
+	>;
+	for (const row of rows) {
+		if (row.status in counts) counts[row.status as FeedbackStatus] = row.count;
+	}
+	return counts;
+}
+
+// Badge colours for review screens. The badge's text always says the status; colour only helps.
+export const STATUS_BADGES: Record<FeedbackStatus, 'sky' | 'yellow' | 'green' | 'red'> = {
+	pending: 'sky',
+	follow_up: 'yellow',
+	approved: 'green',
+	rejected: 'red'
+};
+
+export const RATING_BADGES: Record<string, 'green' | 'blue' | 'sky' | 'yellow' | 'red'> = {
+	excellent: 'green',
+	very_good: 'blue',
+	good: 'sky',
+	fair: 'yellow',
+	poor: 'red'
+};
+
+type Named = { firstName: string; lastName: string; preferredName: string | null } | null;
+
+// How staff screens name a member: their preferred name, or their full name
+export function memberName(user: Named | undefined) {
+	if (!user) return 'Unknown member';
+	return user.preferredName || `${user.firstName} ${user.lastName}`;
+}

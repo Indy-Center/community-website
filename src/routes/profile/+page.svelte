@@ -1,16 +1,19 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
-	import { format } from 'date-fns';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
-	import StarDisplay from '$lib/components/profile/StarDisplay.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import {
+		Badge,
+		EmptyState,
+		Pagination,
+		Panel,
+		StarDisplay,
+		Time
+	} from '@indy-center/centerline-svelte';
 	import { MAX_BIO_LENGTH } from '$lib/forms/profile';
 	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
-	import IconMessage from '~icons/mdi/message-text';
+	import { RATING_BADGES } from '$lib/utils/feedbackReview';
 	import IconCheck from '~icons/mdi/check-circle';
 	import IconEye from '~icons/mdi/eye';
-	import IconLock from '~icons/mdi/lock';
-	import IconStar from '~icons/mdi/star';
 
 	const { data } = $props();
 
@@ -26,23 +29,6 @@
 	const { form, errors, enhance, constraints, message, delayed } = superForm(data.form, {
 		resetForm: false
 	});
-
-	function ratingColor(rating: string) {
-		switch (rating) {
-			case 'excellent':
-				return 'text-green-400';
-			case 'very_good':
-				return 'text-teal-400';
-			case 'good':
-				return 'text-blue-400';
-			case 'fair':
-				return 'text-yellow-400';
-			case 'poor':
-				return 'text-red-400';
-			default:
-				return 'text-gray-400';
-		}
-	}
 
 	const inputClass =
 		'w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none';
@@ -139,87 +125,75 @@
 
 	<!-- Feedback -->
 	{#if data.isController || data.feedback.length > 0}
-		<div
-			class="h-fit overflow-hidden rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm lg:col-span-3"
-		>
-			<div class="flex items-center justify-between border-b border-slate-700/60 px-6 py-4">
-				<h2 class="flex items-center gap-2 text-lg font-semibold text-white">
-					<IconMessage class="h-5 w-5" />
-					Your Feedback
-				</h2>
-				<span class="flex items-center gap-1 text-sm text-gray-400">
-					{#if data.averageRating !== null}
-						<IconStar class="h-4 w-4 text-yellow-400" />
-						<span class="font-medium text-gray-200">{data.averageRating.toFixed(1)}</span> avg ·
-					{/if}
-					{data.feedback.length} accepted
-				</span>
-			</div>
+		<Panel title="Your feedback" level={2} flush class="h-fit lg:col-span-3">
+			<p
+				class="flex items-center gap-2 border-b border-border px-6 py-3 text-sm text-muted-foreground"
+			>
+				{#if data.averageRating !== null}
+					<StarDisplay value={data.averageRating} />
+					<span
+						><span class="font-medium text-foreground">{data.averageRating.toFixed(1)}</span> avg ·</span
+					>
+				{/if}
+				{data.feedback.length} accepted
+			</p>
 
 			{#if data.feedback.length === 0}
-				<p class="px-6 py-8 text-center text-sm text-gray-400">
+				<EmptyState size="inline" class="px-6 py-8">
 					No feedback yet. Once staff review and accept pilot feedback about you, it will show up
 					here.
-				</p>
+				</EmptyState>
 			{:else}
-				<ul class="divide-y divide-slate-700/60">
+				<ul class="divide-y divide-border">
 					{#each pagedFeedback as item (item.id)}
 						{@const stars = RATING_STARS[item.rating] ?? 0}
 						<li class="px-6 py-4">
 							<div class="flex flex-wrap items-center justify-between gap-2">
 								<div class="flex items-center gap-2">
-									<span class={ratingColor(item.rating)}>
-										<StarDisplay
-											value={stars}
-											label="{ratingLabel(item.rating)}, {stars} out of 5 stars"
-										/>
-									</span>
-									<span class="text-sm font-medium {ratingColor(item.rating)}">
+									<StarDisplay
+										value={stars}
+										aria-label="{ratingLabel(item.rating)}, {stars} out of 5"
+									/>
+									<Badge size="sm" variant={RATING_BADGES[item.rating] ?? 'gray'}>
 										{ratingLabel(item.rating)}
-									</span>
+									</Badge>
 								</div>
-								<div class="flex items-center gap-3 text-xs text-gray-400">
+								<div class="flex items-center gap-3 text-sm text-muted-foreground">
 									<span class="font-mono">{item.position}</span>
 									{#if item.createdAt}
-										<span>{format(new Date(item.createdAt), 'MMM d, yyyy')}</span>
+										<Time value={item.createdAt} show="datetime" />
 									{/if}
 								</div>
 							</div>
 							{#if item.feedback?.trim()}
-								<p class="mt-2 text-sm whitespace-pre-line text-gray-300">{item.feedback}</p>
+								<p class="mt-2 whitespace-pre-line">{item.feedback}</p>
 							{/if}
-							<p class="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-gray-400">
+							<div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 								{#if item.submitterName || item.callsign}
 									<span>
 										—
-										{#if item.submitterName}
-											<span class="text-gray-300">{item.submitterName}</span>
-										{/if}
+										{#if item.submitterName}<span class="text-foreground">{item.submitterName}</span
+											>{/if}
 										{#if item.submitterName && item.callsign}·{/if}
-										{#if item.callsign}
-											<span class="font-mono">{item.callsign}</span>
-										{/if}
+										{#if item.callsign}<span class="font-mono">{item.callsign}</span>{/if}
 									</span>
 								{/if}
 								{#if item.publishMode === 'identified'}
-									<span class="flex items-center gap-1 text-sky-400">
-										<IconEye class="h-3 w-3" /> Posted to Discord
-									</span>
+									<Badge size="sm" variant="sky" pill>Posted to Discord</Badge>
 								{:else}
-									<span class="flex items-center gap-1">
-										<IconLock class="h-3 w-3" /> Only visible to you
-									</span>
+									<Badge size="sm" variant="gray" pill>Only visible to you</Badge>
 								{/if}
-							</p>
+							</div>
 						</li>
 					{/each}
 				</ul>
 				<Pagination
 					bind:page={feedbackPage}
 					pageCount={feedbackPageCount}
-					class="border-t border-slate-700/60 px-6 py-3"
+					label="Your feedback pages"
+					class="border-t border-border px-6 py-3"
 				/>
 			{/if}
-		</div>
+		</Panel>
 	{/if}
 </div>
