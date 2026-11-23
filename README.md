@@ -166,6 +166,51 @@ its token from `clientToken()`; don't fetch another.
 
 A leaver keeps their operating initials, locally and in identity.
 
+### The one-time copy into identity
+
+`npm run copy-profiles` copies what community holds today into identity: each member's preferred
+name, pronouns and operating initials, one `PATCH /api/users/{cid}` per member. It is run once by
+the maintainer, straight after the profile page deploys; until then Edit profile shows identity's
+empty values. It runs outside the Worker under `vite-node`, with `process.env` standing in for the
+Worker's `env`, and writes through `patchIdentityUser()` and `clientToken()` in
+`src/lib/server/identity.ts` like the site does, so the API client above is the one it uses.
+
+1. Export training's teacher initials (from the training-tools repo, whose database is its own):
+
+   ```bash
+   npx wrangler d1 execute <training database name> --remote --json \
+     --command "SELECT cid, initials FROM teachers WHERE initials IS NOT NULL" \
+     | node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(0))[0].results))' \
+     > teachers.json
+   ```
+
+   The file is a JSON array of `{ "cid", "initials" }`. Don't commit it.
+
+2. Export the API client's settings, then do a dry run first. It reads community's production D1
+   through `wrangler d1 execute website-db --remote` (read only) and prints every patch without
+   sending any:
+
+   ```bash
+   export IDENTITY_API_CLIENT_ID=community-api IDENTITY_API_CLIENT_SECRET=<secret>
+   npm run copy-profiles -- --dry-run --teachers teachers.json
+   ```
+
+3. Run it for real by leaving out `--dry-run`. It can be run again: it overwrites what identity holds.
+
+The rules, for each `users` row with a CID:
+
+- Preferred name: empty sends nothing; equal to first and last name (trimmed, any case) sends
+  `null`; otherwise it is sent as typed, cut to 64 characters.
+- Pronouns: trimmed, empty sends `null`, cut to 32.
+- Initials: the teacher file's pair for that CID, else `users.operating_initials`. Only `^[A-Z]{2}$`
+  is sent; a malformed pair is skipped. When the teacher's pair differs from community's, the local
+  row is updated to match after identity accepts it.
+- Bios stay in community.
+- A member identity doesn't know (404) is skipped and listed. Any other refusal stops the run.
+
+At the end it prints how many members were patched, full names dropped, cuts, members skipped
+as unknown or malformed, and local initials updated, with the lists.
+
 ## Local development
 
 From the repository root:

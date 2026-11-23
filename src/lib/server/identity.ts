@@ -97,17 +97,25 @@ export async function clientToken(env: IdentityApiEnv, refresh = false): Promise
 	return access_token;
 }
 
-/** Sets (or with null, clears) a member's operating initials in identity. */
-export async function writeOperatingInitials(
+/** The fields of `PATCH /api/users/{cid}` that community writes; null clears one. */
+export type IdentityUserPatch = {
+	preferred_name?: string | null;
+	pronouns?: string | null;
+	operating_initials?: string | null;
+};
+
+/** Patches a member in identity with the API client's token. A refusal throws `IdentityApiError`. */
+export async function patchIdentityUser(
 	env: IdentityApiEnv,
 	cid: string,
-	initials: string | null
+	patch: IdentityUserPatch,
+	what = 'user write'
 ): Promise<void> {
 	const send = async (token: string) =>
 		fetch(`${env.IDENTITY_URL ?? baseUrl()}/api/users/${encodeURIComponent(cid)}`, {
 			method: 'PATCH',
 			headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-			body: JSON.stringify({ operating_initials: initials }),
+			body: JSON.stringify(patch),
 			signal: AbortSignal.timeout(5000)
 		});
 
@@ -116,8 +124,17 @@ export async function writeOperatingInitials(
 		response = await send(await clientToken(env, true));
 	}
 	if (!response.ok) {
-		throw await refused('initials write', response);
+		throw await refused(what, response);
 	}
+}
+
+/** Sets (or with null, clears) a member's operating initials in identity. */
+export async function writeOperatingInitials(
+	env: IdentityApiEnv,
+	cid: string,
+	initials: string | null
+): Promise<void> {
+	await patchIdentityUser(env, cid, { operating_initials: initials }, 'initials write');
 }
 
 const UserinfoSchema = z.object({
