@@ -18,11 +18,6 @@
 	import IconTeamSpeak from '~icons/mdi/headset';
 	import IconSync from '~icons/mdi/sync';
 
-	// A row of the panel, and the place its button sits: right of the text from `sm` up, under
-	// it (past the icon) on a phone
-	const ROW = 'flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:justify-between';
-	const ACTION = 'shrink-0 pl-8 sm:pl-0';
-
 	let {
 		discord,
 		teamspeak = null
@@ -50,47 +45,45 @@
 {#if !discord}
 	<Alert level="caution">{LINKS_UNAVAILABLE}</Alert>
 {:else}
-	<!-- Each row: the icon, heading and text on the left; its one button at the right, level with
-	     the heading. On a phone the button goes under the text, lined up with it. -->
+	<!-- Each row: the icon and heading on the left, its one button at the right on the same line,
+	     at every width; the account's text under both, across the whole panel -->
 	<ul class="divide-y divide-border">
-		<li class={ROW}>
-			<div class="flex min-w-0 items-start gap-3">
-				<IconDiscord class="mt-0.5 h-5 w-5 shrink-0 text-[#5865F2]" aria-hidden="true" />
-				<div class="min-w-0">
+		<li class="py-4 first:pt-0">
+			<div class="flex items-center justify-between gap-3">
+				<div class="flex min-w-0 items-center gap-3">
+					<IconDiscord class="h-5 w-5 shrink-0 text-[#5865F2]" aria-hidden="true" />
 					<p class="font-medium text-foreground">Discord</p>
+				</div>
+				<div class="shrink-0">
 					{#if discord.state === 'linked'}
-						<p class="text-sm text-muted-foreground">
-							Linked: <span class="font-mono break-all">{discord.account}</span>
-						</p>
-					{:else if discord.state === 'vatusa'}
-						<p class="text-sm text-muted-foreground">Linked on VATUSA</p>
+						<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinking = b))}>
+							<Button
+								type="submit"
+								variant="secondary"
+								size="sm"
+								busy={unlinking}
+								busyLabel="Unlinking">Unlink</Button
+							>
+						</form>
 					{:else}
-						<p class="text-sm text-muted-foreground">No Discord account</p>
+						<!-- A full page load: it leaves the site for Discord's sign-in -->
+						<Button variant="secondary" size="sm" href="/profile/discord" data-sveltekit-reload>
+							{discord.state === 'vatusa' ? 'Use a different account' : 'Link Discord'}
+						</Button>
 					{/if}
 				</div>
 			</div>
-			<div class={ACTION}>
+			<div class="mt-2 text-sm text-muted-foreground">
 				{#if discord.state === 'linked'}
-					<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinking = b))}>
-						<Button
-							type="submit"
-							variant="secondary"
-							size="sm"
-							busy={unlinking}
-							busyLabel="Unlinking">Unlink</Button
-						>
-					</form>
+					<p>Linked: <span class="font-mono break-all">{discord.account}</span></p>
+				{:else if discord.state === 'vatusa'}
+					<p>Linked on VATUSA</p>
 				{:else}
-					<!-- A full page load: it leaves the site for Discord's sign-in -->
-					<Button variant="secondary" size="sm" href="/profile/discord" data-sveltekit-reload>
-						{discord.state === 'vatusa' ? 'Use a different account' : 'Link Discord'}
-					</Button>
+					<p>No Discord account</p>
 				{/if}
 			</div>
 		</li>
 		{#if teamspeak}
-			<!-- The heading and button on one line, at every width; the text under both, across the
-			     whole panel -->
 			<li class="py-4">
 				<div class="flex items-center justify-between gap-3">
 					<div class="flex min-w-0 items-center gap-3">
@@ -143,15 +136,13 @@
 		method="POST"
 		action="?/syncRoles"
 		use:enhance={busyWhile((b) => (syncing = b))}
-		class="{ROW} border-t border-border pb-0"
+		class="flex items-center justify-between gap-3 border-t border-border pt-4"
 	>
-		<div class="flex min-w-0 items-start gap-3">
-			<IconSync class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-			<div class="min-w-0">
-				<p class="font-medium text-foreground">Sync Roles</p>
-			</div>
+		<div class="flex min-w-0 items-center gap-3">
+			<IconSync class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<p class="font-medium text-foreground">Sync Roles</p>
 		</div>
-		<div class={ACTION}>
+		<div class="shrink-0">
 			<Button type="submit" variant="secondary" size="sm" busy={syncing} busyLabel="Syncing"
 				>Sync my roles</Button
 			>

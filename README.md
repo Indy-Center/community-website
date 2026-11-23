@@ -114,9 +114,10 @@ what changed, so nothing stays on the panel; Centerline keeps Alert for somethin
 it's fixed. The only Alert on the panel is "Links are unavailable right now." The site's one
 `<Toaster />` is in the root layout.
 
-- **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
+- **The Discord row**, laid out like TeamSpeak's (heading and button on one line, the text below):
+  the member's own link ("Linked: @name", with **Unlink**, the `unlink` action calling
   `unlink(cid, 'discord')`), VATUSA's account ("Linked on VATUSA", with
-  **Use a different account**), or none (**Link Discord**).
+  **Use a different account**), or none ("No Discord account", with **Link Discord**).
 - **Link Discord** (`/profile/discord`) is a Discord sign-in through the "Indy Center" Discord app
   (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`), asking for `identify guilds.join`, with its state
   in a 10-minute cookie. The app's redirects must include `<origin>/profile/discord/callback`.
