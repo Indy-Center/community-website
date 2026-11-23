@@ -19,7 +19,7 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/routes/settings/` — member profile/settings.
 - `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster copy from the training app, then syncs memberships from it; syncs the staff points of contact from VATUSA.
 - `src/lib/server/roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
-- `src/lib/server/identity.ts` — OAuth client for the identity server, and its userinfo lookup.
+- `src/lib/server/identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `writeOperatingInitials`); see "Identity API client".
 - `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
 - `src/lib/server/discord.ts` — Discord messages: the feedback alerts and post Larry queues, and the older webhook helper.
@@ -149,6 +149,23 @@ CMS_URL=http://localhost:3000
 COMMUNITY_API_TOKEN=   # the same value as COMMUNITY_API_TOKEN in payload's .env
 ```
 
+## Identity API client
+
+Community writes to identity (today: members' operating initials) as its own registered client,
+`community-api`, which is separate from `community-web`, the client that signs members in. Identity's
+operator registers it with the `users:write` scope and no redirect URIs. Its id is the
+`IDENTITY_API_CLIENT_ID` var in `wrangler.jsonc`; its secret is the `IDENTITY_API_CLIENT_SECRET` secret.
+Sign-in's `IDENTITY_CLIENT_ID` and `IDENTITY_CLIENT_SECRET` are not involved.
+
+`clientToken()` in `src/lib/server/identity.ts` gets a client-credentials token from
+`POST {IDENTITY_URL}/oauth/token` (`grant_type=client_credentials`). It keeps the token in memory until
+a minute before its `expires_in` (identity issues one hour) and fetches a new one once if identity
+answers an API call with 401. With the secret unset it throws "identity API client isn't configured",
+and callers log that and carry on as they do when identity refuses. Every call to identity's API takes
+its token from `clientToken()`; don't fetch another.
+
+A leaver keeps their operating initials, locally and in identity.
+
 ## Local development
 
 From the repository root:
@@ -162,6 +179,7 @@ npm run dev   # applies local D1 migrations, then serves http://localhost:5173
 There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set these in `.env` for the features you're working on:
 
 - `IDENTITY_CLIENT_SECRET` — sign-in through the identity server (`IDENTITY_URL` points it at another one). `CONNECT_CLIENT_SECRET` instead when `AUTH_PROVIDER` isn't `identity`.
+- `IDENTITY_API_CLIENT_SECRET` — writes to identity; see "Identity API client". Without it those writes are refused locally and logged.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
