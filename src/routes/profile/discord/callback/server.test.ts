@@ -176,6 +176,43 @@ describe('/profile/discord/callback', () => {
 		]);
 	});
 
+	it('goes back to the page Link Discord was started from, with its toast, and forgets it', async () => {
+		const cookies = fakeCookies();
+		cookies.jar.set('discord_return', '/socials');
+
+		const { redirect, toasts } = await callback('?code=abc&state=good-state', {
+			cookies,
+			larry: fakeLarry({ link: { joined: true } })
+		});
+
+		expect(redirect).toEqual({ status: 302, location: '/socials' });
+		expect(toasts).toEqual([
+			{
+				level: 'success',
+				message: "Linked as @jordan_s. You've been added to the Indy Center Discord."
+			}
+		]);
+		expect(cookies.jar.has('discord_return')).toBe(false);
+	});
+
+	it('goes back to that page when Discord did not confirm the account too', async () => {
+		const cookies = fakeCookies('other-state');
+		cookies.jar.set('discord_return', '/');
+
+		const { redirect } = await callback('?code=abc&state=good-state', { cookies });
+
+		expect(redirect).toEqual({ status: 302, location: '/' });
+	});
+
+	it('goes to the profile instead of a stored page off the site', async () => {
+		const cookies = fakeCookies();
+		cookies.jar.set('discord_return', '//evil.example');
+
+		const { redirect } = await callback('?code=abc&state=good-state', { cookies });
+
+		expect(redirect).toEqual({ status: 302, location: '/profile' });
+	});
+
 	it('keeps the access token nowhere: not the session, the database, the cookies or the log', async () => {
 		const { session, cookies } = await callback('?code=abc&state=good-state', {
 			larry: fakeLarry({ link: new Error('That Discord account is linked to another member.') })

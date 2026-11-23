@@ -8,9 +8,35 @@
 	import IconDiscord from '~icons/mdi/discord';
 	import IconVisit from '~icons/mdi/sign-direction-plus';
 	import IconCalendar from '~icons/mdi/calendar-clock';
+	import {
+		DISCORD_INVITE_URL,
+		joinDiscordHref,
+		type DiscordStep
+	} from '$lib/profile/linkedAccounts';
 
 	let { data } = $props();
 </script>
+
+{#snippet discordButton(step: DiscordStep)}
+	{@const open = step === 'open'}
+	<!-- Join leaves the site for sign-in and Discord, so it's a full page load -->
+	<a
+		href={open ? DISCORD_INVITE_URL : joinDiscordHref('/')}
+		target={open ? '_blank' : undefined}
+		rel={open ? 'noopener noreferrer' : undefined}
+		data-sveltekit-reload={open ? undefined : ''}
+		class="flex items-center justify-center space-x-2 rounded bg-indigo-600 px-4 py-2 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
+	>
+		<IconDiscord class="h-4 w-4" />
+		<span
+			>{step === 'sign-in'
+				? 'Sign in to join Discord'
+				: step === 'join'
+					? 'Join Discord'
+					: 'Open Discord'}</span
+		>
+	</a>
+{/snippet}
 
 <svelte:head>
 	<title>Indy Center | Welcome to Indy</title>
@@ -28,14 +54,12 @@
 			control, participate in group flights, or chat with fellow flight sim enthusiasts.
 		</p>
 		<div class="mx-auto flex flex-col justify-center gap-2 sm:max-w-none sm:flex-row sm:gap-4">
-			<a
-				href="https://discord.indy.center"
-				target="_blank"
-				class="flex items-center justify-center space-x-2 rounded bg-indigo-600 px-4 py-2 font-bold text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
-			>
-				<IconDiscord class="h-4 w-4" />
-				<span>Get Connected on Discord</span>
-			</a>
+			<!-- Until larry answers, a signed-in member is offered Join, which also works if they're in -->
+			{#await data.discord}
+				{@render discordButton(data.user ? 'join' : 'sign-in')}
+			{:then step}
+				{@render discordButton(step)}
+			{/await}
 			<DynamicMembershipButton user={data.user} class="shadow-lg" />
 		</div>
 	</PageHero>

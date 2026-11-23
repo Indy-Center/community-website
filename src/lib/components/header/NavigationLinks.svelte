@@ -19,6 +19,7 @@
 	import IconAccountPlus from '~icons/mdi/account-plus';
 	import IconSchool from '~icons/mdi/school';
 	import IconRadioTower from '~icons/mdi/radio-tower';
+	import IconForum from '~icons/mdi/forum-outline';
 
 	type NavLink = { label: string; href: string; icon: Component; external?: boolean };
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
@@ -112,6 +113,11 @@
 					label: 'Partners',
 					href: '/partners',
 					icon: IconHandshake
+				},
+				{
+					label: 'Socials',
+					href: '/socials',
+					icon: IconForum
 				},
 				{
 					label: 'Contact Us',

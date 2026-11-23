@@ -50,6 +50,23 @@ export const UNLINKED = {
 /** TeamSpeak's own link to the server, by its nickname, which opens the installed client. */
 export const TEAMSPEAK_CONNECT_URL = `https://tmspk.gg/s/${FACILITY_ID}`;
 
+/** The server's invite link, which opens it for a member already in it. */
+export const DISCORD_INVITE_URL = 'https://discord.indy.center';
+
+/**
+ * Link Discord, started from `returnTo` and coming back to it: a signed-out visitor signs in
+ * first, then Discord asks to link their account and add them to the server.
+ */
+export function joinDiscordHref(returnTo: string) {
+	return `/profile/discord?return=${encodeURIComponent(returnTo)}`;
+}
+
+/** Where a member stands with the Discord server, for the join buttons. */
+export type DiscordStep = 'sign-in' | 'join' | 'open';
+
+/** Where a member stands with TeamSpeak, for the socials page. */
+export type TeamSpeakStep = 'sign-in' | 'connect' | 'linked';
+
 /** A unique ID shortened to its first four and last four characters: "x7Kq…3dE=". */
 export function shortUid(uid: string) {
 	return uid.length <= 9 ? uid : `${uid.slice(0, 4)}…${uid.slice(-4)}`;
