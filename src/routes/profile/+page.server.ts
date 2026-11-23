@@ -219,7 +219,10 @@ export const actions = {
 			return fail(400);
 		}
 
-		const identity = await readIdentity(user, locals.session);
+		const [identity, rosterEntry] = await Promise.all([
+			readIdentity(user, locals.session),
+			readRosterEntry(locals.db, user.cid)
+		]);
 		const current = identity ?? localValues(user);
 		const form = await superValidate(
 			formData,
@@ -236,7 +239,12 @@ export const actions = {
 		const { data } = form;
 		const vatsimName = { cid: user.cid, firstName: current.firstName, lastName: current.lastName };
 		const next = {
-			preferredName: preferredNameFor(vatsimName, data.nameChoice, data.preferredName),
+			preferredName: preferredNameFor(
+				vatsimName,
+				data.nameChoice,
+				data.preferredName,
+				rosterEntry?.namePrivacy ?? false
+			),
 			pronouns:
 				data.pronounsChoice === 'custom' ? data.customPronouns.trim() : data.pronounsChoice || null,
 			operatingInitials: controller

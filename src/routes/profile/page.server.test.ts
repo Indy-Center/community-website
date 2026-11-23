@@ -490,6 +490,35 @@ describe('/profile save', () => {
 		]);
 	});
 
+	it('saves the full name as text for a member with name privacy who chooses it', async () => {
+		await seedMember(db, {
+			cid: '1000004',
+			firstName: 'Casey',
+			lastName: 'Hiddenlast',
+			namePrivacy: true,
+			user: { id: 'user-casey', email: 'casey@private.example.test', operatingInitials: 'CH' }
+		});
+		identity.claims = claimsFor({
+			sub: '1000004',
+			given_name: 'Casey',
+			family_name: 'Hiddenlast',
+			operating_initials: 'CH'
+		});
+
+		await save(
+			{ ...unchanged, nameChoice: 'full', operatingInitials: 'CH' },
+			{ userId: 'user-casey' }
+		);
+
+		expect(identity.writes.map(({ path, body }) => ({ path, body }))).toEqual([
+			{ path: '/api/me', body: { preferred_name: 'Casey Hiddenlast' } }
+		]);
+		expect((await row('user-casey')).preferredName).toBe('Casey Hiddenlast');
+		const data = await visit('user-casey', { href: '/profile?edit' });
+		expect(data.shownName).toBe('Casey Hiddenlast');
+		expect(data.form.data.nameChoice).toBe('full');
+	});
+
 	it('says the nickname updates at the next sync when larry declines', async () => {
 		const larry = fakeLarry({
 			sync: [{ cid: 1000001, queued: false, reason: 'Synced in the last 2 minutes.' }]

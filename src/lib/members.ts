@@ -19,18 +19,13 @@ export const memberPickerColumns = { id: true, cid: true, ...memberNameColumns }
 export type PickableMember = Pick<User, keyof typeof memberPickerColumns>;
 
 /**
- * The preferred name a member really chose, or null. The old settings page pre-filled the
- * preferred name with "First Last", so one that matches the full name isn't a choice and must not
- * stand in for name privacy.
+ * The preferred name a member chose, trimmed, or null. A preferred name equal to the full name is
+ * a choice too: a member with VATUSA name privacy who chose their full name has it saved as text.
+ * (The old settings page pre-filled "First Last"; the one-time copy cleared those before this
+ * page went live.)
  */
-export function customPreferredName(
-	preferredName: string | null | undefined,
-	firstName: string | undefined,
-	lastName: string | undefined
-): string | null {
-	const normalize = (name: string) => name.replace(/\s+/g, ' ').trim().toLowerCase();
-	const trimmed = preferredName?.trim();
-	return trimmed && normalize(trimmed) !== normalize(`${firstName} ${lastName}`) ? trimmed : null;
+export function customPreferredName(preferredName: string | null | undefined): string | null {
+	return preferredName?.trim() || null;
 }
 
 /** What `memberName` needs. `namePrivacy` is VATUSA's flag, from the roster copy. */
@@ -51,7 +46,7 @@ export type NamedMember = {
 export function memberName(member: NamedMember): string {
 	const { cid, firstName, lastName } = member;
 	return (
-		customPreferredName(member.preferredName, firstName, lastName) ??
+		customPreferredName(member.preferredName) ??
 		(member.namePrivacy ? `${firstName} ${cid}` : `${firstName} ${lastName}`)
 	);
 }

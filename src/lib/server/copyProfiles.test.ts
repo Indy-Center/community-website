@@ -20,6 +20,9 @@ const store = (): CopyStore => ({
 	users: async () => db.select().from(usersTable),
 	setOperatingInitials: async (cid, initials) => {
 		await db.update(usersTable).set({ operatingInitials: initials }).where(eq(usersTable.cid, cid));
+	},
+	clearPreferredName: async (cid) => {
+		await db.update(usersTable).set({ preferredName: null }).where(eq(usersTable.cid, cid));
 	}
 });
 
@@ -71,13 +74,37 @@ afterEach(() => {
 });
 
 describe('preferred name', () => {
-	it('sends null when it equals the full name, ignoring case and padding', async () => {
+	it('sends null when it equals the full name, ignoring case and padding, and clears it locally', async () => {
 		await addUser('100001', { preferredName: '  alex SAMPLE ' });
 
 		const report = await run();
 
 		expect(patches()[0].body.preferred_name).toBeNull();
 		expect(report.droppedFullNames).toBe(1);
+		const [row] = await db.select().from(usersTable);
+		expect(row.preferredName).toBeNull();
+		expect(report.localFullNamesCleared).toEqual(['100001']);
+	});
+
+	it('clears a full name locally for a member identity does not know', async () => {
+		await addUser('100001', { preferredName: 'Alex Sample' });
+		unknownCids = ['100001'];
+
+		const report = await run();
+
+		const [row] = await db.select().from(usersTable);
+		expect(row.preferredName).toBeNull();
+		expect(report.skippedUnknown).toEqual(['100001']);
+	});
+
+	it('leaves the local full name alone on a dry run', async () => {
+		await addUser('100001', { preferredName: 'Alex Sample' });
+
+		const report = await run([], true);
+
+		const [row] = await db.select().from(usersTable);
+		expect(row.preferredName).toBe('Alex Sample');
+		expect(report.localFullNamesCleared).toEqual([]);
 	});
 
 	it('sends another name as typed', async () => {

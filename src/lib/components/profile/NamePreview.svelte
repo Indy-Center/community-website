@@ -30,7 +30,7 @@
 	const name = $derived(
 		memberName({
 			...vatsimName,
-			preferredName: preferredNameFor(vatsimName, choice, customName) || null,
+			preferredName: preferredNameFor(vatsimName, choice, customName, hasNamePrivacy) || null,
 			namePrivacy: hasNamePrivacy
 		})
 	);

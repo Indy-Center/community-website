@@ -21,9 +21,9 @@ describe('memberName', () => {
 		expect(memberName({ ...jordan, preferredName: 'Jay S.', namePrivacy: false })).toBe('Jay S.');
 	});
 
-	it('treats an older preferred name equal to the full name as no choice', () => {
+	it('shows the full name for a member with name privacy who chose it', () => {
 		expect(memberName({ ...jordan, preferredName: 'Jordan Sample', namePrivacy: true })).toBe(
-			'Jordan 1000001'
+			'Jordan Sample'
 		);
 	});
 

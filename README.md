@@ -82,6 +82,10 @@ controllers, operating initials. `/settings` redirects there; its old form is go
 - **Where each field is held:** identity holds the preferred name, pronouns and operating
   initials; the site keeps copies in `users` for its other pages, and holds the bio itself. The
   name choice is stored only as the preferred name it produces (`src/lib/profile/nameChoice.ts`).
+  Full name saves `null`, so the name follows VATSIM, except for a member with name privacy: there
+  `null` means "keep it private", so their full name is saved as text, and identity's `name`,
+  community's pages and larry's nickname all show it. It then doesn't follow a VATSIM name change
+  until they save again.
 - **Reading:** each visit reads the member's values from identity's `/oauth/userinfo`. If identity
   can't be reached, the page shows the local copies and the form is turned off. The 5-minute
   userinfo check in `hooks.server.ts` (`src/lib/server/identityCheck.ts`) also copies identity's
@@ -259,8 +263,9 @@ those rows. Deployed first, every member active before the copy would have their
 pronouns and initials overwritten with identity's empty values, leaving the copy nothing to send,
 and the next roster run would hand controllers new initials. Run first, identity already holds the
 same values, so the check changes nothing. Deploy as soon as it finishes: a change saved on the old
-`/settings` page in between stays only in community and is overwritten by the check. Running the
-copy again after the deploy is harmless, since each row then matches identity.
+`/settings` page in between stays only in community and is overwritten by the check. **Don't run
+it again after the deploy:** a member with VATUSA name privacy who then chooses their full name has
+it saved as text, and the copy would take that for an old pre-filled name and clear it.
 
 It runs outside the Worker under `vite-node`, with `process.env` standing in for the
 Worker's `env`, and writes through `patchIdentityUser()` and `clientToken()` in
@@ -286,14 +291,17 @@ Worker's `env`, and writes through `patchIdentityUser()` and `clientToken()` in
    npm run copy-profiles -- --dry-run --teachers teachers.json
    ```
 
-3. Run it for real by leaving out `--dry-run`. It can be run again: it overwrites what identity holds.
+3. Run it for real by leaving out `--dry-run`. Until the deploy it can be run again: it overwrites
+   what identity holds.
 
 4. Deploy the profile page straight away.
 
 The rules, for each `users` row with a CID:
 
 - Preferred name: empty sends nothing; equal to first and last name (trimmed, any case) sends
-  `null`; otherwise it is sent as typed, cut to 64 characters.
+  `null` and is cleared in community's row too, even for a member identity doesn't know (the old
+  settings page pre-filled it, so it wasn't a choice); otherwise it is sent as typed, cut to 64
+  characters.
 - Pronouns: trimmed, empty sends `null`, cut to 32.
 - Initials: the teacher file's pair for that CID, else `users.operating_initials`. Only `^[A-Z]{2}$`
   is sent; a malformed pair is skipped. When the teacher's pair differs from community's, the local

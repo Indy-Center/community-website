@@ -23,6 +23,8 @@ export type CopyUser = {
 export type CopyStore = {
 	users(): Promise<CopyUser[]>;
 	setOperatingInitials(cid: string, initials: string): Promise<void>;
+	/** Clears a member's preferred name, for an old one equal to their full name. */
+	clearPreferredName(cid: string): Promise<void>;
 };
 
 export const TeachersSchema = z.array(
@@ -39,6 +41,8 @@ export type CopyReport = {
 	skippedUnknown: string[];
 	skippedMalformed: string[];
 	localInitialsUpdated: string[];
+	/** CIDs whose preferred name equal to the full name was cleared in community's row. */
+	localFullNamesCleared: string[];
 	patches: { cid: string; patch: IdentityUserPatch }[];
 };
 
@@ -104,6 +108,7 @@ export async function copyProfiles(options: {
 		skippedUnknown: [],
 		skippedMalformed: [],
 		localInitialsUpdated: [],
+		localFullNamesCleared: [],
 		patches: []
 	};
 
@@ -117,6 +122,14 @@ export async function copyProfiles(options: {
 		report.patches.push({ cid: user.cid, patch });
 
 		if (dryRun) continue;
+
+		// The old settings page pre-filled "First Last". Community's pages now take a preferred
+		// name equal to the full name as a real choice, so clear these locally too, even for a
+		// member identity doesn't know: left, they would show a private member's last name.
+		if (droppedFullName) {
+			await store.clearPreferredName(user.cid);
+			report.localFullNamesCleared.push(user.cid);
+		}
 
 		try {
 			await patchIdentityUser(env, user.cid, patch, 'profile copy');

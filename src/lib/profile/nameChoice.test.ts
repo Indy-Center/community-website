@@ -57,6 +57,14 @@ describe('inferNameChoice', () => {
 		expect(infer(null, true)).toEqual({ choice: 'firstCid', customName: '', privacyDefault: true });
 	});
 
+	it('selects the full name for one saved as text, as a member with name privacy saves it', () => {
+		expect(infer('Jordan Sample', true)).toEqual({
+			choice: 'full',
+			customName: '',
+			privacyDefault: false
+		});
+	});
+
 	it('keeps the choice of a member with name privacy who has chosen', () => {
 		expect(infer('Jordan', true)).toEqual({
 			choice: 'first',
@@ -71,6 +79,11 @@ describe('preferredNameFor', () => {
 		expect(preferredNameFor(jordan, 'full', 'ignored')).toBeNull();
 		expect(preferredNameFor(jordan, 'initial', 'ignored')).toBe('Jordan S.');
 		expect(preferredNameFor(jordan, 'firstCid', '')).toBe('Jordan 1000001');
+	});
+
+	it('saves the full name as text for a member with name privacy, where null would hide it', () => {
+		expect(preferredNameFor(jordan, 'full', '', true)).toBe('Jordan Sample');
+		expect(preferredNameFor(jordan, 'first', '', true)).toBe('Jordan');
 	});
 
 	it('saves the trimmed text for "My preferred name"', () => {

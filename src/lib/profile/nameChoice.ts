@@ -19,15 +19,23 @@ export type NameOption = {
 	preferredName: string | null;
 };
 
-/** The generated options, in the order the form shows them. */
-export function nameOptions({ cid, firstName, lastName }: VatsimName): NameOption[] {
+/**
+ * The generated options, in the order the form shows them. Full name saves null, so the shown
+ * name follows the VATSIM name, except with VATUSA name privacy: there null means "keep it
+ * private" (First CID), so the full name is saved as text for the choice to show.
+ */
+export function nameOptions(
+	{ cid, firstName, lastName }: VatsimName,
+	namePrivacy = false
+): NameOption[] {
 	const initial = lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
+	const fullName = `${firstName} ${lastName}`;
 	return [
 		{
 			choice: 'full',
-			label: `${firstName} ${lastName}`,
+			label: fullName,
 			hint: 'Your VATSIM first and last name',
-			preferredName: null
+			preferredName: namePrivacy ? fullName : null
 		},
 		{ choice: 'first', label: firstName, hint: 'Your first name only', preferredName: firstName },
 		{
@@ -58,18 +66,25 @@ export function inferNameChoice(
 			? { choice: 'firstCid', customName: '', privacyDefault: true }
 			: { choice: 'full', customName: '', privacyDefault: false };
 	}
-	const match = nameOptions(member).find((option) => option.preferredName === member.preferredName);
+	// The full name saved as text (a member with name privacy who chose it) is the full name too
+	const match = nameOptions(member, true).find(
+		(option) => option.preferredName === member.preferredName
+	);
 	return match
 		? { choice: match.choice, customName: '', privacyDefault: false }
 		: { choice: 'preferred', customName: member.preferredName, privacyDefault: false };
 }
 
-/** The preferred name a choice saves; `customName` is the "My preferred name" box. */
+/**
+ * The preferred name a choice saves; `customName` is the "My preferred name" box. `namePrivacy`
+ * is VATUSA's flag, which makes the full name save as text (`nameOptions`).
+ */
 export function preferredNameFor(
 	member: VatsimName,
 	choice: NameChoice,
-	customName: string
+	customName: string,
+	namePrivacy = false
 ): string | null {
 	if (choice === 'preferred') return customName.trim();
-	return nameOptions(member).find((option) => option.choice === choice)!.preferredName;
+	return nameOptions(member, namePrivacy).find((option) => option.choice === choice)!.preferredName;
 }

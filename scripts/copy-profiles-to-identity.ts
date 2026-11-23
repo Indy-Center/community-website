@@ -46,6 +46,11 @@ const wranglerStore: CopyStore = {
 			throw new Error(`Refusing to update ${cid}: unexpected cid or initials`);
 		}
 		d1(`UPDATE users SET operating_initials = '${initials}' WHERE cid = '${cid}'`);
+	},
+	async clearPreferredName(cid) {
+		// Checked here because it goes into the statement's text.
+		if (!/^\d+$/.test(cid)) throw new Error(`Refusing to update ${cid}: unexpected cid`);
+		d1(`UPDATE users SET preferred_name = NULL WHERE cid = '${cid}'`);
 	}
 };
 
@@ -66,6 +71,7 @@ function printReport(report: CopyReport, dryRun: boolean) {
 	print('Skipped, unknown to identity', report.skippedUnknown);
 	print('Skipped, malformed', report.skippedMalformed);
 	print('Local initials updated from the teacher file', report.localInitialsUpdated);
+	print('Local preferred names equal to the full name, cleared', report.localFullNamesCleared);
 }
 
 const { values } = parseArgs({
