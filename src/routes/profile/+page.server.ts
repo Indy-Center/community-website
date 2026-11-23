@@ -47,7 +47,9 @@ const localValues = (user: User): Values => ({
 
 /**
  * The member's values as identity holds them now (`/oauth/userinfo`), or null when identity
- * can't be reached, refuses, or this isn't an identity session.
+ * can't be reached, refuses, or this isn't an identity session. A field identity holds no value for
+ * falls back to the member's row: the identity check (`reconcileProfile`) kept it there because
+ * identity didn't have it yet, and is filling it in.
  */
 async function readIdentity(user: User, session: Session | undefined): Promise<Values | null> {
 	const token = session?.data?.identityToken;
@@ -58,9 +60,9 @@ async function readIdentity(user: User, session: Session | undefined): Promise<V
 		return {
 			firstName: claims.given_name ?? user.firstName,
 			lastName: claims.family_name ?? user.lastName,
-			preferredName: claims.preferred_name,
-			pronouns: claims.pronouns,
-			operatingInitials: claims.operating_initials
+			preferredName: claims.preferred_name ?? user.preferredName,
+			pronouns: claims.pronouns ?? user.pronouns,
+			operatingInitials: claims.operating_initials ?? user.operatingInitials
 		};
 	} catch (error) {
 		logger.error(`Could not read ${user.cid}'s profile from identity`, error);
