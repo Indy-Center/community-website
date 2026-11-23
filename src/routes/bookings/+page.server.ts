@@ -1,8 +1,8 @@
-import { inArray } from 'drizzle-orm';
+﻿import { inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
-import { customPreferredName } from '$lib/members';
+import { memberName } from '$lib/members';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
@@ -131,8 +131,7 @@ export const load = async ({ locals, platform }) => {
 	const names = Object.fromEntries(
 		members.map((member) => [
 			member.cid,
-			customPreferredName(member.user?.preferredName, member.firstName, member.lastName) ??
-				`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`
+			memberName({ ...member, preferredName: member.user?.preferredName })
 		])
 	);
 

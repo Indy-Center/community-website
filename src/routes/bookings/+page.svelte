@@ -277,7 +277,7 @@
 									</details>
 								</li>
 							{:else}
-								\1
+								{@const label = data.positions[booking.callsign]}
 								<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
 								<li
 									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_1fr_auto_3.5rem]"
