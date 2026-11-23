@@ -1,6 +1,6 @@
 <script lang="ts">
 	// "How others see you": the name choice as it stands in the form, drawn as the site's header,
-	// roster and Discord would show it.
+	// roster, profile and Discord would show it.
 	import { Member } from '@indy-center/centerline-svelte';
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import { memberName } from '$lib/members';
@@ -55,11 +55,14 @@
 
 		<dt class="text-muted-foreground">Roster, events</dt>
 		<dd>
-			<Member {name} cid={vatsimName.cid} showCid={choice !== 'cid'} />{#if pronouns.trim()}<span
-					class="text-muted-foreground"
-				>
-					({pronouns.trim()})</span
-				>{/if}
+			<Member {name} cid={vatsimName.cid} showCid={choice !== 'cid'} />
+		</dd>
+
+		<!-- Pronouns show only here, in the profile's header (ProfileHeader) -->
+		<dt class="text-muted-foreground">Your profile</dt>
+		<dd class="font-semibold text-foreground">
+			{name}{#if pronouns.trim()}
+				<span class="font-normal text-muted-foreground">({pronouns.trim()})</span>{/if}
 		</dd>
 
 		{#if hasDiscord}

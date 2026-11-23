@@ -106,7 +106,7 @@
 							</Field>
 						</Fieldset>
 
-						<Field label="Pronouns" hint="Optional. Shown next to your name.">
+						<Field label="Pronouns" hint="Optional. Shown next to your name on your profile.">
 							{#snippet children(control)}
 								<Select {...control} name="pronounsChoice" bind:value={$form.pronounsChoice}>
 									<option value="">None</option>
