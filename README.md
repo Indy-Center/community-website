@@ -241,8 +241,18 @@ A leaver keeps their operating initials, locally and in identity.
 
 `npm run copy-profiles` copies what community holds today into identity: each member's preferred
 name, pronouns and operating initials, one `PATCH /api/users/{cid}` per member. It is run once by
-the maintainer, straight after the profile page deploys; until then Edit profile shows identity's
-empty values. It runs outside the Worker under `vite-node`, with `process.env` standing in for the
+the maintainer, **straight before the profile page deploys**, never after.
+
+Run it before because the deployed site copies identity's values into each signed-in member's
+`users` row (the 5-minute userinfo check, `src/lib/server/identityCheck.ts`), and the copy reads
+those rows. Deployed first, every member active before the copy would have their preferred name,
+pronouns and initials overwritten with identity's empty values, leaving the copy nothing to send,
+and the next roster run would hand controllers new initials. Run first, identity already holds the
+same values, so the check changes nothing. Deploy as soon as it finishes: a change saved on the old
+`/settings` page in between stays only in community and is overwritten by the check. Running the
+copy again after the deploy is harmless, since each row then matches identity.
+
+It runs outside the Worker under `vite-node`, with `process.env` standing in for the
 Worker's `env`, and writes through `patchIdentityUser()` and `clientToken()` in
 `src/lib/server/identity.ts` like the site does, so the API client above is the one it uses.
 
@@ -267,6 +277,8 @@ Worker's `env`, and writes through `patchIdentityUser()` and `clientToken()` in
    ```
 
 3. Run it for real by leaving out `--dry-run`. It can be run again: it overwrites what identity holds.
+
+4. Deploy the profile page straight away.
 
 The rules, for each `users` row with a CID:
 
