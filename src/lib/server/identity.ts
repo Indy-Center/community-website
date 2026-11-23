@@ -120,6 +120,30 @@ export async function writeOperatingInitials(
 	}
 }
 
+/** The fields a member may change about themselves; null clears one. */
+export type OwnProfilePatch = { preferred_name?: string | null; pronouns?: string | null };
+
+/**
+ * Changes the signed-in member's own preferred name and pronouns: `PATCH /api/me` with their
+ * session's identity token (`identityToken`), which identity requires there; a client token is
+ * refused.
+ */
+export async function updateOwnProfile(
+	env: IdentityApiEnv,
+	accessToken: string,
+	patch: OwnProfilePatch
+): Promise<void> {
+	const response = await fetch(`${env.IDENTITY_URL ?? baseUrl()}/api/me`, {
+		method: 'PATCH',
+		headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+		body: JSON.stringify(patch),
+		signal: AbortSignal.timeout(5000)
+	});
+	if (!response.ok) {
+		throw await refused('profile update', response);
+	}
+}
+
 const UserinfoSchema = z.object({
 	sub: z.string().regex(/^\d+$/),
 	name: z.string(),
