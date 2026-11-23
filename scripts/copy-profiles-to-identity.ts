@@ -57,7 +57,8 @@ function print(title: string, lines: string[]) {
 function printReport(report: CopyReport, dryRun: boolean) {
 	if (dryRun) {
 		console.log('Dry run: nothing was written.');
-		for (const { cid, patch } of report.patches) console.log(`PATCH ${cid} ${JSON.stringify(patch)}`);
+		for (const { cid, patch } of report.patches)
+			console.log(`PATCH ${cid} ${JSON.stringify(patch)}`);
 	}
 	console.log(`\nMembers patched: ${report.patched}`);
 	console.log(`Full names dropped: ${report.droppedFullNames}`);
@@ -80,4 +81,7 @@ const dryRun = values['dry-run'] ?? false;
 
 // `process.env` is the Worker's `env` here: IDENTITY_URL, IDENTITY_API_CLIENT_ID and
 // IDENTITY_API_CLIENT_SECRET, handed to the same `clientToken()` the site uses.
-printReport(await copyProfiles({ env: process.env, store: wranglerStore, teachers, dryRun }), dryRun);
+printReport(
+	await copyProfiles({ env: process.env, store: wranglerStore, teachers, dryRun }),
+	dryRun
+);
