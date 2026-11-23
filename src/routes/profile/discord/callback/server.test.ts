@@ -119,6 +119,7 @@ async function callback(
 		return {
 			redirect: { status, location },
 			flash: flash ? JSON.parse(flash) : null,
+			toasts: JSON.parse(cookies.jar.get('centerline-toasts') ?? '[]'),
 			larry,
 			cookies,
 			session
@@ -143,12 +144,12 @@ describe('/profile/discord/callback', () => {
 		['no state cookie', '?code=abc&state=good-state', null],
 		['a sign-in cancelled at Discord', '?error=access_denied&state=good-state', 'good-state']
 	])('refuses %s with its message, linking nothing', async (_, query, state) => {
-		const { redirect, flash, larry, cookies } = await callback(query, {
+		const { redirect, toasts, larry, cookies } = await callback(query, {
 			cookies: fakeCookies(state)
 		});
 
 		expect(redirect).toEqual({ status: 302, location: '/profile' });
-		expect(flash).toEqual({ level: 'danger', message: DISCORD_NOT_CONFIRMED });
+		expect(toasts).toEqual([{ level: 'danger', message: DISCORD_NOT_CONFIRMED }]);
 		expect(larry.linked).toEqual([]);
 		expect(discord.requests).toEqual([]);
 		expect(cookies.jar.has('discord_oauth_state')).toBe(false);
@@ -160,9 +161,9 @@ describe('/profile/discord/callback', () => {
 	])('says Discord did not confirm the account when %s fails', async (_, answers) => {
 		Object.assign(discord, answers);
 
-		const { flash, larry } = await callback('?code=abc&state=good-state');
+		const { toasts, larry } = await callback('?code=abc&state=good-state');
 
-		expect(flash).toEqual({ level: 'danger', message: DISCORD_NOT_CONFIRMED });
+		expect(toasts).toEqual([{ level: 'danger', message: DISCORD_NOT_CONFIRMED }]);
 		expect(larry.linked).toEqual([]);
 	});
 
@@ -211,15 +212,12 @@ describe('/profile/discord/callback', () => {
 	it.each([
 		'That Discord account is linked to another member.',
 		"Your Discord account is linked, but we couldn't add you to the Indy Center Discord. Ask a staff member for an invite."
-	])("shows larry's refusal as it comes: %s", async (refusal) => {
-		const { flash } = await callback('?code=abc&state=good-state', {
+	])("shows larry's refusal as it comes, in a toast: %s", async (refusal) => {
+		const { flash, toasts } = await callback('?code=abc&state=good-state', {
 			larry: fakeLarry({ link: new Error(refusal) })
 		});
 
-		expect(flash).toEqual({
-			level: 'danger',
-			message: refusal,
-			discord: { id: DISCORD_ID, username: 'jordan_s' }
-		});
+		expect(toasts).toEqual([{ level: 'danger', message: refusal }]);
+		expect(flash).toEqual({ discord: { id: DISCORD_ID, username: 'jordan_s' } });
 	});
 });

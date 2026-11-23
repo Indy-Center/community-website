@@ -8,6 +8,7 @@
 		Badge,
 		Button,
 		Callout,
+		ConfirmDialog,
 		EmptyState,
 		Link,
 		Pagination,
@@ -20,6 +21,7 @@
 	import IconEye from '~icons/mdi/eye';
 	import IconPencil from '~icons/mdi/pencil';
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import EditProfile from './EditProfile.svelte';
 
 	const { data } = $props();
@@ -33,7 +35,13 @@
 		data.feedback.slice((feedbackPage - 1) * FEEDBACK_PER_PAGE, feedbackPage * FEEDBACK_PER_PAGE)
 	);
 
-	let linkingTs = $state(false);
+	// The link TeamSpeak's bot sent (/profile?ts=…): asked about in a dialog as the page opens.
+	// Confirming posts the linkTeamspeak action; cancelling drops ?ts= so a reload doesn't ask.
+	let tsForm = $state<HTMLFormElement>();
+	let tsConfirmOpen = $state(false);
+	$effect.pre(() => {
+		tsConfirmOpen = !!data.pendingTsLink && !data.editing;
+	});
 </script>
 
 <svelte:head>
@@ -46,33 +54,27 @@
 			<p><Link href="/profile?edit#controlling">Choose your operating initials</Link></p>
 		</Callout>
 	{/if}
-	{#if data.pendingTsLink}
-		<!-- Above everything, so it's seen on a phone too, where Linked accounts is far down -->
-		<Panel title="Link your TeamSpeak identity?" level={2} id="teamspeak-link" class="mb-6">
-			<p>
-				Our TeamSpeak bot sends this link in a private message when you connect to our TeamSpeak.
-				Link it only if that message came to you just now: whoever's TeamSpeak it came from gets
-				your roles there.
-			</p>
-			<form
-				method="POST"
-				action="?/linkTeamspeak"
-				use:enhance={() => {
-					linkingTs = true;
-					return async ({ update }) => {
-						await update();
-						linkingTs = false;
-					};
-				}}
-				class="mt-4 flex flex-wrap gap-2"
-			>
-				<input type="hidden" name="token" value={data.pendingTsLink} />
-				<Button type="submit" busy={linkingTs} busyLabel="Linking">Link TeamSpeak</Button>
-				<Button variant="secondary" href="/profile">Cancel</Button>
-			</form>
-		</Panel>
-	{/if}
 {/if}
+
+{#if data.pendingTsLink}
+	<!-- The confirm button posts this; the dialog holds only the question -->
+	<form bind:this={tsForm} method="POST" action="?/linkTeamspeak" use:enhance hidden>
+		<input type="hidden" name="token" value={data.pendingTsLink} />
+	</form>
+{/if}
+<ConfirmDialog
+	bind:open={tsConfirmOpen}
+	title="Link your TeamSpeak identity?"
+	confirmLabel="Link TeamSpeak"
+	onconfirm={() => tsForm?.requestSubmit()}
+	oncancel={() => goto('/profile', { replaceState: true })}
+>
+	<p>
+		Our TeamSpeak bot sends this link in a private message when you connect to our TeamSpeak. Link
+		it only if that message came to you just now: whoever's TeamSpeak it came from gets your roles
+		there.
+	</p>
+</ConfirmDialog>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 	<div class="space-y-6 lg:col-span-2">
@@ -192,11 +194,7 @@
 
 	<div class="space-y-6">
 		<Panel title="Linked accounts" level={2} id="accounts">
-			<LinkedAccounts
-				discord={data.discord}
-				teamspeak={data.teamspeak}
-				message={data.accountsMessage}
-			/>
+			<LinkedAccounts discord={data.discord} teamspeak={data.teamspeak} />
 		</Panel>
 		<Panel title="Display" level={2} id="display">
 			<DisplaySettings />

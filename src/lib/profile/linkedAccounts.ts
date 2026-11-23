@@ -19,8 +19,8 @@ export function linkedMessage(username: string, joined: boolean) {
 
 /**
  * How a Linked accounts button went, carried over a redirect: after the Discord callback, a
- * TeamSpeak link, an unlink or a sync. A success or note becomes a toast, a failure an Alert on
- * the panel (`setAccountsFlash`). `discord` is the account the callback just read from Discord, so
+ * TeamSpeak link, an unlink or a sync, shown as a toast (`setAccountsFlash`), failures included.
+ * `discord` is the account the callback just read from Discord, so
  * the row can show its username instead of the ID.
  */
 export type AccountsFlash = {

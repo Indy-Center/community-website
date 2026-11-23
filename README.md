@@ -107,10 +107,12 @@ larry on the `LARRY` binding, for the session's CID only: the site never writes 
 larry can't be asked, the panel says "Links are unavailable right now." and the rest of the page
 works. The TeamSpeak row is under Discord's.
 
-Each button comes back to `/profile` with what happened (`setAccountsFlash` in
-`src/lib/server/discordLink.ts`): a success or a note ("Discord unlinked.…", "Your roles will update
-in a minute.") is a Centerline toast; a failure, which the member must read, is an Alert on the
-panel. The site's one `<Toaster />` is in the root layout.
+Each button comes back to `/profile` with what happened as a Centerline toast (`setAccountsFlash`
+in `src/lib/server/discordLink.ts`): a success, a note ("Your roles will update in a minute.") or
+larry's refusal (`danger`). Each is the result of an action just taken, and the row already shows
+what changed, so nothing stays on the panel; Centerline keeps Alert for something that stays until
+it's fixed. The only Alert on the panel is "Links are unavailable right now." The site's one
+`<Toaster />` is in the root layout.
 
 - **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
   `unlink(cid, 'discord')`), VATUSA's account ("Linked on VATUSA", with
@@ -121,7 +123,7 @@ panel. The site's one `<Toaster />` is in the root layout.
 - **The callback** (`/profile/discord/callback`) checks the state, exchanges the code, reads the
   account from Discord's `/users/@me`, and calls `linkDiscord(cid, id, accessToken)`; larry links
   it and adds the member to the Indy Center Discord if they aren't in it (`joined`). The access token
-  goes to larry once and is never stored or logged. It returns to `/profile`, whose card says what
+  goes to larry once and is never stored or logged. It returns to `/profile`, whose toast says what
   happened: who it linked and whether they were added, larry's refusal as larry words it, or
   "Discord didn't confirm the account. Try again." for a bad state or a cancelled or failed sign-in.
   Without the two Discord settings, Link Discord says the same and logs why.
@@ -132,8 +134,9 @@ panel. The site's one `<Toaster />` is in the root layout.
   and "or type ZID in TeamSpeak's server address box". Nothing is sent to
   larry from the not-linked row: the member connects, larry's TeamSpeak bot messages them a link,
   and only that link links an identity.
-- **The TeamSpeak link** (`/profile?ts=<token>`) only asks: "Link your TeamSpeak identity?", above
-  the profile, with **Link TeamSpeak** and **Cancel**. Opening it calls nothing, because larry links
+- **The TeamSpeak link** (`/profile?ts=<token>`) only asks: Centerline's `ConfirmDialog` opens over
+  the profile, "Link your TeamSpeak identity?", with **Link TeamSpeak** and **Cancel** (or Escape,
+  or a click outside, which drop `?ts=` from the address). Opening it calls nothing, because larry links
   whichever identity the token names to whoever confirms it: a link sent to someone else would give
   the sender's TeamSpeak that member's groups. **Link TeamSpeak** posts the `linkTeamspeak` action,
   which calls `confirmTsLink(cid, token)` for the session's CID and comes back to `/profile` with

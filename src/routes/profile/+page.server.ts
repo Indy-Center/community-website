@@ -186,11 +186,6 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		discord: links ? discordRow(links.discord, accountsFlash?.discord) : null,
 		/** The Linked accounts panel's TeamSpeak row; null when larry can't be asked. */
 		teamspeak: links ? teamspeakRow(links.teamspeak) : null,
-		/** A Linked accounts failure to show on the panel; successes are toasts. */
-		accountsMessage:
-			accountsFlash?.level && accountsFlash.message
-				? { level: accountsFlash.level, message: accountsFlash.message }
-				: null,
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		hasPublicProfile: !!rosterEntry,

@@ -37,34 +37,33 @@ export async function fetchDiscordUser(accessToken: string) {
 	return user.success ? user.data : null;
 }
 
-// Carries the Linked accounts panel's failure, and the Discord account just read, to /profile
+// Carries the Discord account the callback just read to /profile, so the row can show its name
 const FLASH_COOKIE = 'profile_accounts';
 
 /**
- * Says how a Linked accounts button went, over the redirect back to /profile. A success or a
- * note ("Your roles will update in a minute.") is a Centerline toast; a failure, which the member
- * must read and may need to act on, stays on the panel as an Alert. `discord` always goes to the
- * panel, so the row can show the username.
+ * Says how a Linked accounts button went, over the redirect back to /profile, as a Centerline
+ * toast: a success, a note ("Your roles will update in a minute.") or a failure (`danger`, larry's
+ * refusal as it comes). Each is the result of an action just taken, and the row already shows
+ * what changed, so nothing stays on the panel. `discord` goes to the panel, so the row can show
+ * the username.
  */
 export function setAccountsFlash(cookies: Cookies, flash: AccountsFlash) {
 	const { discord, level, message } = flash;
-	const onPanel = level === 'danger';
-	if (!onPanel) toastFromServer(cookies, level, message);
-	if (!onPanel && !discord) return;
-	cookies.set(
-		FLASH_COOKIE,
-		JSON.stringify({ ...(onPanel ? { level, message } : {}), ...(discord ? { discord } : {}) }),
-		{ path: '/profile', httpOnly: true, sameSite: 'lax', maxAge: 60 }
-	);
+	toastFromServer(cookies, level, message);
+	if (!discord) return;
+	cookies.set(FLASH_COOKIE, JSON.stringify({ discord }), {
+		path: '/profile',
+		httpOnly: true,
+		sameSite: 'lax',
+		maxAge: 60
+	});
 }
 
 const FlashSchema = z.object({
-	level: z.literal('danger').optional(),
-	message: z.string().optional(),
-	discord: z.object({ id: z.string(), username: z.string() }).optional()
+	discord: z.object({ id: z.string(), username: z.string() })
 });
 
-/** What the panel shows after a redirect: a failure, and the Discord account just read. */
+/** What the panel keeps after a redirect: the Discord account just read. */
 export type PanelFlash = z.infer<typeof FlashSchema>;
 
 /** The panel's flash, once: reading it clears it. */

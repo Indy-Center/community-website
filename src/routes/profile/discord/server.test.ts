@@ -64,10 +64,9 @@ describe('/profile/discord (Link Discord)', () => {
 			const { location, cookies } = start();
 
 			expect(location).toBe('/profile');
-			expect(JSON.parse(cookies.jar.get('profile_accounts')!.value)).toEqual({
-				level: 'danger',
-				message: DISCORD_NOT_CONFIRMED
-			});
+			expect(JSON.parse(cookies.jar.get('centerline-toasts')!.value)).toEqual([
+				{ level: 'danger', message: DISCORD_NOT_CONFIRMED }
+			]);
 		} finally {
 			env.DISCORD_CLIENT_SECRET = 'made-up-client-secret';
 		}

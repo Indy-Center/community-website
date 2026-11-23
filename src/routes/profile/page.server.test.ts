@@ -633,28 +633,20 @@ describe('/profile Linked accounts', () => {
 		const data = await visit('user-jordan', { larry: fakeLarry({ discord }) });
 
 		expect(data.discord).toEqual(row);
-		expect(data.accountsMessage).toBeNull();
 	});
 
-	it("shows the callback's failure on the panel once, and the username it read", async () => {
+	it('shows the username the callback read, once', async () => {
 		const cookies = fakeCookies();
-		const message = 'That Discord account is linked to another member.';
 		cookies.set(
 			'profile_accounts',
-			JSON.stringify({
-				level: 'danger',
-				message,
-				discord: { id: '100000000000000002', username: 'jordan_s' }
-			})
+			JSON.stringify({ discord: { id: '100000000000000002', username: 'jordan_s' } })
 		);
 		const larry = fakeLarry({ discord: { id: '100000000000000002', source: 'linked' } });
 
 		const first = await visit('user-jordan', { larry, cookies });
-		expect(first.accountsMessage).toEqual({ level: 'danger', message });
 		expect(first.discord).toEqual({ state: 'linked', account: '@jordan_s' });
 
 		const second = await visit('user-jordan', { larry, cookies });
-		expect(second.accountsMessage).toBeNull();
 		expect(second.discord).toEqual({ state: 'linked', account: '100000000000000002' });
 	});
 
@@ -728,13 +720,13 @@ describe('/profile Unlink', () => {
 		expect(flash).toBeNull();
 	});
 
-	it("shows larry's refusal as it comes", async () => {
+	it("shows larry's refusal as it comes, in a toast", async () => {
 		const { flash, toasts } = await press('unlink', {
 			larry: fakeLarry({ unlink: new Error('Something went wrong at larry.') })
 		});
 
-		expect(flash).toEqual({ level: 'danger', message: 'Something went wrong at larry.' });
-		expect(toasts).toEqual([]);
+		expect(toasts).toEqual([{ level: 'danger', message: 'Something went wrong at larry.' }]);
+		expect(flash).toBeNull();
 	});
 });
 
@@ -785,22 +777,17 @@ describe('/profile TeamSpeak', () => {
 		expect(flash).toBeNull();
 	});
 
-	it("shows larry's refusal on the panel as given", async () => {
-		const message =
-			"This link has expired or was already used. Reconnect to TeamSpeak and we'll send you a new one.";
-		const cookies = fakeCookies();
-
-		const { flash } = await press('linkTeamspeak', {
+	it.each([
+		"This link has expired or was already used. Reconnect to TeamSpeak and we'll send you a new one.",
+		'That TeamSpeak identity is linked to another member.'
+	])("shows larry's refusal as given, in a toast: %s", async (message) => {
+		const { flash, toasts } = await press('linkTeamspeak', {
 			token: 'old',
-			larry: fakeLarry({ confirmTs: new Error(message) }),
-			cookies
+			larry: fakeLarry({ confirmTs: new Error(message) })
 		});
 
-		expect(flash).toEqual({ level: 'danger', message });
-		expect((await visit('user-jordan', { cookies })).accountsMessage).toEqual({
-			level: 'danger',
-			message
-		});
+		expect(toasts).toEqual([{ level: 'danger', message }]);
+		expect(flash).toBeNull();
 	});
 
 	it('refuses a confirm with no token, asking larry nothing', async () => {

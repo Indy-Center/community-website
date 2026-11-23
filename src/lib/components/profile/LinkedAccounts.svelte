@@ -2,8 +2,8 @@
 	// The body of the profile's "Linked accounts" panel, beside both modes. Its controls act on
 	// their own, never as part of the edit form: Link Discord goes to Discord's sign-in, and
 	// Unlink and Sync my roles post their own actions, each coming back to /profile with its
-	// message. `discord` is the row the load worked out from larry's `getLinks`, or null when
-	// larry can't be asked.
+	// message as a toast. `discord` is the row the load worked out from larry's `getLinks`, or
+	// null when larry can't be asked.
 	import { enhance } from '$app/forms';
 	import { Alert, Button } from '@indy-center/centerline-svelte';
 	import type { SubmitFunction } from '@sveltejs/kit';
@@ -11,7 +11,6 @@
 	import {
 		LINKS_UNAVAILABLE,
 		TEAMSPEAK_CONNECT_URL,
-		type AccountsFlash,
 		type DiscordRow,
 		type TeamSpeakRow
 	} from '$lib/profile/linkedAccounts';
@@ -26,12 +25,10 @@
 
 	let {
 		discord,
-		teamspeak = null,
-		message
+		teamspeak = null
 	}: {
 		discord: DiscordRow | null;
 		teamspeak?: TeamSpeakRow | null;
-		message: Pick<AccountsFlash, 'level' | 'message'> | null;
 	} = $props();
 
 	let unlinking = $state(false);
@@ -49,10 +46,6 @@
 			};
 		};
 </script>
-
-{#if message}
-	<Alert level={message.level} class="mb-4">{message.message}</Alert>
-{/if}
 
 {#if !discord}
 	<Alert level="caution">{LINKS_UNAVAILABLE}</Alert>
@@ -73,9 +66,6 @@
 						<p class="text-sm text-muted-foreground">Linked on VATUSA</p>
 					{:else}
 						<p class="text-sm text-muted-foreground">No Discord account</p>
-						<p class="mt-1 text-sm text-muted-foreground">
-							We'll add you to the Indy Center Discord if you're not already in it.
-						</p>
 					{/if}
 				</div>
 			</div>
@@ -99,46 +89,50 @@
 			</div>
 		</li>
 		{#if teamspeak}
-			<li class={ROW}>
-				<div class="flex min-w-0 items-start gap-3">
-					<IconTeamSpeak class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-					<div class="min-w-0">
+			<!-- The heading and button on one line, at every width; the text under both, across the
+			     whole panel -->
+			<li class="py-4">
+				<div class="flex items-center justify-between gap-3">
+					<div class="flex min-w-0 items-center gap-3">
+						<IconTeamSpeak class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 						<p class="font-medium text-foreground">TeamSpeak</p>
+					</div>
+					<div class="shrink-0">
 						{#if teamspeak.state === 'linked'}
-							<p class="text-sm text-muted-foreground">
-								Linked: <span class="font-mono break-all">{teamspeak.uid}</span>
-							</p>
+							<form
+								method="POST"
+								action="?/unlink"
+								use:enhance={busyWhile((b) => (unlinkingTs = b))}
+							>
+								<input type="hidden" name="service" value="teamspeak" />
+								<Button
+									type="submit"
+									variant="secondary"
+									size="sm"
+									busy={unlinkingTs}
+									busyLabel="Unlinking">Unlink</Button
+								>
+							</form>
 						{:else}
-							<p class="text-sm text-muted-foreground">
-								Connect to our TeamSpeak and we'll send you a private message with your link.
-							</p>
-							<p class="mt-1 text-sm text-muted-foreground">
-								Or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in TeamSpeak's
-								server address box.
-							</p>
+							<Button
+								variant="secondary"
+								size="sm"
+								href={TEAMSPEAK_CONNECT_URL}
+								target="_blank"
+								rel="noopener noreferrer">Connect to TeamSpeak</Button
+							>
 						{/if}
 					</div>
 				</div>
-				<div class={ACTION}>
+				<div class="mt-2 space-y-1 text-sm text-muted-foreground">
 					{#if teamspeak.state === 'linked'}
-						<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinkingTs = b))}>
-							<input type="hidden" name="service" value="teamspeak" />
-							<Button
-								type="submit"
-								variant="secondary"
-								size="sm"
-								busy={unlinkingTs}
-								busyLabel="Unlinking">Unlink</Button
-							>
-						</form>
+						<p>Linked: <span class="font-mono break-all">{teamspeak.uid}</span></p>
 					{:else}
-						<Button
-							variant="secondary"
-							size="sm"
-							href={TEAMSPEAK_CONNECT_URL}
-							target="_blank"
-							rel="noopener noreferrer">Connect to TeamSpeak</Button
-						>
+						<p>Connect to our TeamSpeak and we'll send you a private message with your link.</p>
+						<p>
+							Or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in TeamSpeak's
+							server address box.
+						</p>
 					{/if}
 				</div>
 			</li>
