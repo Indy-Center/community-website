@@ -16,6 +16,7 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check .",
 		"test": "vitest run",
+		"copy-profiles": "vite-node --config scripts/vite-node.config.ts scripts/copy-profiles-to-identity.ts",
 		"populate-analytics": "node scripts/populate-analytics.js",
 		"db:migrate": "npx wrangler d1 migrations apply website-db --remote",
 		"db:migrate:local": "npx wrangler d1 migrations apply website-db --local",
