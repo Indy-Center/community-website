@@ -48,20 +48,39 @@ describe('/feedback', () => {
 			{
 				id: 'user-alex',
 				cid: '1000002',
-				firstName: 'Alex',
-				lastName: 'Sample',
-				preferredName: 'Al Sample',
+				name: 'Al Sample',
+				vatsimName: 'Alex Sample',
 				operatingInitials: null
 			},
 			{
 				id: 'user-jane',
 				cid: '1000001',
-				firstName: 'Jane',
-				lastName: 'Doe',
-				preferredName: null,
+				name: 'Jane Doe',
+				vatsimName: 'Jane Doe',
 				operatingInitials: 'JD'
 			}
 		]);
+	});
+
+	it('lists a controller with VATUSA name privacy by first name and CID, never the last name', async () => {
+		await seedMember(db, {
+			cid: '1000004',
+			firstName: 'Robin',
+			lastName: 'Hiddenlast',
+			namePrivacy: true,
+			user: { id: 'user-robin', email: 'robin@private.example.test' }
+		});
+
+		const data = await visit();
+
+		expect(data.controllers.find((c) => c.id === 'user-robin')).toEqual({
+			id: 'user-robin',
+			cid: '1000004',
+			name: 'Robin 1000004',
+			vatsimName: null,
+			operatingInitials: null
+		});
+		expectNothingPrivate(data, ['Hiddenlast']);
 	});
 
 	it('pre-selects the controller a /feedback/<cid> link names', async () => {
