@@ -8,6 +8,8 @@ import { Role } from '$lib/utils/permissions';
 import { DiscordChannel, sendDiscordEmbed } from './discord';
 import { logger } from './logger';
 import { BANNED_TWO_LETTER_COMBINATIONS } from '$lib/config';
+import { env } from '$env/dynamic/private';
+import { writeOperatingInitials } from './identity';
 
 // These roles are given based off VATUSA membership and can be removed
 // when the user falls off the roster.
@@ -141,6 +143,16 @@ async function grantOperatingInitials(db: Database, user: User) {
 	const initials = combinations.find((combination) => !existingInitials.includes(combination));
 
 	if (initials) {
+		// Identity first: the local row only follows what identity accepted
+		try {
+			await writeOperatingInitials(env, user.cid, initials);
+		} catch (error) {
+			logger.error(
+				`Could not write operating initials ${initials} to identity for ${user.id} (${user.cid})`,
+				error
+			);
+			return null;
+		}
 		await db
 			.update(usersTable)
 			.set({ operatingInitials: initials })
@@ -234,7 +246,7 @@ export async function syncMemberships(db: Database) {
 	// Demote controllers not in vatsim controllers table
 	const demotedResult = await db
 		.update(usersTable)
-		.set({ membership: 'community', operatingInitials: null })
+		.set({ membership: 'community' })
 		.where(
 			and(
 				eq(usersTable.membership, 'controller'),

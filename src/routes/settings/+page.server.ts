@@ -50,11 +50,9 @@ export const actions = {
 			pronouns: form.data.pronouns || null
 		};
 
+		// Leavers keep their initials, so only controllers' settings carry them
 		if (isController) {
 			updateData.operatingInitials = form.data.operatingInitials;
-		} else {
-			// Clear operating initials for non-controllers
-			updateData.operatingInitials = null;
 		}
 
 		await locals.db.update(usersTable).set(updateData).where(eq(usersTable.id, locals.user.id));
