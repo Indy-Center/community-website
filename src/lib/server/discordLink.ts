@@ -12,6 +12,20 @@ export const DISCORD_STATE_COOKIE = 'discord_oauth_state';
 /** `identify` for the account's ID and name, `guilds.join` so larry can add them to the server. */
 export const DISCORD_SCOPES = ['identify', 'guilds.join'];
 
+/** Holds the page Link Discord was started from (`?return=`), for the callback to go back to. */
+export const DISCORD_RETURN_COOKIE = 'discord_return';
+
+/** Where Link Discord goes back to when no page asked: the profile's Linked accounts. */
+export const DEFAULT_RETURN = '/profile';
+
+/** A same-site path to go back to after Link Discord, or null for anything else. */
+export function safeReturnPath(value: string | null | undefined): string | null {
+	if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+		return null;
+	}
+	return value;
+}
+
 /** The settings it reads: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET. */
 export type DiscordEnv = Record<string, string | undefined>;
 
