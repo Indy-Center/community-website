@@ -5,7 +5,7 @@
 	// message. `discord` is the row the load worked out from larry's `getLinks`, or null when
 	// larry can't be asked.
 	import { enhance } from '$app/forms';
-	import { Alert, Button, CopyButton } from '@indy-center/centerline-svelte';
+	import { Alert, Button } from '@indy-center/centerline-svelte';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { FACILITY_ID } from '$lib/config';
 	import {
@@ -62,9 +62,7 @@
 							Linked: <span class="font-mono break-all">{discord.account}</span>
 						</p>
 					{:else if discord.state === 'vatusa'}
-						<p class="text-sm text-muted-foreground">
-							Using the Discord account you linked on VATUSA
-						</p>
+						<p class="text-sm text-muted-foreground">Linked on VATUSA</p>
 					{:else}
 						<p class="text-sm text-muted-foreground">No Discord account</p>
 					{/if}
@@ -125,10 +123,9 @@
 							target="_blank"
 							rel="noopener noreferrer">Connect to TeamSpeak</Button
 						>
-						<p class="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-							or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in
-							TeamSpeak's server address box
-							<CopyButton text={FACILITY_ID} label="server address" />
+						<p class="text-sm text-muted-foreground">
+							or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in TeamSpeak's
+							server address box
 						</p>
 					</div>
 				{/if}

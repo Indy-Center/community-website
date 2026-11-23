@@ -103,8 +103,8 @@ larry can't be asked, the panel says "Links are unavailable right now." and the 
 works. The TeamSpeak row is under Discord's.
 
 - **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
-  `unlink(cid, 'discord')`), VATUSA's account ("Using the Discord account you linked on VATUSA",
-  with **Use a different account**), or none (**Link Discord**).
+  `unlink(cid, 'discord')`), VATUSA's account ("Linked on VATUSA", with
+  **Use a different account**), or none (**Link Discord**).
 - **Link Discord** (`/profile/discord`) is a Discord sign-in through the "Indy Center" Discord app
   (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`), asking for `identify guilds.join`, with its state
   in a 10-minute cookie. The app's redirects must include `<origin>/profile/discord/callback`.
@@ -118,7 +118,7 @@ works. The TeamSpeak row is under Discord's.
 - **The TeamSpeak row** shows the member's identity shortened to its first and last four
   characters, with **Unlink** (the same `unlink` action, posting `service=teamspeak`), or, when
   there is none, how to connect: **Connect to TeamSpeak** (`https://tmspk.gg/s/ZID`, in a new tab)
-  and "or type ZID in TeamSpeak's server address box" with a copy button. Nothing is sent to
+  and "or type ZID in TeamSpeak's server address box". Nothing is sent to
   larry from the not-linked row: the member connects, larry's TeamSpeak bot messages them a link,
   and only that link links an identity.
 - **The TeamSpeak link** (`/profile?ts=<token>`) calls `confirmTsLink(cid, token)` for the session's
