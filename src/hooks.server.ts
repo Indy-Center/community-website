@@ -84,6 +84,17 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 		return await resolve(event);
 	}
 
+	// A session from before sign-in moved to identity has no identity token, so identity (and larry,
+	// which links TeamSpeak and Discord through it) may not know the member. It is ended, and the
+	// member signs in again through identity.
+	if (identityEnabled() && !session.data?.identityToken) {
+		logger.info(`Ended a pre-identity session for ${user.cid}`);
+		await invalidateSession(session.id, event.locals.db);
+		Sentry.setUser(null);
+		deleteSessionTokenCookie(event.cookies);
+		return await resolve(event);
+	}
+
 	// Identity sessions add identity's roles to the locally computed ones (which
 	// aren't pushed to identity yet).
 	let siteRoles = roles;
