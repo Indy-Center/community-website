@@ -19,7 +19,7 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/routes/profile/` — the member's own profile, where they set their name, pronouns, bio and operating initials; see [The profile page](#the-profile-page). `discord/` starts Link Discord and `discord/callback/` finishes it; see [Linked accounts](#linked-accounts). `[cid]/` is a controller's public profile. `/settings` only redirects to `/profile?edit`.
 - `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster copy from the training app, then syncs memberships from it; syncs the staff points of contact from VATUSA.
 - `src/lib/server/roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
-- `src/lib/server/identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `writeOperatingInitials`); see "Identity API client".
+- `src/lib/server/identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `patchIdentityUser`, `writeOperatingInitials`), and the member's own profile save (`updateOwnProfile`); see "Identity API client".
 - `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
 - `src/lib/server/vatsim/` — VATSIM Data Feed integration.
 - `src/lib/server/discord.ts` — Discord messages: the feedback alerts and post Larry queues, and the older webhook helper.
@@ -219,8 +219,9 @@ COMMUNITY_API_TOKEN=   # the same value as COMMUNITY_API_TOKEN in payload's .env
 
 ## Identity API client
 
-Community writes to identity (today: members' operating initials) as its own registered client,
-`community-api`, which is separate from `community-web`, the client that signs members in. Identity's
+Community writes members' operating initials to identity through `PATCH /api/users/{cid}`, and the
+one-time copy below writes their preferred names and pronouns there too. Those calls are made as its
+own registered client, `community-api`, which is separate from `community-web`, the client that signs members in. Identity's
 operator registers it with the `users:write` scope and no redirect URIs. Its id is the
 `IDENTITY_API_CLIENT_ID` var in `wrangler.jsonc`; its secret is the `IDENTITY_API_CLIENT_SECRET` secret.
 Sign-in's `IDENTITY_CLIENT_ID` and `IDENTITY_CLIENT_SECRET` are not involved.
@@ -229,8 +230,10 @@ Sign-in's `IDENTITY_CLIENT_ID` and `IDENTITY_CLIENT_SECRET` are not involved.
 `POST {IDENTITY_URL}/oauth/token` (`grant_type=client_credentials`). It keeps the token in memory until
 a minute before its `expires_in` (identity issues one hour) and fetches a new one once if identity
 answers an API call with 401. With the secret unset it throws "identity API client isn't configured",
-and callers log that and carry on as they do when identity refuses. Every call to identity's API takes
-its token from `clientToken()`; don't fetch another.
+and callers log that and carry on as they do when identity refuses. Every call to identity's
+`/api/users/*` endpoints (`patchIdentityUser`) takes its token from `clientToken()`; don't fetch
+another. The exception is `PATCH /api/me`, the profile save's `updateOwnProfile`: identity refuses a
+client token there, so it uses the member's own session token.
 
 A leaver keeps their operating initials, locally and in identity.
 
