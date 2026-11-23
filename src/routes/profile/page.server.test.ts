@@ -628,7 +628,18 @@ describe('/profile Linked accounts', () => {
 			{ state: 'linked', account: '100000000000000002' }
 		],
 		[{ id: '100000000000000001', source: 'vatusa' as const }, { state: 'vatusa' }],
-		[null, { state: 'none' }]
+		[null, { state: 'none' }],
+		// larry 1.5.0 says whether the account is in the server: only a definite no offers Join
+		[
+			{ id: '100000000000000001', source: 'vatusa' as const, inServer: false },
+			{ state: 'vatusa', outsideServer: true }
+		],
+		[
+			{ id: '100000000000000002', source: 'linked' as const, inServer: false },
+			{ state: 'linked', account: '100000000000000002', outsideServer: true }
+		],
+		[{ id: '100000000000000001', source: 'vatusa' as const, inServer: true }, { state: 'vatusa' }],
+		[{ id: '100000000000000001', source: 'vatusa' as const, inServer: null }, { state: 'vatusa' }]
 	])('shows the Discord row for %j', async (discord, row) => {
 		const data = await visit('user-jordan', { larry: fakeLarry({ discord }) });
 
