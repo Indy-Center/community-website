@@ -29,14 +29,9 @@ const VATUSA_MANAGED_MEMBERSHIP_ROLES = Object.values(VATUSA_ROLES_TO_MEMBERSHIP
  * @param db handle to the D1 Database
  * @param user the user to process membership sync on
  */
+// Runs for every controller on each bulk sync, so it logs only what changes: a line per member
+// would overrun the Worker's per-request log limit and drop the lines after it.
 export async function syncUserMembership(db: Database, user: User) {
-	logger.debug('Syncing user membership', {
-		userId: user.id,
-		cid: user.cid,
-		firstName: user.firstName,
-		lastName: user.lastName
-	});
-
 	// Check to see if they're on the roster. This may not be 100% accurate if the roster
 	// hasn't been ingested recently.
 	const controller = await db.query.vatsimControllersTable.findFirst({
@@ -55,11 +50,8 @@ export async function syncUserMembership(db: Database, user: User) {
 		// Do leaving controller processing
 		await processLeavingController(db, user);
 	} else if (controller && user.membership === 'controller') {
-		logger.debug('User is already a controller, processing role updates', { userId: user.id });
 		await grantRoles(db, user, controller);
 	}
-
-	logger.debug('Membership sync complete', { userId: user.id });
 }
 
 async function processLeavingController(db: Database, user: User) {
@@ -190,23 +182,8 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 		return;
 	}
 
-	logger.debug('Granting roles for user', {
-		userId: user.id,
-		cid: user.cid,
-		firstName: user.firstName,
-		lastName: user.lastName
-	});
-
 	// The user's VATUSA roles at this facility; the training app sends no others
 	const vatsimRoles = controller.roles;
-
-	logger.debug('VATUSA roles for user', {
-		userId: user.id,
-		cid: user.cid,
-		firstName: user.firstName,
-		lastName: user.lastName,
-		roles: vatsimRoles
-	});
 
 	// Now build a set of roles to apply to the user
 	const rolesToApply = Array.from(
@@ -221,14 +198,6 @@ async function grantRoles(db: Database, user: User, controller: VatsimController
 			})
 		)
 	);
-
-	logger.debug('Roles to apply for user', {
-		userId: user.id,
-		cid: user.cid,
-		firstName: user.firstName,
-		lastName: user.lastName,
-		roles: rolesToApply
-	});
 
 	// Apply the roles to the user
 	if (rolesToApply.length > 0) {
@@ -300,7 +269,7 @@ export async function syncMemberships(db: Database) {
 	for (const user of usersToSync) {
 		await syncUserMembership(db, user);
 	}
-	logger.info('Bulk membership sync complete');
+	logger.info(`Bulk membership sync complete: ${usersToSync.length} controllers synced`);
 }
 
 function generateOperatingInitialCombinations(firstName: string, lastName: string) {
