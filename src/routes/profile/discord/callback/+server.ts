@@ -2,9 +2,12 @@ import { redirect, type RequestEvent } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { DISCORD_NOT_CONFIRMED, linkedMessage } from '$lib/profile/linkedAccounts';
 import {
+	DEFAULT_RETURN,
+	DISCORD_RETURN_COOKIE,
 	DISCORD_STATE_COOKIE,
 	discordClient,
 	fetchDiscordUser,
+	safeReturnPath,
 	setAccountsFlash
 } from '$lib/server/discordLink';
 import { errorMessage } from '$lib/server/larry';
@@ -23,10 +26,13 @@ export async function GET({ locals, url, cookies, platform }: RequestEvent): Pro
 	const state = url.searchParams.get('state');
 	const storedState = cookies.get(DISCORD_STATE_COOKIE);
 	cookies.delete(DISCORD_STATE_COOKIE, { path: '/profile/discord' });
+	// The page Link Discord was started from; the toast below shows there
+	const back = safeReturnPath(cookies.get(DISCORD_RETURN_COOKIE)) ?? DEFAULT_RETURN;
+	cookies.delete(DISCORD_RETURN_COOKIE, { path: '/profile/discord' });
 
 	const notConfirmed = () => {
 		setAccountsFlash(cookies, { level: 'danger', message: DISCORD_NOT_CONFIRMED });
-		return redirect(302, '/profile');
+		return redirect(302, back);
 	};
 
 	// A cancelled sign-in comes back with `error` and no code
@@ -70,5 +76,5 @@ export async function GET({ locals, url, cookies, platform }: RequestEvent): Pro
 		logger.error(`Could not link Discord account ${account.id} to ${cid}`, errorMessage(error));
 		setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error), discord });
 	}
-	return redirect(302, '/profile');
+	return redirect(302, back);
 }

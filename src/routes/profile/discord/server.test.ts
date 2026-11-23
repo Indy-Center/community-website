@@ -18,11 +18,11 @@ function fakeCookies() {
 	};
 }
 
-function start(signedIn = true) {
+function start(signedIn = true, query = '') {
 	const cookies = fakeCookies();
 	try {
 		GET({
-			url: new URL('https://flyindycenter.com/profile/discord'),
+			url: new URL(`https://flyindycenter.com/profile/discord${query}`),
 			locals: signedIn ? { user: { cid: '1000001' } } : {},
 			cookies
 		} as never);
@@ -56,6 +56,29 @@ describe('/profile/discord (Link Discord)', () => {
 		const state = cookies.jar.get('discord_oauth_state');
 		expect(state?.value).toBe(url.searchParams.get('state'));
 		expect(state?.options).toMatchObject({ path: '/profile/discord', httpOnly: true });
+	});
+
+	it('keeps the page it was started from for the callback, and only a same-site path', () => {
+		const { cookies } = start(true, '?return=%2Fsocials');
+		expect(cookies.jar.get('discord_return')).toMatchObject({
+			value: '/socials',
+			options: { path: '/profile/discord', httpOnly: true }
+		});
+
+		for (const unsafe of [
+			'https%3A%2F%2Fevil.example',
+			'%2F%2Fevil.example',
+			'%2F%5Cevil.example'
+		]) {
+			expect(start(true, `?return=${unsafe}`).cookies.jar.has('discord_return')).toBe(false);
+		}
+	});
+
+	it('sends a signed-out visitor to sign in, then straight back into joining', () => {
+		expect(start(false, '?return=%2F')).toMatchObject({
+			status: 302,
+			location: `/login/connect?returnUrl=${encodeURIComponent('/profile/discord?return=%2F')}`
+		});
 	});
 
 	it("says Discord didn't confirm the account when the client isn't configured", () => {
