@@ -17,6 +17,12 @@
 	} from '$lib/profile/linkedAccounts';
 	import IconDiscord from '~icons/mdi/discord';
 	import IconTeamSpeak from '~icons/mdi/headset';
+	import IconSync from '~icons/mdi/sync';
+
+	// A row of the panel, and the place its button sits: right of the text from `sm` up, under
+	// it (past the icon) on a phone
+	const ROW = 'flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:justify-between';
+	const ACTION = 'shrink-0 pl-8 sm:pl-0';
 
 	let {
 		discord,
@@ -51,11 +57,13 @@
 {#if !discord}
 	<Alert level="caution">{LINKS_UNAVAILABLE}</Alert>
 {:else}
+	<!-- Each row: the icon, heading and text on the left; its one button at the right, level with
+	     the heading. On a phone the button goes under the text, lined up with it. -->
 	<ul class="divide-y divide-border">
-		<li class="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0">
-			<div class="flex items-start gap-3">
-				<IconDiscord class="mt-0.5 h-5 w-5 text-[#5865F2]" aria-hidden="true" />
-				<div>
+		<li class={ROW}>
+			<div class="flex min-w-0 items-start gap-3">
+				<IconDiscord class="mt-0.5 h-5 w-5 shrink-0 text-[#5865F2]" aria-hidden="true" />
+				<div class="min-w-0">
 					<p class="font-medium text-foreground">Discord</p>
 					{#if discord.state === 'linked'}
 						<p class="text-sm text-muted-foreground">
@@ -65,32 +73,36 @@
 						<p class="text-sm text-muted-foreground">Linked on VATUSA</p>
 					{:else}
 						<p class="text-sm text-muted-foreground">No Discord account</p>
+						<p class="mt-1 text-sm text-muted-foreground">
+							We'll add you to the Indy Center Discord if you're not already in it.
+						</p>
 					{/if}
 				</div>
 			</div>
-			{#if discord.state === 'linked'}
-				<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinking = b))}>
-					<Button type="submit" variant="secondary" size="sm" busy={unlinking} busyLabel="Unlinking"
-						>Unlink</Button
-					>
-				</form>
-			{:else}
-				<!-- A full page load: it leaves the site for Discord's sign-in -->
-				<Button variant="secondary" size="sm" href="/profile/discord" data-sveltekit-reload>
-					{discord.state === 'vatusa' ? 'Use a different account' : 'Link Discord'}
-				</Button>
-			{/if}
-			{#if discord.state === 'none'}
-				<p class="w-full text-sm text-muted-foreground">
-					We'll add you to the Indy Center Discord if you're not already in it.
-				</p>
-			{/if}
+			<div class={ACTION}>
+				{#if discord.state === 'linked'}
+					<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinking = b))}>
+						<Button
+							type="submit"
+							variant="secondary"
+							size="sm"
+							busy={unlinking}
+							busyLabel="Unlinking">Unlink</Button
+						>
+					</form>
+				{:else}
+					<!-- A full page load: it leaves the site for Discord's sign-in -->
+					<Button variant="secondary" size="sm" href="/profile/discord" data-sveltekit-reload>
+						{discord.state === 'vatusa' ? 'Use a different account' : 'Link Discord'}
+					</Button>
+				{/if}
+			</div>
 		</li>
 		{#if teamspeak}
-			<li class="flex flex-wrap items-center justify-between gap-4 py-4">
-				<div class="flex items-start gap-3">
-					<IconTeamSpeak class="mt-0.5 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-					<div>
+			<li class={ROW}>
+				<div class="flex min-w-0 items-start gap-3">
+					<IconTeamSpeak class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<div class="min-w-0">
 						<p class="font-medium text-foreground">TeamSpeak</p>
 						{#if teamspeak.state === 'linked'}
 							<p class="text-sm text-muted-foreground">
@@ -100,22 +112,26 @@
 							<p class="text-sm text-muted-foreground">
 								Connect to our TeamSpeak and we'll send you a private message with your link.
 							</p>
+							<p class="mt-1 text-sm text-muted-foreground">
+								Or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in TeamSpeak's
+								server address box.
+							</p>
 						{/if}
 					</div>
 				</div>
-				{#if teamspeak.state === 'linked'}
-					<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinkingTs = b))}>
-						<input type="hidden" name="service" value="teamspeak" />
-						<Button
-							type="submit"
-							variant="secondary"
-							size="sm"
-							busy={unlinkingTs}
-							busyLabel="Unlinking">Unlink</Button
-						>
-					</form>
-				{:else}
-					<div class="flex w-full flex-col items-start gap-2">
+				<div class={ACTION}>
+					{#if teamspeak.state === 'linked'}
+						<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinkingTs = b))}>
+							<input type="hidden" name="service" value="teamspeak" />
+							<Button
+								type="submit"
+								variant="secondary"
+								size="sm"
+								busy={unlinkingTs}
+								busyLabel="Unlinking">Unlink</Button
+							>
+						</form>
+					{:else}
 						<Button
 							variant="secondary"
 							size="sm"
@@ -123,12 +139,8 @@
 							target="_blank"
 							rel="noopener noreferrer">Connect to TeamSpeak</Button
 						>
-						<p class="text-sm text-muted-foreground">
-							or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in TeamSpeak's
-							server address box
-						</p>
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</li>
 		{/if}
 	</ul>
@@ -137,13 +149,21 @@
 		method="POST"
 		action="?/syncRoles"
 		use:enhance={busyWhile((b) => (syncing = b))}
-		class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"
+		class="{ROW} border-t border-border pb-0"
 	>
-		<p class="text-sm text-muted-foreground">
-			Your roles sync on their own. Sync now if something looks out of date.
-		</p>
-		<Button type="submit" variant="secondary" size="sm" busy={syncing} busyLabel="Syncing"
-			>Sync my roles</Button
-		>
+		<div class="flex min-w-0 items-start gap-3">
+			<IconSync class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<div class="min-w-0">
+				<p class="font-medium text-foreground">Roles</p>
+				<p class="text-sm text-muted-foreground">
+					Your roles sync on their own. Sync now if something looks out of date.
+				</p>
+			</div>
+		</div>
+		<div class={ACTION}>
+			<Button type="submit" variant="secondary" size="sm" busy={syncing} busyLabel="Syncing"
+				>Sync my roles</Button
+			>
+		</div>
 	</form>
 {/if}
