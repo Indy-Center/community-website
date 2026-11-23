@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { usersTable, type User } from '$lib/db/schema/users';
 import { DiscordChannel, sendDiscordEmbed } from '$lib/server/discord';
 import { fetchUserinfo, identityClient, identityUrl, toVatsimUserData } from '$lib/server/identity';
+import { reconcileProfile } from '$lib/server/identityCheck';
 import { logger } from '$lib/server/logger';
 import { syncUserMembership } from '$lib/server/membership';
 import { createSession, generateSessionToken, setSessionTokenCookie } from '$lib/server/session';
@@ -54,6 +55,8 @@ export async function GET({ locals, url, cookies }: RequestEvent): Promise<Respo
 			.set(profile)
 			.where(eq(usersTable.id, existingUser.id))
 			.returning();
+		// A member signing in through identity for the first time keeps what community holds
+		user = await reconcileProfile(user, claims, locals.db);
 	} else {
 		[user] = await locals.db
 			.insert(usersTable)

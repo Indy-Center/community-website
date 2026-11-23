@@ -89,7 +89,10 @@ controllers, operating initials. `/settings` redirects there; its old form is go
 - **Reading:** each visit reads the member's values from identity's `/oauth/userinfo`. If identity
   can't be reached, the page shows the local copies and the form is turned off. The 5-minute
   userinfo check in `hooks.server.ts` (`src/lib/server/identityCheck.ts`) also copies identity's
-  values into the member's row when they differ.
+  values into the member's row when they differ, except where identity holds none and the row
+  holds one (a member the one-time copy skipped because identity didn't know them yet). That value
+  is written to identity and kept, also at sign-in; if identity refuses, it is still kept and the
+  next check tries again. The page shows such a value while it waits.
 - **Saving**, each step only if its fields changed: the initials through `writeOperatingInitials`
   (the API client), then the preferred name and pronouns through `PATCH /api/me` with the member's
   own session token (`updateOwnProfile`), then the `users` row. If any step fails, the identity
