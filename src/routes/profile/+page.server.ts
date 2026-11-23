@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { toastFromServer } from '@indy-center/centerline-svelte';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -17,7 +18,7 @@ import { memberName } from '$lib/members';
 import { inferNameChoice, preferredNameFor } from '$lib/profile/nameChoice';
 import type { Database } from '$lib/server/db';
 import { fetchUserinfo, updateOwnProfile, writeOperatingInitials } from '$lib/server/identity';
-import { discordRow, TEAMSPEAK_LINKED, teamspeakRow } from '$lib/profile/linkedAccounts';
+import { discordRow, TEAMSPEAK_LINKED, teamspeakRow, UNLINKED } from '$lib/profile/linkedAccounts';
 import { setAccountsFlash, takeAccountsFlash } from '$lib/server/discordLink';
 import { errorMessage, readLinks, resyncMember, syncedMessage } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
@@ -26,9 +27,6 @@ import type { Session } from '$lib/server/session';
 import { getStaffBadges } from '$lib/server/staff';
 import { averageRating } from '$lib/utils/feedbackRatings';
 import { signInHref } from '$lib/utils/signIn';
-
-// Carries the confirmation of a save to view mode, after the redirect
-const SAVED_COOKIE = 'profile_saved';
 
 /** The fields identity holds, plus the VATSIM name the name options are built from. */
 type Values = {
@@ -85,22 +83,10 @@ export const load = async ({ locals, url, platform, cookies }) => {
 	}
 	const user = locals.user;
 
-	// The link TeamSpeak's bot sent: confirm it for the session's CID, then show the result on the
-	// card in view mode. The token is read once; a reload says larry's expired-link message.
-	const token = url.searchParams.get('ts');
-	if (token) {
-		try {
-			const larry = platform?.env.LARRY;
-			if (!larry) throw new Error('The LARRY binding is not set');
-			await larry.confirmTsLink(Number(user.cid), token);
-			logger.info(`Linked the TeamSpeak identity of ${user.cid}`);
-			setAccountsFlash(cookies, { level: 'success', message: TEAMSPEAK_LINKED });
-		} catch (error) {
-			logger.error(`Could not link the TeamSpeak identity of ${user.cid}`, error);
-			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
-		}
-		return redirect(303, '/profile');
-	}
+	// The link TeamSpeak's bot sent. Opening it only asks; the member's own click (the
+	// linkTeamspeak action) links it. Linking on the GET would let anyone who sends a signed-in
+	// member their own link take that member's TeamSpeak groups.
+	const pendingTsLink = url.searchParams.get('ts') || null;
 
 	const [
 		identity,
@@ -170,16 +156,15 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		{ errors: false }
 	);
 
-	const saved = cookies.get(SAVED_COOKIE) as SavedMessage | undefined;
-	if (saved) cookies.delete(SAVED_COOKIE, { path: '/profile' });
 	const accountsFlash = takeAccountsFlash(cookies);
 
 	return {
 		form,
 		editing: url.searchParams.has('edit'),
+		/** The TeamSpeak link the member opened, waiting for them to confirm it. */
+		pendingTsLink,
 		/** False when identity can't be read: edit mode is then shown disabled. */
 		canSave: identity !== null,
-		savedMessage: (saved && SAVED_MESSAGES[saved]) || null,
 		shownName: memberName({
 			...vatsimName,
 			preferredName: values.preferredName,
@@ -201,9 +186,11 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		discord: links ? discordRow(links.discord, accountsFlash?.discord) : null,
 		/** The Linked accounts panel's TeamSpeak row; null when larry can't be asked. */
 		teamspeak: links ? teamspeakRow(links.teamspeak) : null,
-		accountsMessage: accountsFlash
-			? { level: accountsFlash.level, message: accountsFlash.message }
-			: null,
+		/** A Linked accounts failure to show on the panel; successes are toasts. */
+		accountsMessage:
+			accountsFlash?.level && accountsFlash.message
+				? { level: accountsFlash.level, message: accountsFlash.message }
+				: null,
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		hasPublicProfile: !!rosterEntry,
@@ -262,25 +249,29 @@ export const actions = {
 		const initialsChanged = next.operatingInitials !== current.operatingInitials;
 
 		// All or nothing, in this order: initials (community's client), then the member's own
-		// fields (their token), then the local row. A failed second write puts the initials back.
+		// fields (their token), then the local row. Each identity write leaves an undo, and any
+		// later failure, the local row's included, runs them newest first, so identity is put
+		// back to what it held.
+		const identityToken = locals.session!.data!.identityToken!;
+		const undo: { what: string; run: () => Promise<void> }[] = [];
 		try {
 			if (initialsChanged) {
 				await writeOperatingInitials(env, user.cid, next.operatingInitials);
+				undo.push({
+					what: 'operating initials',
+					run: () => writeOperatingInitials(env, user.cid, current.operatingInitials)
+				});
 			}
 			if (nameChanged || pronounsChanged) {
-				try {
-					await updateOwnProfile(env, locals.session!.data!.identityToken!, {
-						...(nameChanged ? { preferred_name: next.preferredName } : {}),
-						...(pronounsChanged ? { pronouns: next.pronouns } : {})
-					});
-				} catch (error) {
-					if (initialsChanged) {
-						await writeOperatingInitials(env, user.cid, current.operatingInitials).catch((undo) =>
-							logger.error(`Could not put back ${user.cid}'s operating initials`, undo)
-						);
-					}
-					throw error;
-				}
+				const fields = (values: Pick<Values, 'preferredName' | 'pronouns'>) => ({
+					...(nameChanged ? { preferred_name: values.preferredName } : {}),
+					...(pronounsChanged ? { pronouns: values.pronouns } : {})
+				});
+				await updateOwnProfile(env, identityToken, fields(next));
+				undo.push({
+					what: 'preferred name and pronouns',
+					run: () => updateOwnProfile(env, identityToken, fields(current))
+				});
 			}
 			const local = localValues(user);
 			if (
@@ -293,6 +284,13 @@ export const actions = {
 			}
 		} catch (error) {
 			logger.error(`Could not save ${user.cid}'s profile`, error);
+			for (const step of undo.reverse()) {
+				await step
+					.run()
+					.catch((undoError) =>
+						logger.error(`Could not put back ${user.cid}'s ${step.what} in identity`, undoError)
+					);
+			}
 			form.message = UNAVAILABLE;
 			return fail(503, { form });
 		}
@@ -313,12 +311,7 @@ export const actions = {
 			initialsChanged
 		});
 
-		cookies.set(SAVED_COOKIE, saved, {
-			path: '/profile',
-			httpOnly: true,
-			sameSite: 'lax',
-			maxAge: 60
-		});
+		toastFromServer(cookies, 'success', SAVED_MESSAGES[saved]);
 		return redirect(303, '/profile');
 	},
 
@@ -337,8 +330,33 @@ export const actions = {
 			if (!larry) throw new Error('The LARRY binding is not set');
 			await larry.unlink(Number(cid), service);
 			logger.info(`Unlinked the ${service} account of ${cid}`);
+			setAccountsFlash(cookies, { level: 'success', message: UNLINKED[service] });
 		} catch (error) {
 			logger.error(`Could not unlink the ${service} account of ${cid}`, error);
+			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
+		}
+		return redirect(303, '/profile');
+	},
+
+	// The confirm prompt for the link TeamSpeak's bot sent (/profile?ts=…): links that identity
+	// to the session's CID
+	linkTeamspeak: async ({ request, locals, platform, cookies }) => {
+		if (!locals.user) {
+			return redirect(302, signInHref('/profile'));
+		}
+		const { cid } = locals.user;
+		const token = (await request.formData()).get('token');
+		if (typeof token !== 'string' || !token) {
+			return fail(400);
+		}
+		try {
+			const larry = platform?.env.LARRY;
+			if (!larry) throw new Error('The LARRY binding is not set');
+			await larry.confirmTsLink(Number(cid), token);
+			logger.info(`Linked the TeamSpeak identity of ${cid}`);
+			setAccountsFlash(cookies, { level: 'success', message: TEAMSPEAK_LINKED });
+		} catch (error) {
+			logger.error(`Could not link the TeamSpeak identity of ${cid}`, error);
 			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
 		}
 		return redirect(303, '/profile');

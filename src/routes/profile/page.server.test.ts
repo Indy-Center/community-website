@@ -12,7 +12,7 @@ import {
 import { fakeLarry, type FakeLarry } from '$lib/testing/larry';
 import { callLoad } from '$lib/testing/site';
 import { SAVED_MESSAGES, UNAVAILABLE } from '$lib/forms/profile';
-import { SYNC_QUEUED, TEAMSPEAK_CONNECT_URL } from '$lib/profile/linkedAccounts';
+import { SYNC_QUEUED, TEAMSPEAK_CONNECT_URL, UNLINKED } from '$lib/profile/linkedAccounts';
 import { actions, load } from './+page.server';
 
 vi.mock('$env/dynamic/private', async (importOriginal) => {
@@ -96,6 +96,10 @@ function fakeCookies() {
 		delete: (name: string) => jar.delete(name)
 	};
 }
+
+/** The Centerline toasts raised for the next page (`toastFromServer`). */
+const toasts = (cookies: ReturnType<typeof fakeCookies>) =>
+	JSON.parse(cookies.jar.get('centerline-toasts') ?? '[]') as { level: string; message: string }[];
 
 beforeEach(async () => {
 	db = await testDb();
@@ -191,21 +195,35 @@ async function save(
 	{
 		userId = 'user-jordan',
 		larry = fakeLarry(),
-		cookies = fakeCookies()
+		cookies = fakeCookies(),
+		failRowWrite = false
 	}: {
 		userId?: string;
 		larry?: FakeLarry;
 		cookies?: ReturnType<typeof fakeCookies>;
+		/** Makes the local row's update throw, as a D1 failure would. */
+		failRowWrite?: boolean;
 	} = {}
 ) {
 	const request = new Request('https://flyindycenter.com/profile?edit&/save', {
 		method: 'POST',
 		body: new URLSearchParams(fields)
 	});
+	const locals = await signedIn(userId);
+	if (failRowWrite) {
+		locals.db = new Proxy(db, {
+			get: (target, key, receiver) =>
+				key === 'update'
+					? () => {
+							throw new Error('D1_ERROR: database is locked');
+						}
+					: Reflect.get(target, key, receiver)
+		});
+	}
 	try {
 		const result = (await actions.save({
 			request,
-			locals: await signedIn(userId),
+			locals,
 			platform: { env: { LARRY: larry } },
 			cookies
 		} as never)) as unknown as ActionResult;
@@ -341,14 +359,6 @@ describe('/profile', () => {
 		expect(data.isController).toBe(false);
 		expect(data.needsInitials).toBe(false);
 	});
-
-	it("shows the saved confirmation once, after a save's redirect", async () => {
-		const cookies = fakeCookies();
-		cookies.set('profile_saved', 'soon');
-
-		expect((await visit('user-jordan', { cookies })).savedMessage).toBe(SAVED_MESSAGES.soon);
-		expect((await visit('user-jordan', { cookies })).savedMessage).toBeNull();
-	});
 });
 
 describe('/profile save', () => {
@@ -386,7 +396,7 @@ describe('/profile save', () => {
 			bio: 'New bio.'
 		});
 		expect(larry.synced).toEqual([[1000001]]);
-		expect(cookies.jar.get('profile_saved')).toBe('soon');
+		expect(toasts(cookies)).toEqual([{ level: 'success', message: SAVED_MESSAGES.soon }]);
 	});
 
 	it('saves a bio change without writing to identity or asking larry', async () => {
@@ -396,7 +406,7 @@ describe('/profile save', () => {
 		expect(identity.writes).toEqual([]);
 		expect(larry.synced).toEqual([]);
 		expect((await row()).bio).toBe('Only this changed.');
-		expect(cookies.jar.get('profile_saved')).toBe('saved');
+		expect(toasts(cookies)).toEqual([{ level: 'success', message: SAVED_MESSAGES.saved }]);
 	});
 
 	it('puts the initials back when /api/me fails after they were written', async () => {
@@ -412,6 +422,37 @@ describe('/profile save', () => {
 			{ path: '/api/users/1000001', body: { operating_initials: 'JS' } }
 		]);
 		expect(await row()).toMatchObject({ preferredName: null, operatingInitials: 'JS' });
+	});
+
+	it("puts identity back when the local row can't be written after both identity writes", async () => {
+		identity.claims = claimsFor({ preferred_name: 'Jordan', pronouns: 'he/him' });
+
+		const { result, larry, cookies } = await save(
+			{
+				...unchanged,
+				nameChoice: 'initial',
+				pronounsChoice: 'they/them',
+				operatingInitials: 'JY'
+			},
+			{ failRowWrite: true }
+		);
+
+		expect(result?.status).toBe(503);
+		expect(result?.data?.form.message).toBe(UNAVAILABLE);
+		expect(identity.writes.map(({ path, body }) => ({ path, body }))).toEqual([
+			{ path: '/api/users/1000001', body: { operating_initials: 'JY' } },
+			{ path: '/api/me', body: { preferred_name: 'Jordan S.', pronouns: 'they/them' } },
+			// Undone newest first
+			{ path: '/api/me', body: { preferred_name: 'Jordan', pronouns: 'he/him' } },
+			{ path: '/api/users/1000001', body: { operating_initials: 'JS' } }
+		]);
+		expect(identity.claims).toMatchObject({
+			preferred_name: 'Jordan',
+			pronouns: 'he/him',
+			operating_initials: 'JS'
+		});
+		expect(larry.synced).toEqual([]);
+		expect(toasts(cookies)).toEqual([]);
 	});
 
 	it('saves nothing, and says so, when identity is down', async () => {
@@ -456,7 +497,7 @@ describe('/profile save', () => {
 
 		const { cookies } = await save({ ...unchanged, nameChoice: 'first' }, { larry });
 
-		expect(cookies.jar.get('profile_saved')).toBe('later');
+		expect(toasts(cookies)).toEqual([{ level: 'success', message: SAVED_MESSAGES.later }]);
 	});
 
 	it('still saves when larry throws', async () => {
@@ -473,7 +514,7 @@ describe('/profile save', () => {
 
 		const { cookies } = await save({ ...unchanged, nameChoice: 'first' }, { larry });
 
-		expect(cookies.jar.get('profile_saved')).toBe('saved');
+		expect(toasts(cookies)).toEqual([{ level: 'success', message: SAVED_MESSAGES.saved }]);
 	});
 
 	it.each([
@@ -566,13 +607,13 @@ describe('/profile Linked accounts', () => {
 		expect(data.accountsMessage).toBeNull();
 	});
 
-	it("shows the callback's message once, and the username it read", async () => {
+	it("shows the callback's failure on the panel once, and the username it read", async () => {
 		const cookies = fakeCookies();
-		const message = 'Linked as @jordan_s. You were already in the Indy Center Discord.';
+		const message = 'That Discord account is linked to another member.';
 		cookies.set(
 			'profile_accounts',
 			JSON.stringify({
-				level: 'success',
+				level: 'danger',
 				message,
 				discord: { id: '100000000000000002', username: 'jordan_s' }
 			})
@@ -580,7 +621,7 @@ describe('/profile Linked accounts', () => {
 		const larry = fakeLarry({ discord: { id: '100000000000000002', source: 'linked' } });
 
 		const first = await visit('user-jordan', { larry, cookies });
-		expect(first.accountsMessage).toEqual({ level: 'success', message });
+		expect(first.accountsMessage).toEqual({ level: 'danger', message });
 		expect(first.discord).toEqual({ state: 'linked', account: '@jordan_s' });
 
 		const second = await visit('user-jordan', { larry, cookies });
@@ -603,23 +644,29 @@ describe('/profile Linked accounts', () => {
 
 /** Posts one of the Linked accounts panel's buttons, which always redirect back to /profile. */
 async function press(
-	action: 'unlink' | 'syncRoles',
+	action: 'unlink' | 'syncRoles' | 'linkTeamspeak',
 	{
 		userId = 'user-jordan',
 		larry = fakeLarry(),
 		cookies = fakeCookies(),
-		service
+		service,
+		token
 	}: {
 		userId?: string;
 		larry?: FakeLarry;
 		cookies?: ReturnType<typeof fakeCookies>;
 		service?: string;
+		token?: string;
 	} = {}
 ) {
 	const request = new Request(`https://flyindycenter.com/profile?/${action}`, {
 		method: 'POST',
 		// A CID in the request is ignored: only the session's is used
-		body: new URLSearchParams({ cid: '1000002', ...(service ? { service } : {}) })
+		body: new URLSearchParams({
+			cid: '1000002',
+			...(service ? { service } : {}),
+			...(token ? { token } : {})
+		})
 	});
 	try {
 		await actions[action]({
@@ -632,26 +679,33 @@ async function press(
 		const { status, location } = thrown as { status: number; location: string };
 		if (!location) throw thrown;
 		const flash = cookies.jar.get('profile_accounts');
-		return { redirect: { status, location }, flash: flash ? JSON.parse(flash) : null, larry };
+		return {
+			redirect: { status, location },
+			flash: flash ? JSON.parse(flash) : null,
+			toasts: toasts(cookies),
+			larry
+		};
 	}
 	throw new Error(`${action} did not redirect`);
 }
 
 describe('/profile Unlink', () => {
-	it("unlinks the session's own Discord account only", async () => {
-		const { redirect, larry, flash } = await press('unlink');
+	it("unlinks the session's own Discord account only, and says so in a toast", async () => {
+		const { redirect, larry, flash, toasts } = await press('unlink');
 
 		expect(redirect).toEqual({ status: 303, location: '/profile' });
 		expect(larry.unlinked).toEqual([{ cid: 1000001, service: 'discord' }]);
+		expect(toasts).toEqual([{ level: 'success', message: UNLINKED.discord }]);
 		expect(flash).toBeNull();
 	});
 
 	it("shows larry's refusal as it comes", async () => {
-		const { flash } = await press('unlink', {
+		const { flash, toasts } = await press('unlink', {
 			larry: fakeLarry({ unlink: new Error('Something went wrong at larry.') })
 		});
 
 		expect(flash).toEqual({ level: 'danger', message: 'Something went wrong at larry.' });
+		expect(toasts).toEqual([]);
 	});
 });
 
@@ -681,34 +735,59 @@ describe('/profile TeamSpeak', () => {
 		expect(data.teamspeak).toBeNull();
 	});
 
-	it("confirms ?ts= for the session's CID and shows success once", async () => {
-		const cookies = fakeCookies();
+	it('only asks on opening ?ts=, linking nothing until the member confirms', async () => {
 		const larry = fakeLarry();
 
-		await expect(
-			visit('user-jordan', { href: '/profile?ts=made-up-token&cid=1000002', larry, cookies })
-		).rejects.toMatchObject({ status: 303, location: '/profile' });
+		const data = await visit('user-jordan', { href: '/profile?ts=made-up-token', larry });
 
-		expect(larry.confirmed).toEqual([{ cid: 1000001, token: 'made-up-token' }]);
-		const shown = await visit('user-jordan', { larry, cookies });
-		expect(shown.accountsMessage).toEqual({ level: 'success', message: 'TeamSpeak linked.' });
-		expect((await visit('user-jordan', { larry, cookies })).accountsMessage).toBeNull();
+		expect(data.pendingTsLink).toBe('made-up-token');
+		expect(larry.confirmed).toEqual([]);
+		expect((await visit('user-jordan', { larry })).pendingTsLink).toBeNull();
 	});
 
-	it("shows larry's refusal as given", async () => {
-		const cookies = fakeCookies();
+	it("links the confirmed token for the session's CID, and says so in a toast", async () => {
+		const { redirect, larry, toasts, flash } = await press('linkTeamspeak', {
+			token: 'made-up-token'
+		});
+
+		expect(redirect).toEqual({ status: 303, location: '/profile' });
+		expect(larry.confirmed).toEqual([{ cid: 1000001, token: 'made-up-token' }]);
+		expect(toasts).toEqual([{ level: 'success', message: 'TeamSpeak linked.' }]);
+		expect(flash).toBeNull();
+	});
+
+	it("shows larry's refusal on the panel as given", async () => {
 		const message =
 			"This link has expired or was already used. Reconnect to TeamSpeak and we'll send you a new one.";
-		const larry = fakeLarry({ confirmTs: new Error(message) });
+		const cookies = fakeCookies();
 
-		await expect(
-			visit('user-jordan', { href: '/profile?ts=old', larry, cookies })
-		).rejects.toMatchObject({ status: 303, location: '/profile' });
+		const { flash } = await press('linkTeamspeak', {
+			token: 'old',
+			larry: fakeLarry({ confirmTs: new Error(message) }),
+			cookies
+		});
 
-		expect((await visit('user-jordan', { larry, cookies })).accountsMessage).toEqual({
+		expect(flash).toEqual({ level: 'danger', message });
+		expect((await visit('user-jordan', { cookies })).accountsMessage).toEqual({
 			level: 'danger',
 			message
 		});
+	});
+
+	it('refuses a confirm with no token, asking larry nothing', async () => {
+		const larry = fakeLarry();
+		const result = await actions.linkTeamspeak({
+			request: new Request('https://flyindycenter.com/profile?/linkTeamspeak', {
+				method: 'POST',
+				body: new URLSearchParams()
+			}),
+			locals: await signedIn('user-jordan'),
+			platform: { env: { LARRY: larry } },
+			cookies: fakeCookies()
+		} as never);
+
+		expect(result).toMatchObject({ status: 400 });
+		expect(larry.confirmed).toEqual([]);
 	});
 
 	it('goes through sign-in and keeps the token when signed out', async () => {
@@ -721,28 +800,29 @@ describe('/profile TeamSpeak', () => {
 	});
 
 	it("unlinks the session's own TeamSpeak identity only", async () => {
-		const { redirect, larry } = await press('unlink', { service: 'teamspeak' });
+		const { redirect, larry, toasts } = await press('unlink', { service: 'teamspeak' });
 
 		expect(redirect).toEqual({ status: 303, location: '/profile' });
 		expect(larry.unlinked).toEqual([{ cid: 1000001, service: 'teamspeak' }]);
+		expect(toasts).toEqual([{ level: 'success', message: UNLINKED.teamspeak }]);
 	});
 });
 
 describe('/profile Sync my roles', () => {
 	it("syncs the session's own CID only, and says when", async () => {
-		const { larry, flash } = await press('syncRoles');
+		const { larry, toasts } = await press('syncRoles');
 
 		expect(larry.synced).toEqual([[1000001]]);
-		expect(flash).toEqual({ level: 'success', message: SYNC_QUEUED });
+		expect(toasts).toEqual([{ level: 'success', message: SYNC_QUEUED }]);
 	});
 
 	it("shows larry's reason as given when it declines", async () => {
-		const { flash } = await press('syncRoles', {
+		const { toasts } = await press('syncRoles', {
 			larry: fakeLarry({
 				sync: [{ cid: 1000001, queued: false, reason: 'Synced in the last 2 minutes.' }]
 			})
 		});
 
-		expect(flash).toEqual({ level: 'info', message: 'Synced in the last 2 minutes.' });
+		expect(toasts).toEqual([{ level: 'info', message: 'Synced in the last 2 minutes.' }]);
 	});
 });

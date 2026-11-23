@@ -18,9 +18,10 @@ export function linkedMessage(username: string, joined: boolean) {
 }
 
 /**
- * A message for the Linked accounts panel, carried over a redirect: after the Discord callback,
- * an unlink or a sync. `discord` is the account the callback just read from Discord, so the row
- * can show its username instead of the ID.
+ * How a Linked accounts button went, carried over a redirect: after the Discord callback, a
+ * TeamSpeak link, an unlink or a sync. A success or note becomes a toast, a failure an Alert on
+ * the panel (`setAccountsFlash`). `discord` is the account the callback just read from Discord, so
+ * the row can show its username instead of the ID.
  */
 export type AccountsFlash = {
 	level: 'success' | 'info' | 'danger';
@@ -39,6 +40,12 @@ export type TeamSpeakRow = { state: 'linked'; uid: string } | { state: 'none' };
 
 /** What the card says once larry has linked a TeamSpeak identity from the bot's link. */
 export const TEAMSPEAK_LINKED = 'TeamSpeak linked.';
+
+/** What Unlink says once larry has cleared the link. Discord falls back to VATUSA's account. */
+export const UNLINKED = {
+	discord: "Discord unlinked. We'll use the Discord account you linked on VATUSA, if there is one.",
+	teamspeak: 'TeamSpeak unlinked.'
+} as const;
 
 /** TeamSpeak's own link to the server, by its nickname, which opens the installed client. */
 export const TEAMSPEAK_CONNECT_URL = `https://tmspk.gg/s/${FACILITY_ID}`;

@@ -1,4 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
+import { toastFromServer } from '@indy-center/centerline-svelte';
 import { Discord } from 'arctic';
 import { z } from 'zod';
 import type { AccountsFlash } from '$lib/profile/linkedAccounts';
@@ -36,26 +37,38 @@ export async function fetchDiscordUser(accessToken: string) {
 	return user.success ? user.data : null;
 }
 
-// Carries the Linked accounts panel's message to /profile, after a redirect
+// Carries the Linked accounts panel's failure, and the Discord account just read, to /profile
 const FLASH_COOKIE = 'profile_accounts';
 
+/**
+ * Says how a Linked accounts button went, over the redirect back to /profile. A success or a
+ * note ("Your roles will update in a minute.") is a Centerline toast; a failure, which the member
+ * must read and may need to act on, stays on the panel as an Alert. `discord` always goes to the
+ * panel, so the row can show the username.
+ */
 export function setAccountsFlash(cookies: Cookies, flash: AccountsFlash) {
-	cookies.set(FLASH_COOKIE, JSON.stringify(flash), {
-		path: '/profile',
-		httpOnly: true,
-		sameSite: 'lax',
-		maxAge: 60
-	});
+	const { discord, level, message } = flash;
+	const onPanel = level === 'danger';
+	if (!onPanel) toastFromServer(cookies, level, message);
+	if (!onPanel && !discord) return;
+	cookies.set(
+		FLASH_COOKIE,
+		JSON.stringify({ ...(onPanel ? { level, message } : {}), ...(discord ? { discord } : {}) }),
+		{ path: '/profile', httpOnly: true, sameSite: 'lax', maxAge: 60 }
+	);
 }
 
 const FlashSchema = z.object({
-	level: z.enum(['success', 'info', 'danger']),
-	message: z.string(),
+	level: z.literal('danger').optional(),
+	message: z.string().optional(),
 	discord: z.object({ id: z.string(), username: z.string() }).optional()
 });
 
-/** The panel's message, once: reading it clears it. */
-export function takeAccountsFlash(cookies: Cookies): AccountsFlash | null {
+/** What the panel shows after a redirect: a failure, and the Discord account just read. */
+export type PanelFlash = z.infer<typeof FlashSchema>;
+
+/** The panel's flash, once: reading it clears it. */
+export function takeAccountsFlash(cookies: Cookies): PanelFlash | null {
 	const value = cookies.get(FLASH_COOKIE);
 	if (!value) return null;
 	cookies.delete(FLASH_COOKIE, { path: '/profile' });

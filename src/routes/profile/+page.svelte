@@ -5,7 +5,6 @@
 	import DisplaySettings from '$lib/components/profile/DisplaySettings.svelte';
 	import LinkedAccounts from '$lib/components/profile/LinkedAccounts.svelte';
 	import {
-		Alert,
 		Badge,
 		Button,
 		Callout,
@@ -20,6 +19,7 @@
 	import { RATING_BADGES } from '$lib/utils/feedbackReview';
 	import IconEye from '~icons/mdi/eye';
 	import IconPencil from '~icons/mdi/pencil';
+	import { enhance } from '$app/forms';
 	import EditProfile from './EditProfile.svelte';
 
 	const { data } = $props();
@@ -33,11 +33,7 @@
 		data.feedback.slice((feedbackPage - 1) * FEEDBACK_PER_PAGE, feedbackPage * FEEDBACK_PER_PAGE)
 	);
 
-	// The confirmation after a save, until the member dismisses it
-	let savedMessage = $state<string | null>(null);
-	$effect.pre(() => {
-		savedMessage = data.savedMessage;
-	});
+	let linkingTs = $state(false);
 </script>
 
 <svelte:head>
@@ -50,10 +46,31 @@
 			<p><Link href="/profile?edit#controlling">Choose your operating initials</Link></p>
 		</Callout>
 	{/if}
-	{#if savedMessage}
-		<Alert level="success" class="mb-6" dismissible ondismiss={() => (savedMessage = null)}>
-			{savedMessage}
-		</Alert>
+	{#if data.pendingTsLink}
+		<!-- Above everything, so it's seen on a phone too, where Linked accounts is far down -->
+		<Panel title="Link your TeamSpeak identity?" level={2} id="teamspeak-link" class="mb-6">
+			<p>
+				Our TeamSpeak bot sends this link in a private message when you connect to our TeamSpeak.
+				Link it only if that message came to you just now: whoever's TeamSpeak it came from gets
+				your roles there.
+			</p>
+			<form
+				method="POST"
+				action="?/linkTeamspeak"
+				use:enhance={() => {
+					linkingTs = true;
+					return async ({ update }) => {
+						await update();
+						linkingTs = false;
+					};
+				}}
+				class="mt-4 flex flex-wrap gap-2"
+			>
+				<input type="hidden" name="token" value={data.pendingTsLink} />
+				<Button type="submit" busy={linkingTs} busyLabel="Linking">Link TeamSpeak</Button>
+				<Button variant="secondary" href="/profile">Cancel</Button>
+			</form>
+		</Panel>
 	{/if}
 {/if}
 

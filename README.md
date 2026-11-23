@@ -88,8 +88,9 @@ controllers, operating initials. `/settings` redirects there; its old form is go
   values into the member's row when they differ.
 - **Saving**, each step only if its fields changed: the initials through `writeOperatingInitials`
   (the API client), then the preferred name and pronouns through `PATCH /api/me` with the member's
-  own session token (`updateOwnProfile`), then the `users` row. If the second write fails, the old
-  initials are written back. If any step fails, nothing is reported as saved.
+  own session token (`updateOwnProfile`), then the `users` row. If any step fails, the identity
+  writes already made are undone, newest first, so identity holds what it did before, and nothing
+  is reported as saved. A successful save says so in a toast.
 - **Discord:** after a name change, the page asks larry to sync the member (`syncMembers` on the
   `LARRY` binding), so their nickname follows. It reads whether they have a Discord account with
   `getLinks`. A larry failure is logged and doesn't fail the save.
@@ -101,6 +102,11 @@ larry's `getLinks` (read through `readLinks` in `src/lib/server/larry.ts`). Ever
 larry on the `LARRY` binding, for the session's CID only: the site never writes a link itself. If
 larry can't be asked, the panel says "Links are unavailable right now." and the rest of the page
 works. The TeamSpeak row is under Discord's.
+
+Each button comes back to `/profile` with what happened (`setAccountsFlash` in
+`src/lib/server/discordLink.ts`): a success or a note ("Discord unlinked.…", "Your roles will update
+in a minute.") is a Centerline toast; a failure, which the member must read, is an Alert on the
+panel. The site's one `<Toaster />` is in the root layout.
 
 - **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
   `unlink(cid, 'discord')`), VATUSA's account ("Linked on VATUSA", with
@@ -116,15 +122,19 @@ works. The TeamSpeak row is under Discord's.
   "Discord didn't confirm the account. Try again." for a bad state or a cancelled or failed sign-in.
   Without the two Discord settings, Link Discord says the same and logs why.
 - **The TeamSpeak row** shows the member's identity shortened to its first and last four
-  characters, with **Unlink** (the same `unlink` action, posting `service=teamspeak`), or, when
+  characters, with **Unlink** (the same `unlink` action, posting `service=teamspeak`; "TeamSpeak
+  unlinked."), or, when
   there is none, how to connect: **Connect to TeamSpeak** (`https://tmspk.gg/s/ZID`, in a new tab)
   and "or type ZID in TeamSpeak's server address box". Nothing is sent to
   larry from the not-linked row: the member connects, larry's TeamSpeak bot messages them a link,
   and only that link links an identity.
-- **The TeamSpeak link** (`/profile?ts=<token>`) calls `confirmTsLink(cid, token)` for the session's
-  CID, then redirects to `/profile`, whose card says "TeamSpeak linked." or larry's refusal as
-  larry words it (an expired or used link, another member's identity). Signed out, it goes through
-  sign-in and returns with `?ts=` kept.
+- **The TeamSpeak link** (`/profile?ts=<token>`) only asks: "Link your TeamSpeak identity?", above
+  the profile, with **Link TeamSpeak** and **Cancel**. Opening it calls nothing, because larry links
+  whichever identity the token names to whoever confirms it: a link sent to someone else would give
+  the sender's TeamSpeak that member's groups. **Link TeamSpeak** posts the `linkTeamspeak` action,
+  which calls `confirmTsLink(cid, token)` for the session's CID and comes back to `/profile` with
+  "TeamSpeak linked." or larry's refusal as larry words it (an expired or used link, another
+  member's identity). Signed out, it goes through sign-in and returns with `?ts=` kept.
 - **Sync my roles**, at the panel's foot, calls `syncMembers([cid])` for the member (the
   `syncRoles` action): "Your roles will update in a minute.", or larry's reason when it declines.
   **Sync roles** on the admin user page (`/admin/users/[id]`, admins only; anyone else gets 403)

@@ -194,17 +194,19 @@ describe('/profile/discord/callback', () => {
 	it.each([
 		[true, "Linked as @jordan_s. You've been added to the Indy Center Discord."],
 		[false, 'Linked as @jordan_s. You were already in the Indy Center Discord.']
-	])('says so on the card when joined is %s', async (joined, message) => {
-		const { flash } = await callback('?code=abc&state=good-state', {
-			larry: fakeLarry({ link: { joined } })
-		});
+	])(
+		'says so in a toast when joined is %s, keeping the username for the row',
+		async (joined, message) => {
+			const { flash, cookies } = await callback('?code=abc&state=good-state', {
+				larry: fakeLarry({ link: { joined } })
+			});
 
-		expect(flash).toEqual({
-			level: 'success',
-			message,
-			discord: { id: DISCORD_ID, username: 'jordan_s' }
-		});
-	});
+			expect(JSON.parse(cookies.jar.get('centerline-toasts')!)).toEqual([
+				{ level: 'success', message }
+			]);
+			expect(flash).toEqual({ discord: { id: DISCORD_ID, username: 'jordan_s' } });
+		}
+	);
 
 	it.each([
 		'That Discord account is linked to another member.',
