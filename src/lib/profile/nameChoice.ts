@@ -1,5 +1,5 @@
 // "Show my name as": the name choice, stored only as the preferred name it produces
-// (member-profile decision 0003). Used by the profile's load, its save and its preview.
+// Used by the profile's load, its save and its preview.
 
 export const NAME_CHOICES = ['full', 'first', 'initial', 'firstCid', 'cid', 'preferred'] as const;
 export type NameChoice = (typeof NAME_CHOICES)[number];

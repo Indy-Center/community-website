@@ -1,5 +1,5 @@
 <script lang="ts">
-	// The member's own profile (member-profile decision 0001): view mode at /profile, and edit
+	// The member's own profile: view mode at /profile, and edit
 	// mode at /profile?edit, with Linked accounts and Display beside both.
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
 	import DisplaySettings from '$lib/components/profile/DisplaySettings.svelte';
