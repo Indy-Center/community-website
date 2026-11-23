@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { isAdmin } from '$lib/utils/permissions';
 import { redirect } from '@sveltejs/kit';
+import { resyncMember, syncedMessage } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
 import { superValidate } from 'sveltekit-superforms';
@@ -44,6 +45,25 @@ const toggleRoleSchema = z.object({
 });
 
 export const actions = {
+	// Asks larry to sync this member's roles now, as their own "Sync my roles" does
+	syncRoles: async ({ locals, params, platform }) => {
+		if (!isAdmin(locals.roles)) {
+			logger.warn(`Unauthorized role sync attempt by user ${locals.user?.id} for ${params.id}`);
+			return fail(403, { message: 'Unauthorized' });
+		}
+
+		const user = await locals.db.query.usersTable.findFirst({
+			where: eq(usersTable.id, params.id),
+			columns: { cid: true }
+		});
+		if (!user) {
+			return fail(404, { message: 'User not found' });
+		}
+
+		logger.info(`Admin ${locals.user?.id} syncing the roles of ${user.cid}`);
+		return { sync: syncedMessage(await resyncMember(platform?.env.LARRY, user.cid)) };
+	},
+
 	toggleRole: async ({ request, locals, params }) => {
 		if (!isAdmin(locals.roles)) {
 			logger.warn(

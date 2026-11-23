@@ -87,9 +87,8 @@
 		return allPositions.find((pos: any) => pos.id === positionId) || null;
 	};
 
-	const getUserDisplayName = (user: any) => {
-		return user.preferredName || `${user.firstName} ${user.lastName}`;
-	};
+	// The load works the name out (memberName), honouring VATUSA name privacy
+	const getUserDisplayName = (user: { name: string }) => user.name;
 
 	// Group positions by facility
 	const groupPositionsByFacility = (positions: any[]) => {

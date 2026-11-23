@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearClientTokenCache, clientToken, writeOperatingInitials } from './identity';
+import {
+	clearClientTokenCache,
+	clientToken,
+	updateOwnProfile,
+	writeOperatingInitials
+} from './identity';
 
 const env = {
 	IDENTITY_URL: 'https://identity.test',
@@ -151,5 +156,28 @@ describe('writeOperatingInitials', () => {
 			status: 401
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(4);
+	});
+});
+
+describe('updateOwnProfile', () => {
+	it("sends PATCH /api/me with the member's own token, not the client's", async () => {
+		fetchMock.mockResolvedValueOnce(Response.json({ sub: '1000001' }));
+
+		await updateOwnProfile(env, 'member-token', { preferred_name: 'Jay S.', pronouns: null });
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+		expect(url).toBe('https://identity.test/api/me');
+		expect(init.method).toBe('PATCH');
+		expect(new Headers(init.headers).get('Authorization')).toBe('Bearer member-token');
+		expect(JSON.parse(init.body as string)).toEqual({ preferred_name: 'Jay S.', pronouns: null });
+	});
+
+	it('throws with identity status and error code when refused', async () => {
+		fetchMock.mockResolvedValueOnce(Response.json({ error: 'invalid_request' }, { status: 400 }));
+
+		await expect(
+			updateOwnProfile(env, 'member-token', { pronouns: 'she/her' })
+		).rejects.toMatchObject({ status: 400, code: 'invalid_request' });
 	});
 });

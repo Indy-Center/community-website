@@ -13,28 +13,38 @@ import { logger } from '$lib/server/logger';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
-import { memberNameColumns } from '$lib/members';
-
-// Page data goes to every visitor's browser: of each member, only what the page shows
-const shownUser = { columns: memberNameColumns };
+import { shownMember, shownMemberQuery } from '$lib/members';
 
 export const load = async ({ locals, params }) => {
-	const event = await locals.db.query.eventsTable.findFirst({
+	const found = await locals.db.query.eventsTable.findFirst({
 		where: eq(eventsTable.id, params.id),
 		with: {
 			positions: {
-				with: { user: shownUser }
+				with: { user: shownMemberQuery }
 			},
 			positionRequests: {
 				columns: { userId: true, comments: true, createdAt: true },
-				with: { user: shownUser }
+				with: { user: shownMemberQuery }
 			}
 		}
 	});
 
-	if (!event) {
+	if (!found) {
 		return redirect(302, '/events');
 	}
+
+	// Page data goes to every visitor's browser: of each member, only their shown name and initials
+	const event = {
+		...found,
+		positions: found.positions.map((position) => ({
+			...position,
+			user: position.user ? shownMember(position.user) : null
+		})),
+		positionRequests: found.positionRequests.map((request) => ({
+			...request,
+			user: shownMember(request.user)
+		}))
+	};
 
 	// Get ARTCC information for position display enhancement
 	let artccInformation = null;

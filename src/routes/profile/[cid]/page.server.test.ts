@@ -86,10 +86,21 @@ describe('/profile/<cid>', () => {
 		expect(data.profile.atcRating).toBe('S3');
 	});
 
-	it('does not serve the last name of a controller with VATUSA name privacy set', async () => {
+	it('shows a controller with VATUSA name privacy set by first name and CID, never the last name', async () => {
 		const data = await visit('1000001');
 
-		expect(data.profile.name).toBe('Jane');
+		expect(data.profile.name).toBe('Jane 1000001');
 		expectNothingPrivate(data, ['Hiddenlast']);
+	});
+
+	it('shows the preferred name of a controller with name privacy who has chosen one', async () => {
+		await db
+			.update(usersTable)
+			.set({ preferredName: 'Jay H.' })
+			.where(eq(usersTable.id, 'user-jane'));
+
+		const data = await visit('1000001');
+
+		expect(data.profile.name).toBe('Jay H.');
 	});
 });

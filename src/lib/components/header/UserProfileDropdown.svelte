@@ -15,11 +15,16 @@
 	import MembershipBadge from '../MembershipBadge.svelte';
 	import Tooltip from '../Tooltip.svelte';
 
-	let { user, roles }: { user: User | undefined; roles: string[] | undefined } = $props();
-
-	function getFullName(user: User): string {
-		return user.preferredName ? user.preferredName : `${user.firstName} ${user.lastName}`;
-	}
+	let {
+		user,
+		userName,
+		roles
+	}: {
+		user: User | undefined;
+		/** The member's name as every page shows it (memberName). */
+		userName: string | null;
+		roles: string[] | undefined;
+	} = $props();
 
 	let showDropdown = $state(false);
 
@@ -57,7 +62,7 @@
 			>
 				<MembershipBadge size="sm" membership={user.membership} />
 				<div class="flex items-center space-x-2">
-					<span class="font-medium">{getFullName(user)}</span>
+					<span class="font-medium">{userName}</span>
 					<div class="flex items-center space-x-1">
 						{#if user.membership === 'controller' && user.data.vatsim.rating.short}
 							<Tooltip
@@ -116,7 +121,7 @@
 
 						<!-- Settings -->
 						<a
-							href="/settings"
+							href="/profile?edit"
 							role="menuitem"
 							onclick={closeDropdown}
 							class="flex w-full cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-slate-600/30 hover:text-white"

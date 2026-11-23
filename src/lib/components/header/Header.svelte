@@ -17,11 +17,16 @@
 	import MembershipBadge from '../MembershipBadge.svelte';
 	import Tooltip from '../Tooltip.svelte';
 
-	let { data }: { data: { user: User | undefined; roles: string[] | undefined } } = $props();
-
-	function getFullName(user: User): string {
-		return user.preferredName ? user.preferredName : `${user.firstName} ${user.lastName}`;
-	}
+	let {
+		data
+	}: {
+		data: {
+			user: User | undefined;
+			/** The member's name as every page shows it (memberName), from the root layout. */
+			userName: string | null;
+			roles: string[] | undefined;
+		};
+	} = $props();
 
 	let showMobileMenu = $state(false);
 
@@ -55,7 +60,7 @@
 	<div class="hidden items-center space-x-6 md:flex">
 		<!-- Main Navigation -->
 
-		<UserProfileDropdown user={data.user} roles={data.roles} />
+		<UserProfileDropdown user={data.user} userName={data.userName} roles={data.roles} />
 	</div>
 
 	<!-- Mobile Menu Button -->
@@ -100,7 +105,7 @@
 								<MembershipBadge size="sm" membership={data.user.membership} />
 								<div>
 									<div class="text-sm font-semibold text-white">
-										{getFullName(data.user)}
+										{data.userName}
 									</div>
 									<div class="font-mono text-xs text-gray-400">CID: {data.user.cid}</div>
 								</div>
@@ -147,7 +152,7 @@
 									<span>My Profile</span>
 								</a>
 								<a
-									href="/settings"
+									href="/profile?edit"
 									class="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-lg border border-slate-500/30 px-4 py-2 text-sm text-gray-300 transition-colors duration-200 hover:border-slate-400/50 hover:bg-slate-600/20 hover:text-white"
 									onclick={() => (showMobileMenu = false)}
 								>

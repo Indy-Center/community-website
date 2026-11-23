@@ -2,7 +2,7 @@ import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { readAvailableCredentials } from '$lib/server/roster';
 import { getStaffBadges } from '$lib/server/staff';
 import { isAdmin } from '$lib/utils/permissions';
-import { customPreferredName } from '$lib/members';
+import { memberName } from '$lib/members';
 
 // Page data goes to every visitor's browser, so build each member from only what the page
 // shows: never the user row (email, Connect data) or a hidden last name from the roster copy.
@@ -36,9 +36,7 @@ export const load = async ({ locals }) => {
 
 	const roster = results.map((member) => ({
 		cid: member.cid,
-		name:
-			customPreferredName(member.user?.preferredName, member.firstName, member.lastName) ??
-			`${member.firstName} ${member.namePrivacy ? member.cid : member.lastName}`,
+		name: memberName({ ...member, preferredName: member.user?.preferredName }),
 		rating: member.rating,
 		joined: member.facilityJoinedAt,
 		operatingInitials: member.user?.operatingInitials ?? null,

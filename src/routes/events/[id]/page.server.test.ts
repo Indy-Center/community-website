@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { eventPositionsTable } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
 import { expectNothingPrivate, seedEvent, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
@@ -57,7 +59,7 @@ describe('/events/[id]', () => {
 			{
 				position: 'IND_APP',
 				userId: 'user-jane',
-				user: { firstName: 'Jane', lastName: 'Doe', preferredName: null, operatingInitials: 'JD' }
+				user: { cid: '1000001', name: 'Jane Doe', operatingInitials: 'JD' }
 			},
 			{ position: 'IND_TWR', userId: null, user: null }
 		]);
@@ -66,14 +68,30 @@ describe('/events/[id]', () => {
 				userId: 'user-alex',
 				comments: 'Happy to take any tower.',
 				createdAt: expect.any(Date),
-				user: {
-					firstName: 'Alex',
-					lastName: 'Sample',
-					preferredName: 'Al Sample',
-					operatingInitials: 'AS'
-				}
+				user: { cid: '1000002', name: 'Al Sample', operatingInitials: 'AS' }
 			}
 		]);
+	});
+
+	it('names a member with VATUSA name privacy by first name and CID, never the last name', async () => {
+		await seedMember(db, {
+			cid: '1000003',
+			firstName: 'Robin',
+			lastName: 'Hiddenlast',
+			namePrivacy: true,
+			user: { id: 'user-robin', email: 'robin@private.example.test', operatingInitials: 'RH' }
+		});
+		await db
+			.update(eventPositionsTable)
+			.set({ userId: 'user-robin' })
+			.where(eq(eventPositionsTable.position, 'IND_TWR'));
+
+		const data = await visit();
+
+		expect(data.event.positions.find((p) => p.position === 'IND_TWR')?.user?.name).toBe(
+			'Robin 1000003'
+		);
+		expectNothingPrivate(data, ['Hiddenlast']);
 	});
 
 	it("sends no assignee's or requester's email or Connect record to a visitor", async () => {

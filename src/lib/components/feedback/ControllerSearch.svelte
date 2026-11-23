@@ -2,14 +2,9 @@
 	import IconChevronDown from '~icons/mdi/chevron-down';
 	import IconMagnify from '~icons/mdi/magnify';
 
-	type SearchUser = {
-		id: string;
-		cid: string;
-		firstName: string;
-		lastName: string;
-		preferredName: string | null;
-		operatingInitials: string | null;
-	};
+	import type { PickableShownMember } from '$lib/members';
+
+	type SearchUser = PickableShownMember;
 
 	let {
 		name,
@@ -23,8 +18,8 @@
 		invalid?: boolean;
 	} = $props();
 
-	const displayName = (user: SearchUser) =>
-		user.preferredName || `${user.firstName} ${user.lastName}`;
+	// The load works the name out (memberName), honouring VATUSA name privacy
+	const displayName = (user: SearchUser) => user.name;
 
 	const selectedUser = $derived(users.find((u) => u.id === value) ?? null);
 
@@ -36,13 +31,13 @@
 	const uid = $props.id();
 	const listId = `controller-search-${uid}`;
 
-	// Matches display name, legal name, operating initials, or CID
+	// Matches display name, VATSIM name (unless it's private), operating initials, or CID
 	const results = $derived.by(() => {
 		const q = query.trim().toLowerCase();
 		if (!q) return users;
 		const matches = users.filter((u) =>
-			[displayName(u), `${u.firstName} ${u.lastName}`, u.operatingInitials ?? '', u.cid].some(
-				(field) => field.toLowerCase().includes(q)
+			[displayName(u), u.vatsimName ?? '', u.operatingInitials ?? '', u.cid].some((field) =>
+				field.toLowerCase().includes(q)
 			)
 		);
 
