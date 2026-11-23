@@ -33,7 +33,7 @@
 		"@indy-center/adapter-cloudflare": "^7.2.8-indy.3",
 		"@indy-center/centerline-svelte": "^0.3.1",
 		"@indy-center/centerline-tokens": "^0.2.0",
-		"@indy-center/indy-larry-worker": "^1.4.0",
+		"@indy-center/indy-larry-worker": "^1.5.0",
 		"@indy-center/training-tools": "^1.0.0",
 		"@libsql/client": "^0.15.14",
 		"@mdi/js": "^7.4.47",
