@@ -6,17 +6,16 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { cacheApiStore, createCms, memoryStore } from '$lib/server/cms';
-import { drizzle, type Database } from '$lib/server/db';
+import { drizzle } from '$lib/server/db';
 
-import { fetchUserinfo, identityEnabled, toSiteRoles } from '$lib/server/identity';
+import { identityEnabled, toSiteRoles } from '$lib/server/identity';
+import { checkIdentity } from '$lib/server/identityCheck';
 import { logger } from '$lib/server/logger';
 import {
 	validateSessionToken,
 	deleteSessionTokenCookie,
 	invalidateSession,
-	setSessionTokenCookie,
-	updateSessionData,
-	type Session
+	setSessionTokenCookie
 } from '$lib/server/session';
 
 export const handle = sequence(
@@ -88,55 +87,27 @@ async function authHandle({ event, resolve }: Parameters<Handle>[0]) {
 	// Identity sessions add identity's roles to the locally computed ones (which
 	// aren't pushed to identity yet).
 	let siteRoles = roles;
+	let signedIn = user;
 	if (session.data?.identityToken && identityEnabled()) {
-		const identityRoles = await currentIdentityRoles(session, event.locals.db);
-		if (!identityRoles) {
+		const checked = await checkIdentity(session, user, event.locals.db);
+		if (!checked) {
 			await invalidateSession(session.id, event.locals.db);
 			Sentry.setUser(null);
 			deleteSessionTokenCookie(event.cookies);
 			return await resolve(event);
 		}
-		siteRoles = [...new Set([...roles, ...toSiteRoles(identityRoles)])];
+		siteRoles = [...new Set([...roles, ...toSiteRoles(checked.roles)])];
+		signedIn = checked.user;
 	}
 
 	Sentry.setUser({ id: user.id, cid: user.cid });
-	event.locals.user = user;
+	event.locals.user = signedIn;
 	event.locals.roles = siteRoles;
 
 	setSessionTokenCookie(event.cookies, token, session.expiresAt);
 	event.locals.session = session;
 
 	return await resolve(event);
-}
-
-const IDENTITY_RECHECK_MS = 5 * 60 * 1000;
-
-// Asks identity for the user's roles at most every few minutes, keeping the
-// answer on the session. Returns null when identity rejects the token: the
-// user logged out or was disabled there. If identity can't be reached, the
-// last known roles stand.
-async function currentIdentityRoles(session: Session, db: Database): Promise<string[] | null> {
-	const data = session.data!;
-	const lastKnown = data.identityRoles ?? [];
-	if (Date.now() - (data.identityCheckedAt ?? 0) < IDENTITY_RECHECK_MS) {
-		return lastKnown;
-	}
-
-	try {
-		const claims = await fetchUserinfo(data.identityToken!);
-		if (!claims) {
-			return null;
-		}
-		await updateSessionData(
-			session.id,
-			{ ...data, identityRoles: claims.roles, identityCheckedAt: Date.now() },
-			db
-		);
-		return claims.roles;
-	} catch (error) {
-		logger.error('Identity userinfo check failed', error);
-		return lastKnown;
-	}
 }
 
 export const handleError = Sentry.handleErrorWithSentry();

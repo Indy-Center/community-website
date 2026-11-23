@@ -2,7 +2,7 @@
 	import '../app.css';
 	import Header from '$lib/components/header/Header.svelte';
 	import { page } from '$app/state';
-	import { setColorScheme } from '@indy-center/centerline-svelte';
+	import { setColorScheme, Toaster } from '@indy-center/centerline-svelte';
 
 	let { children, data } = $props();
 	setColorScheme({ fallback: 'dark' });
@@ -36,6 +36,9 @@
 			</div>
 		{/if}
 	</main>
+	<!-- The site's one Toaster: brief confirmations after an action, raised with toast() or
+	     toastFromServer() -->
+	<Toaster />
 	<footer class="flex shrink-0 items-center justify-center bg-gray-900 py-3">
 		<div class="mx-auto max-w-6xl px-4 text-center">
 			<p class="mb-1 text-xs leading-tight text-gray-400">

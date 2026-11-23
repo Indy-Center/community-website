@@ -7,7 +7,9 @@
 	import { credentialName, credentialOrder } from '$lib/credentials';
 	import { Role } from '$lib/utils/permissions';
 
-	let { data } = $props();
+	let { data, form } = $props();
+
+	let syncing = $state(false);
 
 	const user = $derived.by(() => data.user as User & { roles: { role: string }[] });
 
@@ -140,6 +142,46 @@
 				{/if}
 			</div>
 		</div>
+	</div>
+
+	<!-- Role sync: asks larry to sync this member's Discord roles now -->
+	<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-6">
+		<form
+			method="POST"
+			action="?/syncRoles"
+			use:enhance={() => {
+				syncing = true;
+				return async ({ update }) => {
+					await update({ reset: false });
+					syncing = false;
+				};
+			}}
+			class="flex flex-wrap items-center justify-between gap-4"
+		>
+			<div>
+				<h2 class="text-lg font-semibold text-white">Role sync</h2>
+				<p class="text-sm text-gray-400">Their roles sync on their own. Sync now to update them.</p>
+				{#if form?.sync}
+					<p
+						class="mt-2 text-sm {form.sync.level === 'success'
+							? 'text-green-300'
+							: form.sync.level === 'danger'
+								? 'text-red-300'
+								: 'text-sky-300'}"
+						role="status"
+					>
+						{form.sync.message}
+					</p>
+				{/if}
+			</div>
+			<button
+				type="submit"
+				disabled={syncing}
+				class="shrink-0 cursor-pointer rounded-lg bg-sky-600/20 px-4 py-2 text-sm text-sky-300 hover:bg-sky-600/30 disabled:opacity-50"
+			>
+				{syncing ? 'Syncing…' : 'Sync roles'}
+			</button>
+		</form>
 	</div>
 
 	<!-- Certification and endorsements, read-only: the training app owns them -->

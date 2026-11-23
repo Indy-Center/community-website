@@ -67,6 +67,8 @@ export type SeedUser = {
 	id: string;
 	email: string;
 	preferredName?: string;
+	pronouns?: string;
+	bio?: string;
 	operatingInitials?: string;
 	membership?: 'basic' | 'community' | 'controller';
 };
@@ -120,6 +122,8 @@ export async function seedMember(db: Database, member: SeedMember) {
 		lastName,
 		email: user.email,
 		preferredName: user.preferredName ?? null,
+		pronouns: user.pronouns ?? null,
+		bio: user.bio ?? null,
 		operatingInitials: user.operatingInitials ?? null,
 		membership: user.membership ?? 'controller',
 		data: {

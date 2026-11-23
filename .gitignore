@@ -40,7 +40,11 @@ task-runner/worker-configuration.d.ts
 src/worker-configuration.d.ts
 
 # Scripts folder (temporary data generation)
-scripts/
+scripts/*
+# ...except the one-time copy into identity
+!scripts/copy-profiles-to-identity.ts
+!scripts/vite-node.config.ts
+!scripts/env-shim.ts
 
 # Sentry Config File
 .env.sentry-build-plugin

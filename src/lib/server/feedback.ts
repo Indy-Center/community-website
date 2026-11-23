@@ -78,5 +78,5 @@ export function pilotDisplayName(
 	const lastName = user.lastName?.trim();
 	const shortName = firstName && (lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName);
 
-	return customPreferredName(user.preferredName, firstName, lastName) ?? (shortName || null);
+	return customPreferredName(user.preferredName) ?? (shortName || null);
 }

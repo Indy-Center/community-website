@@ -49,13 +49,13 @@ beforeEach(async () => {
 		joined: null,
 		user: { id: 'user-robin', email: 'robin@private.example.test', preferredName: 'Rob E' }
 	});
-	// Saved the settings form unchanged, so the preferred name is the pre-filled full name
+	// Flagged private, but chose their full name on the profile, which saves it as text
 	await seedMember(db, {
 		cid: '1000004',
 		firstName: 'Pat',
-		lastName: 'Prefilled',
+		lastName: 'Chosen',
 		namePrivacy: true,
-		user: { id: 'user-pat', email: 'pat@private.example.test', preferredName: 'Pat Prefilled' }
+		user: { id: 'user-pat', email: 'pat@private.example.test', preferredName: 'Pat Chosen' }
 	});
 });
 
@@ -97,7 +97,7 @@ describe('/roster', () => {
 			},
 			{
 				cid: '1000004',
-				name: 'Pat 1000004',
+				name: 'Pat Chosen',
 				rating: 'S2',
 				joined: '2024-01-15T00:00:00+00:00',
 				operatingInitials: null,
@@ -117,7 +117,7 @@ describe('/roster', () => {
 		const data = await visit();
 
 		expect(data.roster[0]).not.toHaveProperty('lastName');
-		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
+		expectNothingPrivate(data, ['Hiddenlast']);
 	});
 
 	it("gives an admin each member's account id for the manage link, and nothing more private", async () => {
@@ -129,6 +129,6 @@ describe('/roster', () => {
 			'user-robin',
 			'user-pat'
 		]);
-		expectNothingPrivate(data, ['Hiddenlast', 'Prefilled']);
+		expectNothingPrivate(data, ['Hiddenlast']);
 	});
 });

@@ -7,7 +7,9 @@ import {
 	seedMember,
 	testDb
 } from '$lib/testing/db';
+import { fakeLarry, type FakeLarry } from '$lib/testing/larry';
 import { callLoad } from '$lib/testing/site';
+import { SYNC_QUEUED } from '$lib/profile/linkedAccounts';
 import { load as loadList } from './+page.server';
 import { load as loadUser, actions } from './[id]/+page.server';
 
@@ -100,7 +102,7 @@ describe('/admin/users/[id]', () => {
 	it('has no setCertification or toggleEndorsement action, so posting to them is a 404', () => {
 		expect(post('setCertification', 'user-jane')).toBeUndefined();
 		expect(post('toggleEndorsement', 'user-jane', { endorsement: 'S-LC' })).toBeUndefined();
-		expect(Object.keys(actions)).toEqual(['toggleRole']);
+		expect(Object.keys(actions).sort()).toEqual(['syncRoles', 'toggleRole']);
 	});
 
 	it('still toggles a role', async () => {
@@ -111,6 +113,44 @@ describe('/admin/users/[id]', () => {
 		await post('toggleRole', 'user-jane', { role: Role.CAN_MANAGE_EVENTS });
 		data = (await visit('user-jane')) as { user: { roles: { role: string }[] } };
 		expect(data.user.roles).toEqual([]);
+	});
+});
+
+async function syncRoles({
+	roles = [Role.ADMIN],
+	larry = fakeLarry()
+}: { roles?: string[]; larry?: FakeLarry } = {}) {
+	const result = await actions.syncRoles({
+		params: { id: 'user-sam' },
+		locals: { db, roles, user: { id: 'user-jane', cid: '1000001' } },
+		platform: { env: { LARRY: larry } }
+	} as never);
+	return { result: result as unknown, larry };
+}
+
+describe('/admin/users/[id] Sync roles', () => {
+	it("syncs the page's user for an admin, and says when", async () => {
+		const { result, larry } = await syncRoles();
+
+		expect(larry.synced).toEqual([[1000002]]);
+		expect(result).toEqual({ sync: { level: 'success', message: SYNC_QUEUED } });
+	});
+
+	it("shows larry's reason as given when it declines", async () => {
+		const { result } = await syncRoles({
+			larry: fakeLarry({
+				sync: [{ cid: 1000002, queued: false, reason: 'Nothing is known to sync.' }]
+			})
+		});
+
+		expect(result).toEqual({ sync: { level: 'info', message: 'Nothing is known to sync.' } });
+	});
+
+	it('refuses a member who is not an admin with 403', async () => {
+		const { result, larry } = await syncRoles({ roles: [] });
+
+		expect(result).toMatchObject({ status: 403, data: { message: 'Unauthorized' } });
+		expect(larry.synced).toEqual([]);
 	});
 });
 

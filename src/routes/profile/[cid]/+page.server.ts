@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { getStaffBadges } from '$lib/server/staff';
 import { readAvailableCredentials } from '$lib/server/roster';
-import { customPreferredName } from '$lib/members';
+import { memberName } from '$lib/members';
 
 // Public profile. Like the public roster, only controllers on the roster have one, and
 // only public fields are sent (no email, raw VATSIM data, or feedback).
@@ -23,14 +23,8 @@ export const load = async ({ locals, params }) => {
 		error(404, 'Controller not found');
 	}
 
-	const { firstName, lastName } = controller;
 	const user = controller.user;
-
-	// Settings pre-fills the preferred name with the full name, so only a preferred name
-	// that differs from it counts as a real choice. Otherwise follow VATUSA name privacy.
-	const name =
-		customPreferredName(user?.preferredName, firstName, lastName) ??
-		(controller.namePrivacy ? firstName : `${firstName} ${lastName}`);
+	const name = memberName({ ...controller, preferredName: user?.preferredName });
 
 	return {
 		profile: {

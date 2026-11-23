@@ -9,14 +9,14 @@ let db: Database;
 
 beforeEach(async () => {
 	db = await testDb();
-	// Saved the settings form unchanged, so the preferred name is the pre-filled full name
+	// Flagged private and hasn't chosen a name
 	await seedMember(db, {
 		cid: '1000001',
 		firstName: 'Pat',
-		lastName: 'Prefilled',
+		lastName: 'Hiddenlast',
 		namePrivacy: true,
 		roles: ['ATM'],
-		user: { id: 'user-pat', email: 'pat@private.example.test', preferredName: 'Pat Prefilled' }
+		user: { id: 'user-pat', email: 'pat@private.example.test' }
 	});
 	await seedMember(db, {
 		cid: '1000002',
@@ -29,14 +29,14 @@ beforeEach(async () => {
 });
 
 describe('/staff', () => {
-	it('shows a privacy-flagged member by first name and CID when their preferred name is the pre-filled full name', async () => {
+	it('shows a privacy-flagged member with no preferred name by first name and CID', async () => {
 		const data = await callLoad(load, { locals: { db, roles: [Role.ADMIN] } });
 
 		expect(data.staff.find((p) => p.key === 'ATM')?.members.map((m) => m.name)).toEqual([
 			'Pat 1000001'
 		]);
 		expect(data.controllers.map((c) => c.name)).toEqual(['Pat 1000001', 'Rob E']);
-		expectNothingPrivate(data, ['Prefilled', 'Example']);
+		expectNothingPrivate(data, ['Hiddenlast', 'Example']);
 	});
 
 	it('still shows a real custom preferred name', async () => {
