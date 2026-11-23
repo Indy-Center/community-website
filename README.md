@@ -100,7 +100,7 @@ The panel beside both modes shows which Discord account the role sync uses for t
 larry's `getLinks` (read through `readLinks` in `src/lib/server/larry.ts`). Every change goes through
 larry on the `LARRY` binding, for the session's CID only: the site never writes a link itself. If
 larry can't be asked, the panel says "Links are unavailable right now." and the rest of the page
-works. The TeamSpeak row goes under Discord's.
+works. The TeamSpeak row is under Discord's.
 
 - **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
   `unlink(cid, 'discord')`), VATUSA's account ("Using the Discord account you linked on VATUSA",
@@ -115,6 +115,16 @@ works. The TeamSpeak row goes under Discord's.
   happened: who it linked and whether they were added, larry's refusal as larry words it, or
   "Discord didn't confirm the account. Try again." for a bad state or a cancelled or failed sign-in.
   Without the two Discord settings, Link Discord says the same and logs why.
+- **The TeamSpeak row** shows the member's identity shortened to its first and last four
+  characters, with **Unlink** (the same `unlink` action, posting `service=teamspeak`), or, when
+  there is none, how to connect: **Connect to TeamSpeak** (`https://tmspk.gg/s/ZID`, in a new tab)
+  and "or type ZID in TeamSpeak's server address box" with a copy button. Nothing is sent to
+  larry from the not-linked row: the member connects, larry's TeamSpeak bot messages them a link,
+  and only that link links an identity.
+- **The TeamSpeak link** (`/profile?ts=<token>`) calls `confirmTsLink(cid, token)` for the session's
+  CID, then redirects to `/profile`, whose card says "TeamSpeak linked." or larry's refusal as
+  larry words it (an expired or used link, another member's identity). Signed out, it goes through
+  sign-in and returns with `?ts=` kept.
 - **Sync my roles**, at the panel's foot, calls `syncMembers([cid])` for the member (the
   `syncRoles` action): "Your roles will update in a minute.", or larry's reason when it declines.
   **Sync roles** on the admin user page (`/admin/users/[id]`, admins only; anyone else gets 403)
@@ -265,6 +275,8 @@ The fake also answers the profile page and its Linked accounts panel, typed from
   account known from VATUSA.
 - `linkDiscord` links in memory, answering `joined: true` the first time an account is linked
   with a token and `false` after, and refuses an account another member holds, as Larry does.
+- `confirmTsLink` links a made-up TeamSpeak identity for any token, except `used` (larry's
+  expired-link message) and `taken` (another member's identity), so `/profile?ts=anything` works.
 - `unlink` forgets the link.
 - `syncMembers` queues a sync, declining a CID synced in the last 2 minutes as Larry does.
 

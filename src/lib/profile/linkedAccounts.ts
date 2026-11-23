@@ -1,4 +1,5 @@
 import type { Links } from '@indy-center/indy-larry-worker';
+import { FACILITY_ID } from '$lib/config';
 
 /** Shown in the Linked accounts panel when larry can't be asked. */
 export const LINKS_UNAVAILABLE = 'Links are unavailable right now.';
@@ -32,6 +33,25 @@ export type DiscordRow =
 	| { state: 'linked'; account: string }
 	| { state: 'vatusa' }
 	| { state: 'none' };
+
+/** The TeamSpeak row: the member's identity, shortened, or none. */
+export type TeamSpeakRow = { state: 'linked'; uid: string } | { state: 'none' };
+
+/** What the card says once larry has linked a TeamSpeak identity from the bot's link. */
+export const TEAMSPEAK_LINKED = 'TeamSpeak linked.';
+
+/** TeamSpeak's own link to the server, by its nickname, which opens the installed client. */
+export const TEAMSPEAK_CONNECT_URL = `https://tmspk.gg/s/${FACILITY_ID}`;
+
+/** A unique ID shortened to its first four and last four characters: "x7Kq…3dE=". */
+export function shortUid(uid: string) {
+	return uid.length <= 9 ? uid : `${uid.slice(0, 4)}…${uid.slice(-4)}`;
+}
+
+/** The TeamSpeak row for larry's `getLinks` answer. */
+export function teamspeakRow(teamspeak: Links['teamspeak']): TeamSpeakRow {
+	return teamspeak ? { state: 'linked', uid: shortUid(teamspeak.uid) } : { state: 'none' };
+}
 
 /**
  * The Discord row for larry's `getLinks` answer. A linked account is shown as "@username" when

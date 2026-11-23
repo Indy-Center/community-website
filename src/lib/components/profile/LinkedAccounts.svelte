@@ -5,24 +5,31 @@
 	// message. `discord` is the row the load worked out from larry's `getLinks`, or null when
 	// larry can't be asked.
 	import { enhance } from '$app/forms';
-	import { Alert, Button } from '@indy-center/centerline-svelte';
+	import { Alert, Button, CopyButton } from '@indy-center/centerline-svelte';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import { FACILITY_ID } from '$lib/config';
 	import {
 		LINKS_UNAVAILABLE,
+		TEAMSPEAK_CONNECT_URL,
 		type AccountsFlash,
-		type DiscordRow
+		type DiscordRow,
+		type TeamSpeakRow
 	} from '$lib/profile/linkedAccounts';
 	import IconDiscord from '~icons/mdi/discord';
+	import IconTeamSpeak from '~icons/mdi/headset';
 
 	let {
 		discord,
+		teamspeak = null,
 		message
 	}: {
 		discord: DiscordRow | null;
+		teamspeak?: TeamSpeakRow | null;
 		message: Pick<AccountsFlash, 'level' | 'message'> | null;
 	} = $props();
 
 	let unlinking = $state(false);
+	let unlinkingTs = $state(false);
 	let syncing = $state(false);
 
 	// Marks a button busy until its action's redirect has loaded the page again
@@ -81,7 +88,52 @@
 				</p>
 			{/if}
 		</li>
-		<!-- The TeamSpeak row goes here, as the list's second item -->
+		{#if teamspeak}
+			<li class="flex flex-wrap items-center justify-between gap-4 py-4">
+				<div class="flex items-start gap-3">
+					<IconTeamSpeak class="mt-0.5 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+					<div>
+						<p class="font-medium text-foreground">TeamSpeak</p>
+						{#if teamspeak.state === 'linked'}
+							<p class="text-sm text-muted-foreground">
+								Linked: <span class="font-mono break-all">{teamspeak.uid}</span>
+							</p>
+						{:else}
+							<p class="text-sm text-muted-foreground">
+								Connect to our TeamSpeak and we'll send you a private message with your link.
+							</p>
+						{/if}
+					</div>
+				</div>
+				{#if teamspeak.state === 'linked'}
+					<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinkingTs = b))}>
+						<input type="hidden" name="service" value="teamspeak" />
+						<Button
+							type="submit"
+							variant="secondary"
+							size="sm"
+							busy={unlinkingTs}
+							busyLabel="Unlinking">Unlink</Button
+						>
+					</form>
+				{:else}
+					<div class="flex w-full flex-col items-start gap-2">
+						<Button
+							variant="secondary"
+							size="sm"
+							href={TEAMSPEAK_CONNECT_URL}
+							target="_blank"
+							rel="noopener noreferrer">Connect to TeamSpeak</Button
+						>
+						<p class="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+							or type <strong class="font-mono text-foreground">{FACILITY_ID}</strong> in
+							TeamSpeak's server address box
+							<CopyButton text={FACILITY_ID} label="server address" />
+						</p>
+					</div>
+				{/if}
+			</li>
+		{/if}
 	</ul>
 
 	<form

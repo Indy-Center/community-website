@@ -12,10 +12,13 @@ export function fakeLarry(
 		sync?: SyncMembersResult | Error;
 		link?: { joined: boolean } | Error;
 		unlink?: Error;
+		teamspeak?: Links['teamspeak'];
+		confirmTs?: Error;
 	} = {}
 ) {
 	const synced: number[][] = [];
 	const linked: { cid: number; discordId: string; accessToken?: string }[] = [];
+	const confirmed: { cid: number; token: string }[] = [];
 	const unlinked: { cid: number; service: 'discord' | 'teamspeak' }[] = [];
 	return {
 		synced,
@@ -28,8 +31,13 @@ export function fakeLarry(
 					opts.discord === undefined
 						? { id: '100000000000000001', source: 'vatusa' }
 						: opts.discord,
-				teamspeak: null
+				teamspeak: opts.teamspeak ?? null
 			};
+		},
+		confirmed,
+		confirmTsLink: async (cid: number, token: string) => {
+			confirmed.push({ cid, token });
+			if (opts.confirmTs) throw opts.confirmTs;
 		},
 		syncMembers: async (cids: number[]): Promise<SyncMembersResult> => {
 			synced.push(cids);

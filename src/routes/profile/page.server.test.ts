@@ -12,7 +12,7 @@ import {
 import { fakeLarry, type FakeLarry } from '$lib/testing/larry';
 import { callLoad } from '$lib/testing/site';
 import { SAVED_MESSAGES, UNAVAILABLE } from '$lib/forms/profile';
-import { SYNC_QUEUED } from '$lib/profile/linkedAccounts';
+import { SYNC_QUEUED, TEAMSPEAK_CONNECT_URL } from '$lib/profile/linkedAccounts';
 import { actions, load } from './+page.server';
 
 vi.mock('$env/dynamic/private', async (importOriginal) => {
@@ -604,12 +604,22 @@ describe('/profile Linked accounts', () => {
 /** Posts one of the Linked accounts panel's buttons, which always redirect back to /profile. */
 async function press(
 	action: 'unlink' | 'syncRoles',
-	{ userId = 'user-jordan', larry = fakeLarry(), cookies = fakeCookies() } = {}
+	{
+		userId = 'user-jordan',
+		larry = fakeLarry(),
+		cookies = fakeCookies(),
+		service
+	}: {
+		userId?: string;
+		larry?: FakeLarry;
+		cookies?: ReturnType<typeof fakeCookies>;
+		service?: string;
+	} = {}
 ) {
 	const request = new Request(`https://flyindycenter.com/profile?/${action}`, {
 		method: 'POST',
 		// A CID in the request is ignored: only the session's is used
-		body: new URLSearchParams({ cid: '1000002' })
+		body: new URLSearchParams({ cid: '1000002', ...(service ? { service } : {}) })
 	});
 	try {
 		await actions[action]({
@@ -642,6 +652,79 @@ describe('/profile Unlink', () => {
 		});
 
 		expect(flash).toEqual({ level: 'danger', message: 'Something went wrong at larry.' });
+	});
+});
+
+describe('/profile TeamSpeak', () => {
+	it('renders both rows with a linked TeamSpeak identity, shortened', async () => {
+		const data = await visit('user-jordan', {
+			larry: fakeLarry({ teamspeak: { uid: 'x7KqMadeUpUniqueIdentifier3dE=' } })
+		});
+
+		expect(data.discord).toEqual({ state: 'vatusa' });
+		expect(data.teamspeak).toEqual({ state: 'linked', uid: 'x7Kq…3dE=' });
+	});
+
+	it('shows the not-linked row, asking larry nothing but the links', async () => {
+		const larry = fakeLarry();
+		const data = await visit('user-jordan', { larry });
+
+		expect(data.discord).toEqual({ state: 'vatusa' });
+		expect(data.teamspeak).toEqual({ state: 'none' });
+		expect(larry.confirmed).toEqual([]);
+		expect(larry.unlinked).toEqual([]);
+		expect(TEAMSPEAK_CONNECT_URL).toBe('https://tmspk.gg/s/ZID');
+	});
+
+	it('has no TeamSpeak row when larry is unreachable', async () => {
+		const data = await visit('user-jordan', { larry: fakeLarry({ links: new Error('down') }) });
+		expect(data.teamspeak).toBeNull();
+	});
+
+	it("confirms ?ts= for the session's CID and shows success once", async () => {
+		const cookies = fakeCookies();
+		const larry = fakeLarry();
+
+		await expect(
+			visit('user-jordan', { href: '/profile?ts=made-up-token&cid=1000002', larry, cookies })
+		).rejects.toMatchObject({ status: 303, location: '/profile' });
+
+		expect(larry.confirmed).toEqual([{ cid: 1000001, token: 'made-up-token' }]);
+		const shown = await visit('user-jordan', { larry, cookies });
+		expect(shown.accountsMessage).toEqual({ level: 'success', message: 'TeamSpeak linked.' });
+		expect((await visit('user-jordan', { larry, cookies })).accountsMessage).toBeNull();
+	});
+
+	it("shows larry's refusal as given", async () => {
+		const cookies = fakeCookies();
+		const message =
+			"This link has expired or was already used. Reconnect to TeamSpeak and we'll send you a new one.";
+		const larry = fakeLarry({ confirmTs: new Error(message) });
+
+		await expect(
+			visit('user-jordan', { href: '/profile?ts=old', larry, cookies })
+		).rejects.toMatchObject({ status: 303, location: '/profile' });
+
+		expect((await visit('user-jordan', { larry, cookies })).accountsMessage).toEqual({
+			level: 'danger',
+			message
+		});
+	});
+
+	it('goes through sign-in and keeps the token when signed out', async () => {
+		const larry = fakeLarry();
+		await expect(visit(null, { href: '/profile?ts=made-up-token', larry })).rejects.toMatchObject({
+			status: 302,
+			location: `/login/connect?returnUrl=${encodeURIComponent('/profile?ts=made-up-token')}`
+		});
+		expect(larry.confirmed).toEqual([]);
+	});
+
+	it("unlinks the session's own TeamSpeak identity only", async () => {
+		const { redirect, larry } = await press('unlink', { service: 'teamspeak' });
+
+		expect(redirect).toEqual({ status: 303, location: '/profile' });
+		expect(larry.unlinked).toEqual([{ cid: 1000001, service: 'teamspeak' }]);
 	});
 });
 

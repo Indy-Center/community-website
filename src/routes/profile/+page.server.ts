@@ -17,7 +17,7 @@ import { memberName } from '$lib/members';
 import { inferNameChoice, preferredNameFor } from '$lib/profile/nameChoice';
 import type { Database } from '$lib/server/db';
 import { fetchUserinfo, updateOwnProfile, writeOperatingInitials } from '$lib/server/identity';
-import { discordRow } from '$lib/profile/linkedAccounts';
+import { discordRow, TEAMSPEAK_LINKED, teamspeakRow } from '$lib/profile/linkedAccounts';
 import { setAccountsFlash, takeAccountsFlash } from '$lib/server/discordLink';
 import { errorMessage, readLinks, resyncMember, syncedMessage } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
@@ -84,6 +84,23 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		return redirect(302, signInHref(`${url.pathname}${url.search}`));
 	}
 	const user = locals.user;
+
+	// The link TeamSpeak's bot sent: confirm it for the session's CID, then show the result on the
+	// card in view mode. The token is read once; a reload says larry's expired-link message.
+	const token = url.searchParams.get('ts');
+	if (token) {
+		try {
+			const larry = platform?.env.LARRY;
+			if (!larry) throw new Error('The LARRY binding is not set');
+			await larry.confirmTsLink(Number(user.cid), token);
+			logger.info(`Linked the TeamSpeak identity of ${user.cid}`);
+			setAccountsFlash(cookies, { level: 'success', message: TEAMSPEAK_LINKED });
+		} catch (error) {
+			logger.error(`Could not link the TeamSpeak identity of ${user.cid}`, error);
+			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
+		}
+		return redirect(303, '/profile');
+	}
 
 	const [
 		identity,
@@ -182,6 +199,8 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		hasDiscord: !!links?.discord,
 		/** The Linked accounts panel's Discord row; null when larry can't be asked. */
 		discord: links ? discordRow(links.discord, accountsFlash?.discord) : null,
+		/** The Linked accounts panel's TeamSpeak row; null when larry can't be asked. */
+		teamspeak: links ? teamspeakRow(links.teamspeak) : null,
 		accountsMessage: accountsFlash
 			? { level: accountsFlash.level, message: accountsFlash.message }
 			: null,
@@ -305,18 +324,21 @@ export const actions = {
 
 	// The Linked accounts panel's buttons. Each acts for the session's CID, never one from the
 	// request, and carries its message back to /profile.
-	unlink: async ({ locals, platform, cookies }) => {
+	unlink: async ({ request, locals, platform, cookies }) => {
 		if (!locals.user) {
 			return redirect(302, signInHref('/profile'));
 		}
 		const { cid } = locals.user;
+		// Discord unless the row's form says TeamSpeak
+		const service =
+			(await request.formData()).get('service') === 'teamspeak' ? 'teamspeak' : 'discord';
 		try {
 			const larry = platform?.env.LARRY;
 			if (!larry) throw new Error('The LARRY binding is not set');
-			await larry.unlink(Number(cid), 'discord');
-			logger.info(`Unlinked the Discord account of ${cid}`);
+			await larry.unlink(Number(cid), service);
+			logger.info(`Unlinked the ${service} account of ${cid}`);
 		} catch (error) {
-			logger.error(`Could not unlink the Discord account of ${cid}`, error);
+			logger.error(`Could not unlink the ${service} account of ${cid}`, error);
 			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
 		}
 		return redirect(303, '/profile');
