@@ -29,10 +29,13 @@ export type AccountsFlash = {
 	discord?: { id: string; username: string };
 };
 
-/** The Discord row: the member's own link, VATUSA's account, or none. */
+/**
+ * The Discord row: the member's own link, VATUSA's account, or none. `outsideServer` is set when
+ * larry says that account isn't in the Indy Center server, so the row offers Join Discord.
+ */
 export type DiscordRow =
-	| { state: 'linked'; account: string }
-	| { state: 'vatusa' }
+	| { state: 'linked'; account: string; outsideServer?: true }
+	| { state: 'vatusa'; outsideServer?: true }
 	| { state: 'none' };
 
 /** The TeamSpeak row: the member's identity, shortened, or none. */
@@ -86,9 +89,12 @@ export function discordRow(
 	justRead?: AccountsFlash['discord']
 ): DiscordRow {
 	if (!discord) return { state: 'none' };
-	if (discord.source === 'vatusa') return { state: 'vatusa' };
+	// Only a definite no: not known (null, or a larry before 1.5.0) shows the row as before
+	const outside = discord.inServer === false ? { outsideServer: true as const } : {};
+	if (discord.source === 'vatusa') return { state: 'vatusa', ...outside };
 	return {
 		state: 'linked',
-		account: justRead?.id === discord.id ? `@${justRead.username}` : discord.id
+		account: justRead?.id === discord.id ? `@${justRead.username}` : discord.id,
+		...outside
 	};
 }

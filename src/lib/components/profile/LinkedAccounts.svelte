@@ -55,7 +55,7 @@
 					<p class="font-medium text-foreground">Discord</p>
 				</div>
 				<div class="shrink-0">
-					{#if discord.state === 'linked'}
+					{#if discord.state === 'linked' && !discord.outsideServer}
 						<form method="POST" action="?/unlink" use:enhance={busyWhile((b) => (unlinking = b))}>
 							<Button
 								type="submit"
@@ -65,6 +65,9 @@
 								busyLabel="Unlinking">Unlink</Button
 							>
 						</form>
+					{:else if discord.state !== 'none' && discord.outsideServer}
+						<!-- Link Discord again: it links the account they choose and adds them to the server -->
+						<Button size="sm" href="/profile/discord" data-sveltekit-reload>Join Discord</Button>
 					{:else}
 						<!-- A full page load: it leaves the site for Discord's sign-in -->
 						<Button variant="secondary" size="sm" href="/profile/discord" data-sveltekit-reload>
@@ -76,8 +79,15 @@
 			<div class="mt-2 text-sm text-muted-foreground">
 				{#if discord.state === 'linked'}
 					<p>Linked: <span class="font-mono break-all">{discord.account}</span></p>
+					{#if discord.outsideServer}
+						<p>Not in the Indy Center Discord.</p>
+					{/if}
 				{:else if discord.state === 'vatusa'}
-					<p>Linked on VATUSA</p>
+					<p>
+						{discord.outsideServer
+							? 'Linked on VATUSA, but not in the Indy Center Discord.'
+							: 'Linked on VATUSA'}
+					</p>
 				{:else}
 					<p>No Discord account</p>
 				{/if}

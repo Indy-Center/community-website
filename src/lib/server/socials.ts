@@ -3,17 +3,13 @@ import type { DiscordStep, TeamSpeakStep } from '$lib/profile/linkedAccounts';
 import { readLinks, type LarryBinding, type Links } from '$lib/server/larry';
 
 /**
- * Whether larry says the member's Discord account is in the server. larry 1.5.0 adds `inServer`;
- * an older larry leaves it out, read here as not known.
+ * The Discord join button's state: sign in first, join (link and be added), or open the server.
+ * Open only when larry says the account is in it; not known (`inServer` null, or absent before
+ * larry 1.5.0) offers Join, which works either way.
  */
-function inServer(discord: Links['discord']): boolean {
-	return (discord as { inServer?: boolean | null } | null)?.inServer === true;
-}
-
-/** The Discord join button's state: sign in first, join (link and be added), or open the server. */
 export function discordStep(user: User | null, links: Links | null): DiscordStep {
 	if (!user) return 'sign-in';
-	return links && inServer(links.discord) ? 'open' : 'join';
+	return links?.discord?.inServer === true ? 'open' : 'join';
 }
 
 /** The TeamSpeak tile's state: sign in first, connect (and get a link message), or linked. */
