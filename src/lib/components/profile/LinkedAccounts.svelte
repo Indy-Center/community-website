@@ -154,10 +154,7 @@
 		<div class="flex min-w-0 items-start gap-3">
 			<IconSync class="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 			<div class="min-w-0">
-				<p class="font-medium text-foreground">Roles</p>
-				<p class="text-sm text-muted-foreground">
-					Your roles sync on their own. Sync now if something looks out of date.
-				</p>
+				<p class="font-medium text-foreground">Sync Roles</p>
 			</div>
 		</div>
 		<div class={ACTION}>
