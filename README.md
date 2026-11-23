@@ -16,7 +16,7 @@ One SvelteKit app at the repository root, deployed as the `community-website` Wo
 - `src/routes/partners/` — partner cards, from the CMS.
 - `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
 - `src/routes/admin/` — admin tooling; role-gated.
-- `src/routes/profile/` — the member's own profile, where they set their name, pronouns, bio and operating initials; see [The profile page](#the-profile-page). `[cid]/` is a controller's public profile. `/settings` only redirects to `/profile?edit`.
+- `src/routes/profile/` — the member's own profile, where they set their name, pronouns, bio and operating initials; see [The profile page](#the-profile-page). `discord/` starts Link Discord and `discord/callback/` finishes it; see [Linked accounts](#linked-accounts). `[cid]/` is a controller's public profile. `/settings` only redirects to `/profile?edit`.
 - `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster copy from the training app, then syncs memberships from it; syncs the staff points of contact from VATUSA.
 - `src/lib/server/roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
 - `src/lib/server/identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `writeOperatingInitials`); see "Identity API client".
@@ -42,13 +42,13 @@ panel (greyed out until then), once they have.
 
 ## Bindings
 
-| Binding               | Type             | Purpose                                                                                    |
-| --------------------- | ---------------- | ------------------------------------------------------------------------------------------ |
-| `DB`                  | D1               | Website-local data (sessions, the roster copy, etc.)                                       |
-| `TRAINING`            | Service          | The training app's `TrainingRpc` entrypoint (`training-tools` Worker): the roster below    |
-| `LARRY`               | Service          | Larry's Worker (`indy-larry`): Discord messages sent as the bot, such as staffing requests |
-| `ASSETS`              | Assets           | Static files from the SvelteKit build                                                      |
-| `CF_VERSION_METADATA` | Version metadata | Build version tracking                                                                     |
+| Binding               | Type             | Purpose                                                                                                                                                           |
+| --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB`                  | D1               | Website-local data (sessions, the roster copy, etc.)                                                                                                              |
+| `TRAINING`            | Service          | The training app's `TrainingRpc` entrypoint (`training-tools` Worker): the roster below                                                                           |
+| `LARRY`               | Service          | Larry's Worker (`indy-larry`): Discord messages sent as the bot, such as staffing requests; the role sync's links and syncs ([Linked accounts](#linked-accounts)) |
+| `ASSETS`              | Assets           | Static files from the SvelteKit build                                                                                                                             |
+| `CF_VERSION_METADATA` | Version metadata | Build version tracking                                                                                                                                            |
 
 ## Where the roster comes from
 
@@ -93,6 +93,35 @@ controllers, operating initials. `/settings` redirects there; its old form is go
 - **Discord:** after a name change, the page asks larry to sync the member (`syncMembers` on the
   `LARRY` binding), so their nickname follows. It reads whether they have a Discord account with
   `getLinks`. A larry failure is logged and doesn't fail the save.
+
+### Linked accounts
+
+The panel beside both modes shows which Discord account the role sync uses for the member, from
+larry's `getLinks` (read through `readLinks` in `src/lib/server/larry.ts`). Every change goes through
+larry on the `LARRY` binding, for the session's CID only: the site never writes a link itself. If
+larry can't be asked, the panel says "Links are unavailable right now." and the rest of the page
+works. The TeamSpeak row goes under Discord's.
+
+- **The Discord row:** the member's own link (with **Unlink**, the `unlink` action calling
+  `unlink(cid, 'discord')`), VATUSA's account ("Using the Discord account you linked on VATUSA",
+  with **Use a different account**), or none (**Link Discord**).
+- **Link Discord** (`/profile/discord`) is a Discord sign-in through the "Indy Center" Discord app
+  (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`), asking for `identify guilds.join`, with its state
+  in a 10-minute cookie. The app's redirects must include `<origin>/profile/discord/callback`.
+- **The callback** (`/profile/discord/callback`) checks the state, exchanges the code, reads the
+  account from Discord's `/users/@me`, and calls `linkDiscord(cid, id, accessToken)`; larry links
+  it and adds the member to the Indy Center Discord if they aren't in it (`joined`). The access token
+  goes to larry once and is never stored or logged. It returns to `/profile`, whose card says what
+  happened: who it linked and whether they were added, larry's refusal as larry words it, or
+  "Discord didn't confirm the account. Try again." for a bad state or a cancelled or failed sign-in.
+  Without the two Discord settings, Link Discord says the same and logs why.
+- **Sync my roles**, at the panel's foot, calls `syncMembers([cid])` for the member (the
+  `syncRoles` action): "Your roles will update in a minute.", or larry's reason when it declines.
+  **Sync roles** on the admin user page (`/admin/users/[id]`, admins only; anyone else gets 403)
+  does the same for that user.
+
+The card's message is carried over the redirect in a 60-second `profile_accounts` cookie, shown
+once. The edit form posts to `?edit&/save`, since the page has named actions.
 
 ## Staffing requests
 
@@ -212,6 +241,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Link Discord on the profile, through the "Indy Center" Discord app; see [Linked accounts](#linked-accounts). Without them Link Discord says Discord didn't confirm the account.
 
 `adapter-cloudflare` proxies the `DB` binding via `getPlatformProxy()` during `vite dev` — you don't need `wrangler dev` for bindings to work locally.
 
@@ -228,9 +258,15 @@ npm run dev         # 2: the site
 Start the fake first. Without it the staffing form says the request couldn't be sent, and
 feedback alerts are skipped with an error in the log.
 
-The fake also answers the profile page: `getLinks` says every member has a Discord account known
-from VATUSA, and `syncMembers` queues a sync, declining a CID synced in the last 2 minutes as
-Larry does.
+The fake also answers the profile page and its Linked accounts panel, typed from the installed
+`@indy-center/indy-larry-worker`:
+
+- `getLinks` gives a member's own link if they made one since the fake started, else a Discord
+  account known from VATUSA.
+- `linkDiscord` links in memory, answering `joined: true` the first time an account is linked
+  with a token and `false` after, and refuses an account another member holds, as Larry does.
+- `unlink` forgets the link.
+- `syncMembers` queues a sync, declining a CID synced in the last 2 minutes as Larry does.
 
 ### Roster from a fake training app
 
@@ -295,7 +331,7 @@ npm run build && npm run deploy
 
 The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-Production secrets (OAuth client secrets, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`.
+Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`.
 
 ## Disclaimer
 

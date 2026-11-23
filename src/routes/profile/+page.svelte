@@ -175,7 +175,7 @@
 
 	<div class="space-y-6">
 		<Panel title="Linked accounts" level={2} id="accounts">
-			<LinkedAccounts links={data.links} />
+			<LinkedAccounts discord={data.discord} message={data.accountsMessage} />
 		</Panel>
 		<Panel title="Display" level={2} id="display">
 			<DisplaySettings />

@@ -51,7 +51,7 @@
 </script>
 
 <Panel title="Edit your profile" level={2} id="name">
-	<form method="POST" use:enhance novalidate>
+	<form method="POST" action="?edit&/save" use:enhance novalidate>
 		<div class="space-y-6">
 			{#if !data.canSave || $message}
 				<Alert level="caution">{$message ?? UNAVAILABLE}</Alert>

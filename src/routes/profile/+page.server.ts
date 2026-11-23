@@ -17,7 +17,9 @@ import { memberName } from '$lib/members';
 import { inferNameChoice, preferredNameFor } from '$lib/profile/nameChoice';
 import type { Database } from '$lib/server/db';
 import { fetchUserinfo, updateOwnProfile, writeOperatingInitials } from '$lib/server/identity';
-import { readLinks, resyncMember } from '$lib/server/larry';
+import { discordRow } from '$lib/profile/linkedAccounts';
+import { setAccountsFlash, takeAccountsFlash } from '$lib/server/discordLink';
+import { errorMessage, readLinks, resyncMember, syncedMessage } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
 import type { Session } from '$lib/server/session';
@@ -153,6 +155,7 @@ export const load = async ({ locals, url, platform, cookies }) => {
 
 	const saved = cookies.get(SAVED_COOKIE) as SavedMessage | undefined;
 	if (saved) cookies.delete(SAVED_COOKIE, { path: '/profile' });
+	const accountsFlash = takeAccountsFlash(cookies);
 
 	return {
 		form,
@@ -177,6 +180,11 @@ export const load = async ({ locals, url, platform, cookies }) => {
 		/** larry's view of the member's Discord and TeamSpeak; null when larry can't be asked. */
 		links,
 		hasDiscord: !!links?.discord,
+		/** The Linked accounts panel's Discord row; null when larry can't be asked. */
+		discord: links ? discordRow(links.discord, accountsFlash?.discord) : null,
+		accountsMessage: accountsFlash
+			? { level: accountsFlash.level, message: accountsFlash.message }
+			: null,
 		feedback,
 		averageRating: averageRating(feedback.map((f) => f.rating)),
 		hasPublicProfile: !!rosterEntry,
@@ -191,7 +199,8 @@ export const load = async ({ locals, url, platform, cookies }) => {
 };
 
 export const actions = {
-	default: async ({ request, locals, platform, cookies }) => {
+	// The edit form, posted to ?edit&/save so a refusal without JavaScript stays in edit mode
+	save: async ({ request, locals, platform, cookies }) => {
 		if (!locals.user) {
 			return redirect(302, signInHref('/profile?edit'));
 		}
@@ -277,7 +286,7 @@ export const actions = {
 				resyncMember(larry, user.cid),
 				readLinks(larry, user.cid)
 			]);
-			if (links?.discord) saved = synced === 'queued' ? 'soon' : 'later';
+			if (links?.discord) saved = synced.outcome === 'queued' ? 'soon' : 'later';
 		}
 		logger.info(`Saved the profile of ${user.cid}`, {
 			nameChanged,
@@ -291,6 +300,36 @@ export const actions = {
 			sameSite: 'lax',
 			maxAge: 60
 		});
+		return redirect(303, '/profile');
+	},
+
+	// The Linked accounts panel's buttons. Each acts for the session's CID, never one from the
+	// request, and carries its message back to /profile.
+	unlink: async ({ locals, platform, cookies }) => {
+		if (!locals.user) {
+			return redirect(302, signInHref('/profile'));
+		}
+		const { cid } = locals.user;
+		try {
+			const larry = platform?.env.LARRY;
+			if (!larry) throw new Error('The LARRY binding is not set');
+			await larry.unlink(Number(cid), 'discord');
+			logger.info(`Unlinked the Discord account of ${cid}`);
+		} catch (error) {
+			logger.error(`Could not unlink the Discord account of ${cid}`, error);
+			setAccountsFlash(cookies, { level: 'danger', message: errorMessage(error) });
+		}
+		return redirect(303, '/profile');
+	},
+
+	syncRoles: async ({ locals, platform, cookies }) => {
+		if (!locals.user) {
+			return redirect(302, signInHref('/profile'));
+		}
+		setAccountsFlash(
+			cookies,
+			syncedMessage(await resyncMember(platform?.env.LARRY, locals.user.cid))
+		);
 		return redirect(303, '/profile');
 	}
 };

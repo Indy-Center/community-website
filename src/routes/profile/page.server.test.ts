@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Links, SyncMembersResult } from '@indy-center/indy-larry-worker';
 import { eq } from 'drizzle-orm';
 import { usersTable } from '$lib/db/schema/users';
 import type { Database } from '$lib/server/db';
@@ -10,8 +9,10 @@ import {
 	seedMember,
 	testDb
 } from '$lib/testing/db';
+import { fakeLarry, type FakeLarry } from '$lib/testing/larry';
 import { callLoad } from '$lib/testing/site';
 import { SAVED_MESSAGES, UNAVAILABLE } from '$lib/forms/profile';
+import { SYNC_QUEUED } from '$lib/profile/linkedAccounts';
 import { actions, load } from './+page.server';
 
 vi.mock('$env/dynamic/private', async (importOriginal) => {
@@ -85,24 +86,6 @@ const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
 	}
 	return new Response('Not found', { status: 404 });
 });
-
-/** A fake LARRY binding: who it was asked to sync, and what it answers. */
-function fakeLarry(opts: { discord?: Links['discord']; sync?: SyncMembersResult | Error } = {}) {
-	const synced: number[][] = [];
-	return {
-		synced,
-		getLinks: async (): Promise<Links> => ({
-			discord:
-				opts.discord === undefined ? { id: '100000000000000001', source: 'vatusa' } : opts.discord,
-			teamspeak: null
-		}),
-		syncMembers: async (cids: number[]) => {
-			synced.push(cids);
-			if (opts.sync instanceof Error) throw opts.sync;
-			return opts.sync ?? cids.map((cid) => ({ cid, queued: true as const }));
-		}
-	};
-}
 
 function fakeCookies() {
 	const jar = new Map<string, string>();
@@ -211,16 +194,16 @@ async function save(
 		cookies = fakeCookies()
 	}: {
 		userId?: string;
-		larry?: ReturnType<typeof fakeLarry>;
+		larry?: FakeLarry;
 		cookies?: ReturnType<typeof fakeCookies>;
 	} = {}
 ) {
-	const request = new Request('https://flyindycenter.com/profile?edit', {
+	const request = new Request('https://flyindycenter.com/profile?edit&/save', {
 		method: 'POST',
 		body: new URLSearchParams(fields)
 	});
 	try {
-		const result = (await actions.default({
+		const result = (await actions.save({
 			request,
 			locals: await signedIn(userId),
 			platform: { env: { LARRY: larry } },
@@ -565,5 +548,118 @@ describe('/profile save', () => {
 		expect(result).toMatchObject({ status: 400 });
 		expect(result?.data).toBeUndefined();
 		expect(identity.writes).toEqual([]);
+	});
+});
+
+describe('/profile Linked accounts', () => {
+	it.each([
+		[
+			{ id: '100000000000000002', source: 'linked' as const },
+			{ state: 'linked', account: '100000000000000002' }
+		],
+		[{ id: '100000000000000001', source: 'vatusa' as const }, { state: 'vatusa' }],
+		[null, { state: 'none' }]
+	])('shows the Discord row for %j', async (discord, row) => {
+		const data = await visit('user-jordan', { larry: fakeLarry({ discord }) });
+
+		expect(data.discord).toEqual(row);
+		expect(data.accountsMessage).toBeNull();
+	});
+
+	it("shows the callback's message once, and the username it read", async () => {
+		const cookies = fakeCookies();
+		const message = 'Linked as @jordan_s. You were already in the Indy Center Discord.';
+		cookies.set(
+			'profile_accounts',
+			JSON.stringify({
+				level: 'success',
+				message,
+				discord: { id: '100000000000000002', username: 'jordan_s' }
+			})
+		);
+		const larry = fakeLarry({ discord: { id: '100000000000000002', source: 'linked' } });
+
+		const first = await visit('user-jordan', { larry, cookies });
+		expect(first.accountsMessage).toEqual({ level: 'success', message });
+		expect(first.discord).toEqual({ state: 'linked', account: '@jordan_s' });
+
+		const second = await visit('user-jordan', { larry, cookies });
+		expect(second.accountsMessage).toBeNull();
+		expect(second.discord).toEqual({ state: 'linked', account: '100000000000000002' });
+	});
+
+	it('says links are unavailable, and still loads the profile, when larry is unreachable', async () => {
+		const data = await visit('user-jordan', {
+			larry: fakeLarry({ links: new Error('Network connection lost.') })
+		});
+
+		// The panel shows LINKS_UNAVAILABLE for a null row
+		expect(data.discord).toBeNull();
+		expect(data.links).toBeNull();
+		expect(data.shownName).toBe('Jordan Sample');
+		expect(data.certifications).toEqual(['T-RC']);
+	});
+});
+
+/** Posts one of the Linked accounts panel's buttons, which always redirect back to /profile. */
+async function press(
+	action: 'unlink' | 'syncRoles',
+	{ userId = 'user-jordan', larry = fakeLarry(), cookies = fakeCookies() } = {}
+) {
+	const request = new Request(`https://flyindycenter.com/profile?/${action}`, {
+		method: 'POST',
+		// A CID in the request is ignored: only the session's is used
+		body: new URLSearchParams({ cid: '1000002' })
+	});
+	try {
+		await actions[action]({
+			request,
+			locals: await signedIn(userId),
+			platform: { env: { LARRY: larry } },
+			cookies
+		} as never);
+	} catch (thrown) {
+		const { status, location } = thrown as { status: number; location: string };
+		if (!location) throw thrown;
+		const flash = cookies.jar.get('profile_accounts');
+		return { redirect: { status, location }, flash: flash ? JSON.parse(flash) : null, larry };
+	}
+	throw new Error(`${action} did not redirect`);
+}
+
+describe('/profile Unlink', () => {
+	it("unlinks the session's own Discord account only", async () => {
+		const { redirect, larry, flash } = await press('unlink');
+
+		expect(redirect).toEqual({ status: 303, location: '/profile' });
+		expect(larry.unlinked).toEqual([{ cid: 1000001, service: 'discord' }]);
+		expect(flash).toBeNull();
+	});
+
+	it("shows larry's refusal as it comes", async () => {
+		const { flash } = await press('unlink', {
+			larry: fakeLarry({ unlink: new Error('Something went wrong at larry.') })
+		});
+
+		expect(flash).toEqual({ level: 'danger', message: 'Something went wrong at larry.' });
+	});
+});
+
+describe('/profile Sync my roles', () => {
+	it("syncs the session's own CID only, and says when", async () => {
+		const { larry, flash } = await press('syncRoles');
+
+		expect(larry.synced).toEqual([[1000001]]);
+		expect(flash).toEqual({ level: 'success', message: SYNC_QUEUED });
+	});
+
+	it("shows larry's reason as given when it declines", async () => {
+		const { flash } = await press('syncRoles', {
+			larry: fakeLarry({
+				sync: [{ cid: 1000001, queued: false, reason: 'Synced in the last 2 minutes.' }]
+			})
+		});
+
+		expect(flash).toEqual({ level: 'info', message: 'Synced in the last 2 minutes.' });
 	});
 });
