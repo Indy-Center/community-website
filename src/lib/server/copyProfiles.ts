@@ -40,6 +40,12 @@ export type CopyReport = {
 	cuts: string[];
 	skippedUnknown: string[];
 	skippedMalformed: string[];
+	/** Teacher-file entries ("cid (XX)") with no community row: their initials aren't copied. */
+	teachersWithoutAccount: string[];
+	/** CIDs whose teacher-file initials are empty. */
+	emptyTeacherInitials: string[];
+	/** Members identity refused with an error other than 404 ("cid: message"). */
+	failed: string[];
 	localInitialsUpdated: string[];
 	/** CIDs whose preferred name equal to the full name was cleared in community's row. */
 	localFullNamesCleared: string[];
@@ -107,12 +113,22 @@ export async function copyProfiles(options: {
 		cuts: [],
 		skippedUnknown: [],
 		skippedMalformed: [],
+		teachersWithoutAccount: [],
+		emptyTeacherInitials: [],
+		failed: [],
 		localInitialsUpdated: [],
 		localFullNamesCleared: [],
 		patches: []
 	};
 
-	for (const user of await store.users()) {
+	const users = await store.users();
+	const userCids = new Set(users.map((user) => user.cid));
+	for (const { cid, initials } of teachers) {
+		if (initials.trim() === '') report.emptyTeacherInitials.push(cid);
+		else if (!userCids.has(cid)) report.teachersWithoutAccount.push(`${cid} (${initials})`);
+	}
+
+	for (const user of users) {
 		if (!user.cid) continue;
 		const teacher = teacherByCid.get(user.cid);
 		const { patch, cuts, malformed, droppedFullName } = buildPatch(user, teacher);
@@ -136,9 +152,12 @@ export async function copyProfiles(options: {
 		} catch (error) {
 			if (error instanceof IdentityApiError && error.status === 404) {
 				report.skippedUnknown.push(user.cid);
-				continue;
+			} else {
+				report.failed.push(
+					`${user.cid}: ${error instanceof Error ? error.message : String(error)}`
+				);
 			}
-			throw error;
+			continue;
 		}
 		report.patched += 1;
 

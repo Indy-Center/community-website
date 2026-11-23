@@ -167,6 +167,32 @@ describe('operating initials', () => {
 		expect(patches()[0].body.operating_initials).toBe('AB');
 	});
 
+	it('lists teachers in the file with no community row, and sends them nothing', async () => {
+		await addUser('100001');
+
+		const report = await run([
+			{ cid: '100001', initials: 'AB' },
+			{ cid: '100009', initials: 'ZZ' }
+		]);
+
+		expect(report.teachersWithoutAccount).toEqual(['100009 (ZZ)']);
+		expect(patches().map(({ cid }) => cid)).toEqual(['100001']);
+	});
+
+	it('lists teachers without a community row on a dry run too', async () => {
+		const report = await run([{ cid: '100009', initials: 'ZZ' }], true);
+
+		expect(report.teachersWithoutAccount).toEqual(['100009 (ZZ)']);
+	});
+
+	it('logs a teacher row with empty initials', async () => {
+		await addUser('100001', { operatingInitials: 'AB' });
+
+		const report = await run([{ cid: '100001', initials: ' ' }]);
+
+		expect(report.emptyTeacherInitials).toEqual(['100001']);
+	});
+
 	it('skips and logs a malformed pair, sending the rest', async () => {
 		await addUser('100001', { operatingInitials: 'a1', pronouns: 'she/her' });
 
@@ -188,6 +214,23 @@ describe('members identity does not know', () => {
 		expect(report.skippedUnknown).toEqual(['100001']);
 		expect(report.patched).toBe(1);
 		expect(patches()).toHaveLength(2);
+	});
+
+	it('lists another identity error and carries on, so the run ends with its counts', async () => {
+		await addUser('100001');
+		await addUser('100002');
+		const inner = fetchMock.getMockImplementation()!;
+		fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+			url.endsWith('/100001')
+				? Response.json({ error: 'server_error' }, { status: 500 })
+				: inner(url, init)
+		);
+
+		const report = await run();
+
+		expect(report.failed).toHaveLength(1);
+		expect(report.failed[0]).toMatch(/^100001: /);
+		expect(report.patched).toBe(1);
 	});
 });
 

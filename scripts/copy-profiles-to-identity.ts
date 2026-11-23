@@ -70,6 +70,9 @@ function printReport(report: CopyReport, dryRun: boolean) {
 	print('Cuts', report.cuts);
 	print('Skipped, unknown to identity', report.skippedUnknown);
 	print('Skipped, malformed', report.skippedMalformed);
+	print('Teachers with no community account (initials not copied)', report.teachersWithoutAccount);
+	print('Teachers with empty initials in the file', report.emptyTeacherInitials);
+	print('Failed (identity refused; fix and run again before deploying)', report.failed);
 	print('Local initials updated from the teacher file', report.localInitialsUpdated);
 	print('Local preferred names equal to the full name, cleared', report.localFullNamesCleared);
 }

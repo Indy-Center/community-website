@@ -311,10 +311,15 @@ The rules, for each `users` row with a CID:
   is sent; a malformed pair is skipped. When the teacher's pair differs from community's, the local
   row is updated to match after identity accepts it.
 - Bios stay in community.
-- A member identity doesn't know (404) is skipped and listed. Any other refusal stops the run.
+- A teacher in the file with no `users` row (they've never signed in to community) gets nothing
+  copied and is listed with their initials, as is a teacher row with empty initials. Staff set
+  those in identity by hand, or the teacher does on their profile after signing in.
+- A member identity doesn't know (404) is skipped and listed. Any other refusal is listed with its
+  error, and the run carries on.
 
 At the end it prints how many members were patched, full names dropped, cuts, members skipped
-as unknown or malformed, and local initials updated, with the lists.
+as unknown or malformed, teachers with no account or empty initials, members identity refused,
+and local initials updated, with the lists.
 
 ## Local development
 
