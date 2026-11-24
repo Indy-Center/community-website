@@ -6,7 +6,7 @@ import {
 	findBookingConflict,
 	getBookablePositions,
 	getSopRequirements,
-	positionText,
+	formatPosition,
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
@@ -371,7 +371,7 @@ describe('TMU', () => {
 	});
 
 	it('is named once in words, not "ZID TMU · ZID TMU"', () => {
-		expect(positionText('ZID_TMU', [tmu])).toBe('ZID TMU · ZID_TMU');
+		expect(formatPosition(tmu, 'ZID_TMU')).toBe('ZID TMU · ZID_TMU');
 	});
 });
 
@@ -411,28 +411,22 @@ describe('getSopRequirements', () => {
 	});
 });
 
-describe('positionText', () => {
+describe('formatPosition', () => {
 	const falmouth = {
-		id: 'vnas-falmouth',
 		callsign: 'IND_83_CTR',
 		name: 'Falmouth 83',
 		shortName: 'FLM 83',
-		radioName: 'Indy Center',
-		frequency: 128225000,
-		retired: false,
-		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
-		requiredCredentials: []
+		radioName: 'Indy Center'
 	};
 
 	it('reads like Position inline, without the frequency', () => {
-		expect(positionText('IND_83_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
+		expect(formatPosition(falmouth, 'IND_83_CTR')).toBe('Indy Center · FLM 83 · Falmouth 83');
 	});
 
-	it('finds a relief login as the position it covers', () => {
-		expect(positionText('IND_831_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
-	});
-
-	it('shows an unknown callsign alone', () => {
-		expect(positionText('XYZ_GND', [falmouth])).toBe('XYZ_GND');
+	it('falls back to the callsign for a missing short name, and alone with no position', () => {
+		expect(formatPosition({ ...falmouth, shortName: null }, 'IND_83_CTR')).toBe(
+			'Indy Center · IND_83_CTR · Falmouth 83'
+		);
+		expect(formatPosition(undefined, 'XYZ_GND')).toBe('XYZ_GND');
 	});
 });

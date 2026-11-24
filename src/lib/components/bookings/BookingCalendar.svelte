@@ -6,9 +6,9 @@
 		getWeekDays,
 		layoutCalendarDay,
 		parseBookingTime,
-		positionText,
 		startOfUtcDay
 	} from '$lib/utils/bookings';
+	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
 	import IconChevronLeft from '~icons/mdi/chevron-left';
 	import IconChevronRight from '~icons/mdi/chevron-right';
