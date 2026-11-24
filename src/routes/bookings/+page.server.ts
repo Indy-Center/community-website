@@ -9,10 +9,12 @@ import { logger } from '$lib/server/logger';
 import { BOOKINGS_ADMIN_ONLY } from '$lib/config/bookings';
 import { fetchEventNames } from '$lib/server/bookings';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
-import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
+import type { AtcBooking, BookingsClient, CmsPosition } from '$lib/types/bookings';
 import {
 	EVENT_BOOKING_PREFIX,
 	findBookingConflict,
+	findControllerConflict,
+	formatPosition,
 	formatZuluRange,
 	getBookablePositions,
 	isMentor,
@@ -96,6 +98,13 @@ const mentors = (qualifications: { roles: string[] } | null) =>
 	isMentor(qualifications?.roles ?? []);
 
 const UNAVAILABLE = 'Booking is not available right now. Please try again later.';
+
+// A position in words for a message, from the catalogue (the callsign alone when it isn't there)
+const positionName = (feed: CmsPosition[], callsign: string) =>
+	formatPosition(
+		feed.find((position) => position.callsign === callsign),
+		callsign
+	);
 
 // What the booker is told when a write fails: the booking system's reason when it refused, else
 // that it is unavailable
@@ -253,6 +262,17 @@ export const actions = {
 			return setError(form, 'callsign', `Already booked ${formatZuluRange(conflict)}`);
 		}
 
+		// Nobody works two positions at once: the booker (the student, for training) must be free
+		const busy = findControllerConflict(bookings, forCid ?? locals.user.cid, start, end);
+		if (busy) {
+			const who = forCid ? 'That member is' : "You're";
+			return setError(
+				form,
+				'',
+				`${who} already booked on ${positionName(feed, busy.callsign)} ${formatZuluRange(busy)}`
+			);
+		}
+
 		// Our own ID for it: how it is updated and cancelled later
 		const externalId = crypto.randomUUID();
 		try {
@@ -306,6 +326,17 @@ export const actions = {
 		const conflict = findBookingConflict(bookings, booking.callsign, start, end, booking.id);
 		if (conflict) {
 			return setError(form, '', `This position is already booked ${formatZuluRange(conflict)}`);
+		}
+
+		// The booking's controller can't be booked elsewhere at the new times either
+		const busy = findControllerConflict(bookings, booking.cid, start, end, booking.id);
+		if (busy) {
+			const feed = await fetchPositions(locals);
+			return setError(
+				form,
+				'',
+				`This controller is already booked on ${positionName(feed, busy.callsign)} ${formatZuluRange(busy)}`
+			);
 		}
 
 		try {

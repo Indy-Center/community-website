@@ -432,6 +432,23 @@ export function findBookingConflict(
 	);
 }
 
+// The controller's own booking that clashes with start–end, on any position, ignoring the one being
+// edited: nobody works two positions at once
+export function findControllerConflict(
+	bookings: AtcBooking[],
+	cid: number | string,
+	start: Date,
+	end: Date,
+	ignoreId?: number
+) {
+	return bookings.find(
+		(booking) =>
+			String(booking.cid) === String(cid) &&
+			booking.id !== ignoreId &&
+			overlaps(booking, start, end)
+	);
+}
+
 // Positions already booked at some point between start and end, keyed by callsign
 export function getBookedPositions(bookings: AtcBooking[], start: Date, end: Date) {
 	return new Map(

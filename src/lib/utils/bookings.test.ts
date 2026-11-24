@@ -4,6 +4,7 @@ import {
 	comparePositions,
 	eventIdOf,
 	findBookingConflict,
+	findControllerConflict,
 	getBookablePositions,
 	getSopRequirements,
 	formatPosition,
@@ -428,5 +429,33 @@ describe('formatPosition', () => {
 			'Indy Center · IND_83_CTR · Falmouth 83'
 		);
 		expect(formatPosition(undefined, 'XYZ_GND')).toBe('XYZ_GND');
+	});
+});
+
+describe('findControllerConflict', () => {
+	const tower = booking({ id: 1, cid: 1000001, callsign: 'IND_E_TWR' });
+	const at = (from: string, to: string) => [new Date(from), new Date(to)] as const;
+
+	it("finds the controller's booking on another position that overlaps", () => {
+		expect(
+			findControllerConflict(
+				[tower],
+				1000001,
+				...at('2026-12-01T19:00:00Z', '2026-12-01T21:00:00Z')
+			)?.callsign
+		).toBe('IND_E_TWR');
+	});
+
+	it('ignores other controllers, back-to-back times, and the booking being edited', () => {
+		const times = at('2026-12-01T19:00:00Z', '2026-12-01T21:00:00Z');
+		expect(findControllerConflict([tower], '1000002', ...times)).toBeUndefined();
+		expect(
+			findControllerConflict(
+				[tower],
+				1000001,
+				...at('2026-12-01T20:00:00Z', '2026-12-01T22:00:00Z')
+			)
+		).toBeUndefined();
+		expect(findControllerConflict([tower], 1000001, ...times, 1)).toBeUndefined();
 	});
 });

@@ -495,3 +495,40 @@ describe('/bookings mentors booking training', () => {
 		expect(client.cancelBooking).toHaveBeenCalledWith({ externalId: 'training' });
 	});
 });
+
+describe('/bookings one controller, one position at a time', () => {
+	it('refuses a booking that overlaps one of your own on another position', async () => {
+		const client = stubClient([listed({ externalId: 'mine', cid: 1000001, callsign: 'IND_APP' })]);
+
+		const result = await call('create', client, '1000001', {
+			callsign: 'AID_GND',
+			...times(25, 27)
+		});
+
+		expect(result.data.form.errors._errors?.[0]).toMatch(/You're already booked on IND_APP radio/);
+		expect(client.createBooking).not.toHaveBeenCalled();
+	});
+
+	it('allows a booking that starts as your other one ends', async () => {
+		const client = stubClient([listed({ externalId: 'mine', cid: 1000001, callsign: 'IND_APP' })]);
+
+		await call('create', client, '1000001', { callsign: 'AID_GND', ...times(26, 28) });
+
+		expect(client.createBooking).toHaveBeenCalledOnce();
+	});
+
+	it('refuses moving a booking onto the times of your other one', async () => {
+		const client = stubClient([
+			listed({ id: 1, externalId: 'first', cid: 1000001, callsign: 'IND_APP' }),
+			listed({ id: 2, externalId: 'second', cid: 1000001, callsign: 'AID_GND', ...{} })
+		]);
+		// The second sits at 24–26h like the first; move it to 25–27h, still over the first
+		const result = await call('update', client, '1000001', {
+			externalId: 'second',
+			...times(25, 27)
+		});
+
+		expect(result.data.form.errors._errors?.[0]).toMatch(/already booked on IND_APP radio/);
+		expect(client.updateBooking).not.toHaveBeenCalled();
+	});
+});
