@@ -6,7 +6,7 @@ SvelteKit app deployed to `flyindycenter.com`. Handles the public-facing communi
 
 One SvelteKit app at the repository root, deployed as the `community-website` Worker. `src/worker.ts` is its entry point: it serves the site and runs the roster refresh on a cron every 5 minutes.
 
-- `src/hooks.server.ts` — auth gate; reads the `session` cookie, validates it against D1, populates `locals.user`, `locals.session`, `locals.roles` (for identity sessions, roles are refreshed from the identity server at most every 5 minutes). Also gives each request its CMS client, `locals.cms`.
+- `src/hooks.server.ts` — auth gate; reads the `session` cookie, validates it against D1, populates `locals.user`, `locals.session`, `locals.roles` (for identity sessions, roles are refreshed from the identity server at most every 5 minutes). Also gives each request its CMS client, `locals.cms`, the CMS positions catalogue's reader, `locals.positions`, and the booking system's client, `locals.bookings` (undefined without its settings).
 - `src/routes/login`, `src/routes/logout` — sign-in and sign-out; `src/routes/login/connect/` starts the OAuth flow, `src/routes/login/identity/callback/` and `src/routes/login/connect/callback/` finish it.
 - `src/routes/roster/` — controller roster page.
 - `src/routes/events/` — events listing.
@@ -203,8 +203,9 @@ noted in the log and shown to the reviewer. Larry's deploy needs these in `SEND_
 ## Vars and secrets for the CMS
 
 Partners are edited in the CMS (Payload, at `cms.flyindycenter.com`) and read
-from its `GET /api/community/partners` by `src/lib/server/cms/`, the only
-place that talks to it.
+from its `GET /api/community/partners` by `src/lib/server/cms/`. The other
+CMS read is the public positions catalogue, by `src/lib/server/positions.ts`;
+see [Bookings](#bookings).
 
 | Name                  | Kind       | What                                                                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -400,12 +401,45 @@ app`, and `/roster` lists them. Stop the fake and run it again to see a refused 
 says `Keeping the last roster copy` and `Skipping the membership sync`, and `/roster` is
 unchanged. The copy stays in `.wrangler/state` between runs.
 
+## Bookings
+
+`/bookings` shows ZID's bookings on a calendar and a list, and lets rostered controllers book
+positions in the booking system (a VATSIM ATC booking calendar). The site talks to it directly
+through `src/lib/server/bookingsApi.ts`; see the settings above and the fake below.
+
+- **Admins only for now.** While `BOOKINGS_ADMIN_ONLY` in `src/lib/config/bookings.ts` is `true`,
+  `/bookings`, its nav link and the home page's "Controllers Starting Soon" panel are for admins
+  alone. Set it to `false` to open them to every member.
+- **Positions.** The root layout reads the CMS positions catalogue (`locals.positions`, kept for 5
+  minutes and served for 7 days while the CMS is failing) and hands it to Centerline with
+  `setPositions`. Every place a position is named uses `<Position callsign>`; where a component
+  can't go (a confirm dialog, an aria-label, the Discord reminder), `positionText` words it the same
+  way. Retired positions are never offered. Positions sort TMU first, then Center,
+  Approach/Departure, Tower, Ground, Ramp and Clearance.
+- **Certifications.** The site decides who may book what; the booking system only checks T2 (see
+  below). The rules are in code, `getSopRequirements` in `src/lib/utils/bookings.ts`: S-GC for
+  ground and S-LC for tower at the simple ATCTs of SOP 3.20 (`SIMPLE_ATCT_FACILITIES`), A-GC and A-LC
+  at every other ATCT, S-GC for clearance, T-RC for approach and E-RC with T2-CTR for center. They
+  replace the CMS's `requiredCredentials`, which don't follow the SOP yet; once the CMS does, drop
+  them and read the CMS's again (a TODO in `src/lib/config/bookings.ts` says so).
+- **Writes.** A booking, change or cancel waits for the booking system's answer. When it refuses
+  (an overlap, say), the booker sees its reason. The site also refuses overlaps itself, and keeps
+  the booking list for 30 seconds so pages don't spend the booking system's rate limit (100 requests
+  per 15 minutes); a write clears it.
+- **Mentors** (VATUSA `ATM`, `DATM`, `TA`, `INS` or `MTR`) can also book for any other rostered
+  controller: the booking goes in as `training` under the student's CID, on a position the mentor
+  holds, and mentors can change or cancel any training booking.
+- **Event rosters.** Once an event's roster is out, each assigned controller is booked on their
+  position for the event's hours, as an `event` booking (`src/lib/server/eventBookings.ts`).
+  Changes to the roster, the event's hours or its publishing follow; these bookings are changed
+  from the event, not from `/bookings`.
+- **Reminders.** The five-minute cron DMs each booked controller through Larry three hours before
+  their booking starts (`src/lib/server/triggers/remindBookings.ts`).
+
 ## Bookings from a fake booking system
 
-`/bookings` talks to the booking system's API directly (`src/lib/server/bookingsApi.ts`), at
-`VATSIM_BOOKING_API_URL` with our `VATSIM_BOOKING_API_KEY`; the bookable positions come from the
-CMS's public positions feed. To try it without the real key, run `dev/fake-bookings/`, a stand-in
-for the booking system's API that starts with no bookings, and point the site at it in `.env`:
+To try bookings without the real key, run `dev/fake-bookings/`, a stand-in for the booking
+system's API that starts with no bookings, and point the site at it in `.env`:
 
 ```bash
 npm run dev:bookings           # the fake booking system, on port 8790
@@ -435,13 +469,6 @@ refresh, every five minutes:
   **Create the T2 restriction** workflow (Actions tab, run by hand; it needs the repo secrets
   `VATSIM_BOOKING_API_URL` and `VATSIM_BOOKING_API_KEY`). Its run summary gives the ID, which goes in
   `VATSIM_BOOKING_T2_RESTRICTION_ID`; T2 sync is off until it is set.
-
-Certifications other than T2 are checked here, not by the booking system: `/bookings` only offers
-and accepts the positions a controller's roster credentials allow.
-
-Mentors (VATUSA `ATM`, `DATM`, `TA`, `INS` or `MTR`) can also book for any other rostered controller:
-the booking goes in as `training` under the student's CID, on a position the mentor holds, and
-mentors can change or cancel any training booking.
 
 With the fake, create the restriction and put its ID in `.env`:
 
