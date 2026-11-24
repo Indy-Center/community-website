@@ -4,27 +4,45 @@ SvelteKit app deployed to `flyindycenter.com`. Handles the public-facing communi
 
 ## Project layout
 
-One SvelteKit app at the repository root, deployed as the `community-website` Worker. `src/worker.ts` is its entry point: it serves the site and runs the roster refresh on a cron every 5 minutes.
+One SvelteKit app at the repository root, deployed as the `community-website` Worker. `src/worker.ts` is its entry point: it serves the site, and every 5 minutes its cron refreshes the roster (then syncs memberships and the booking system's roster and T2 from it) and sends booking reminders.
+
+Routes:
 
 - `src/hooks.server.ts` — auth gate; reads the `session` cookie, validates it against D1, populates `locals.user`, `locals.session`, `locals.roles` (for identity sessions, roles are refreshed from the identity server at most every 5 minutes). Also gives each request its CMS client, `locals.cms`, the CMS positions catalogue's reader, `locals.positions`, and the booking system's client, `locals.bookings` (undefined without its settings).
+- `src/routes/+layout.server.ts` — every page's data: the signed-in member, their header name, roles, and the CMS positions catalogue that the layout hands to Centerline (`setPositions`).
 - `src/routes/login`, `src/routes/logout` — sign-in and sign-out; `src/routes/login/connect/` starts the OAuth flow, `src/routes/login/identity/callback/` and `src/routes/login/connect/callback/` finish it.
 - `src/routes/roster/` — controller roster page.
-- `src/routes/events/` — events listing.
-- `src/routes/feedback/` — member feedback submission.
-- `src/routes/admin/feedback/` — the feedback review queue; `[id]/` reviews one item. See [Feedback review](#feedback-review).
-- `src/routes/visit/` — visiting controller request form.
+- `src/routes/staff/` — the staff page: who holds each staff position and team section.
+- `src/routes/bookings/` — position bookings, on a calendar and a list; admins only for now. See [Bookings](#bookings).
+- `src/routes/events/` — events listing; `[id]/` is one event, with position sign-up, `[id]/edit/` and `new/` edit and create events, `[id]/positions/` manages its roster, and `[id]/calendar.ics` downloads it.
+- `src/routes/feedback/[[cid]]/` — pilot feedback submission, for a controller when a CID is given.
+- `src/routes/staffing/` — staffing requests, posted to the Events Team's channel through Larry.
+- `src/routes/visit/` — joining Indy Center: `become-a-controller/`, `become-community-member/` and `get-connected/`.
 - `src/routes/partners/` — partner cards, from the CMS.
 - `src/routes/partners/[slug]/` — one partner's page. Member perks go only to signed-in users; a guest's page data holds just how many there are.
-- `src/routes/admin/` — admin tooling; role-gated.
+- `src/routes/socials/` — the community's socials, with the Discord join button.
+- `src/routes/contact/` — contact details.
 - `src/routes/profile/` — the member's own profile, where they set their name, pronouns, bio and operating initials; see [The profile page](#the-profile-page). `discord/` starts Link Discord and `discord/callback/` finishes it; see [Linked accounts](#linked-accounts). `[cid]/` is a controller's public profile. `/settings` only redirects to `/profile?edit`.
-- `src/lib/server/triggers/processRoster.ts` — the cron job: refreshes the roster copy from the training app, then syncs memberships from it; syncs the staff points of contact from VATUSA.
-- `src/lib/server/roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
-- `src/lib/server/identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `patchIdentityUser`, `writeOperatingInitials`), and the member's own profile save (`updateOwnProfile`); see "Identity API client".
-- `src/lib/server/membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
-- `src/lib/server/vatsim/` — VATSIM Data Feed integration.
-- `src/lib/server/discord.ts` — Discord messages: the feedback alerts and post Larry queues, and the older webhook helper.
-- `src/lib/server/feedback.ts` — feedback review helpers: the review log, reviewers, and how a pilot is named when feedback is published.
-- `src/lib/server/partners.ts` — reads the partners document as the visitor may see it (member perks in full if signed in, only a count for a guest), or null when the CMS is down and no copy is kept. Every page that shows partners reads through it.
+- `src/routes/admin/` — admin tooling; role-gated. `users/` lists members and `users/[id]/` manages one; `feedback/` is the feedback review queue and `feedback/[id]/` reviews one item (see [Feedback review](#feedback-review)).
+
+Server code, in `src/lib/server/`:
+
+- `triggers/processRoster.ts` — the roster cron job: refreshes the roster copy from the training app, then syncs memberships and the booking system from it; syncs the staff points of contact from VATUSA.
+- `triggers/remindBookings.ts` — the booking reminder cron job: DMs each controller through Larry before their booking.
+- `roster.ts` — the roster refresh, and the reads of the stored credentials: the available credentials, and one CID's. `src/lib/credentials.ts` names and sorts credentials in the browser.
+- `membership.ts` — membership sync; run for one user at sign-in, and for everyone by the cron job.
+- `staff.ts` — who holds each staff position and team section, shared by the staff page, the roster and profiles.
+- `session.ts` — the site's own sessions in D1, and their cookie.
+- `identity.ts` — OAuth client for the identity server, its userinfo lookup, and the API calls under community's own client token (`clientToken`, `patchIdentityUser`, `writeOperatingInitials`), and the member's own profile save (`updateOwnProfile`); see "Identity API client". `identityCheck.ts` is the periodic userinfo check `hooks.server.ts` runs, and `oauth.ts` the VATSIM Connect client.
+- `copyProfiles.ts` — copies members' profiles into identity (`scripts/copy-profiles-to-identity.ts`).
+- `bookingsApi.ts` — the booking system's client: bookings, the roster and T2 endorsements. `bookings.ts` names the events bookings belong to.
+- `bookingRoster.ts` — keeps the booking system's roster and T2 endorsements in step with the roster copy.
+- `eventBookings.ts` — books event rosters on the booking calendar.
+- `positions.ts` — reads the CMS positions catalogue. `keptReads.ts` keeps reads from other systems (the booking list, the catalogue) and serves them stale while those systems fail.
+- `cms/` — the CMS client for the partners document. `partners.ts` reads that document as the visitor may see it (member perks in full if signed in, only a count for a guest), or null when the CMS is down and no copy is kept. Every page that shows partners reads through it.
+- `larry.ts` — Larry's service binding: linked accounts, role syncs and channel names. `discord.ts` holds the Discord messages (the feedback alerts and posts Larry queues, and the older webhook helper), `discordLink.ts` Link Discord's sign-in, `socials.ts` the Discord join button's state, and `staffing.ts` the staffing request message.
+- `feedback.ts` — feedback review helpers: the review log, reviewers, and how a pilot is named when feedback is published.
+- `vatsim/` — VATSIM's data (events, METARs), VATSIM Connect, VATUSA (rosters, visiting, facility staff) and vNAS (who is online, and the ARTCC's facilities and positions).
 
 ## Design system
 
