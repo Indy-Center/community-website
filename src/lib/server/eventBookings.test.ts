@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { eventPositionsTable, eventsTable, type Event } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
+import { stubBookingsClient } from '$lib/testing/bookings';
 import { seedMember, testDb } from '$lib/testing/db';
 import type { BookingsClient } from '$lib/types/bookings';
 import { eventIdOf } from '$lib/utils/bookings';
@@ -36,15 +37,7 @@ vi.mock('$lib/server/vatsim/vnasDataClient', () => ({
 const HOUR = 3600000;
 const EVENT_ID = 'event-1';
 
-function stubClient() {
-	return {
-		listOrgBookings: vi.fn(async () => []),
-		getPositions: vi.fn(async () => []),
-		createBooking: vi.fn(async () => {}),
-		updateBooking: vi.fn(async () => {}),
-		cancelBooking: vi.fn(async () => {})
-	} satisfies BookingsClient;
-}
+const stubClient = () => stubBookingsClient() satisfies BookingsClient;
 
 let db: Database;
 

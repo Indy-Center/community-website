@@ -16,6 +16,13 @@ export const BOOKINGS_URL = 'https://flyindycenter.com/bookings';
 export const MAX_BOOKING_HOURS = 13;
 export const MAX_BOOKING_ADVANCE_DAYS = 180;
 
+// The roster endorsement that earns the booking system's Indy Center (T2) restriction
+// endorsement. The restriction's own ID is the VATSIM_BOOKING_T2_RESTRICTION_ID setting.
+export const T2_ENDORSEMENT = 'T2-CTR';
+
+// VATUSA facility roles that make someone a mentor in the booking system
+export const MENTOR_ROLES = ['INS', 'MTR'];
+
 // Credentials a position can require, from the lowest up. Holding one covers every credential
 // below it. Others, such as T2-CTR, only match themselves.
 export const CREDENTIAL_LADDER = ['S-GC', 'A-GC', 'S-LC', 'A-LC', 'T-RC', 'E-RC'];

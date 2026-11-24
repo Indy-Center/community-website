@@ -22,6 +22,8 @@ declare global {
 			/** The booking system's base URL (including `/api`) and our API key; see the README. */
 			VATSIM_BOOKING_API_URL?: string;
 			VATSIM_BOOKING_API_KEY?: string;
+			/** The booking system's Indy Center (T2) restriction; T2 sync is off without it. */
+			VATSIM_BOOKING_T2_RESTRICTION_ID?: string;
 		}
 	}
 	namespace App {

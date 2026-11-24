@@ -39,6 +39,19 @@ export type NewBooking = {
 	end: Date;
 };
 
+// A member of our organization's roster in the booking system. Every field is always sent: what is
+// left out takes the booking system's default (member, home, not a mentor).
+export type BookingMember = {
+	cid: number;
+	rating: number;
+	role: 'member' | 'manager';
+	isHome: boolean;
+	isMentor: boolean;
+};
+
+// One controller's endorsement on a position restriction, such as Indy Center's T2
+export type RestrictionEndorsement = { id: string; cid: number };
+
 // The booking system as the site sees it (see $lib/server/bookingsApi). Writes return once the
 // booking system has accepted them, and throw BookingRefusedError with its reason when it won't.
 export type BookingsClient = {
@@ -47,4 +60,10 @@ export type BookingsClient = {
 	createBooking(booking: NewBooking): Promise<void>;
 	updateBooking(change: { externalId: string; start?: Date; end?: Date }): Promise<void>;
 	cancelBooking(ref: { externalId: string }): Promise<void>;
+	listMembers(): Promise<BookingMember[]>;
+	// The whole roster: anyone left out is removed
+	replaceMembers(members: BookingMember[]): Promise<void>;
+	listEndorsements(restrictionId: string): Promise<RestrictionEndorsement[]>;
+	grantEndorsement(restrictionId: string, cid: number): Promise<void>;
+	revokeEndorsement(restrictionId: string, endorsementId: string): Promise<void>;
 };

@@ -341,6 +341,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
 - `VATSIM_BOOKING_API_URL`, `VATSIM_BOOKING_API_KEY` — the booking system: its base URL (including `/api`) and our organization's API key. Without both the bookings page loads empty and booking is disabled; see [Bookings from a fake booking system](#bookings-from-a-fake-booking-system) to try it locally.
+- `VATSIM_BOOKING_T2_RESTRICTION_ID` — the booking system's Indy Center (T2) restriction, created once; T2 sync is off without it. Not a secret: once it exists, it belongs in `vars` in `wrangler.jsonc`. See [Roster and T2 in the booking system](#roster-and-t2-in-the-booking-system).
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Link Discord on the profile, through the "Indy Center" Discord app; see [Linked accounts](#linked-accounts). Without them Link Discord says Discord didn't confirm the account.
 
@@ -418,6 +419,30 @@ VATSIM_BOOKING_API_KEY=anything
 Bookings sit in its memory and reset when it stops. Like the real one, it refuses a booking that
 overlaps another on the same position, and the site shows its reason. Without both settings the
 page loads empty and booking is disabled.
+
+### Roster and T2 in the booking system
+
+The booking system keeps its own copy of our roster and of who holds T2. We don't use its portal,
+so the roster cron (`src/lib/server/bookingRoster.ts`) keeps both in step after each good roster
+refresh, every five minutes:
+
+- **Roster.** Every rostered controller, home and visiting, goes with their rating, `isHome` (from
+  VATUSA's home roster) and `isMentor` (VATUSA's `INS` or `MTR` role), all as members. Every field is
+  sent every time, because the booking system fills in what is left out (home, not a mentor). The
+  roster is sent only when it differs, and the booking system removes anyone left off it.
+- **T2.** Every rostered controller holding `T2-CTR` is endorsed on the Indy Center restriction
+  (`IND_*_CTR`), and anyone else's endorsement is revoked. The restriction is created once, and its
+  ID goes in `VATSIM_BOOKING_T2_RESTRICTION_ID`; T2 sync is off until it is set.
+
+Certifications other than T2 are checked here, not by the booking system: `/bookings` only offers
+and accepts the positions a controller's roster credentials allow.
+
+With the fake, create the restriction and put its ID in `.env`:
+
+```bash
+curl -s -X POST http://localhost:8790/api/org/session/restrictions -H 'Authorization: Bearer x' \
+  -H 'Content-Type: application/json' -d '{"name":"Indy Center","tier":"T2","patterns":"IND_*_CTR"}'
+```
 
 ## Tests
 

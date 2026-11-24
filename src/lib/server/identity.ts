@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'arctic';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
+import { ATC_RATINGS } from '$lib/config/ratings';
 import type { VatsimUserData } from '$lib/types/vatsim';
 
 export const IDENTITY_CALLBACK_PATH = '/login/identity/callback';
@@ -211,25 +212,8 @@ export function toSiteRoles(roles: string[]): string[] {
 	return roles.map((role) => role.replace(/^community:/, ''));
 }
 
-// Identity serves only the short rating codes; these restore the id and long
+// Identity serves only the short rating codes; ATC_RATINGS and these restore the id and long
 // name that VATSIM Connect sends alongside them.
-const ATC_RATINGS: Record<string, { id: number; long: string }> = {
-	INAC: { id: -1, long: 'Inactive' },
-	SUS: { id: 0, long: 'Suspended' },
-	OBS: { id: 1, long: 'Observer' },
-	S1: { id: 2, long: 'Tower Trainee' },
-	S2: { id: 3, long: 'Tower Controller' },
-	S3: { id: 4, long: 'Senior Student' },
-	C1: { id: 5, long: 'Enroute Controller' },
-	C2: { id: 6, long: 'Controller 2' },
-	C3: { id: 7, long: 'Senior Controller' },
-	I1: { id: 8, long: 'Instructor' },
-	I2: { id: 9, long: 'Instructor 2' },
-	I3: { id: 10, long: 'Senior Instructor' },
-	SUP: { id: 11, long: 'Supervisor' },
-	ADM: { id: 12, long: 'Administrator' }
-};
-
 const PILOT_RATINGS: Record<string, { id: number; long: string }> = {
 	NEW: { id: 0, long: 'Basic Member' },
 	PPL: { id: 1, long: 'Private Pilot License' },

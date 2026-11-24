@@ -128,6 +128,7 @@ export function createBookingsApi(options: BookingsApiOptions): BookingsClient {
 	const now = options.now ?? Date.now;
 	const base = options.baseUrl.replace(/\/+$/, '');
 	const external = (id: string) => `/bookings/external/${encodeURIComponent(id)}`;
+	const restriction = (id: string) => `/org/session/restrictions/${encodeURIComponent(id)}`;
 
 	/**
 	 * One request to the booking system, returning its `data`. 404 comes back as `null` for the
@@ -232,6 +233,56 @@ export function createBookingsApi(options: BookingsApiOptions): BookingsClient {
 		async cancelBooking({ externalId }) {
 			await call('DELETE', external(externalId));
 			await written();
+		},
+
+		// The roster changes rarely and is read once per roster sync, so it isn't kept
+		async listMembers() {
+			const body = await call('GET', '/org/members');
+			return (Array.isArray(body) ? (body as Wire[]) : []).map((w) => ({
+				cid: Number(w.cid),
+				rating: Number(w.rating),
+				role: w.role === 'manager' ? ('manager' as const) : ('member' as const),
+				isHome: w.isHome !== false,
+				isMentor: w.isMentor === true
+			}));
+		},
+
+		async replaceMembers(members) {
+			await call('PUT', '/org/members', {
+				members: members.map((m) => ({
+					cid: String(m.cid),
+					rating: m.rating,
+					role: m.role,
+					isHome: m.isHome,
+					isMentor: m.isMentor
+				})),
+				prune: true
+			});
+		},
+
+		async listEndorsements(restrictionId) {
+			const body = await call('GET', `${restriction(restrictionId)}/endorsements`);
+			if (body === null) throw new Error(`The booking system has no restriction ${restrictionId}`);
+			return (Array.isArray(body) ? (body as Wire[]) : []).map((w) => ({
+				id: String(w.id),
+				cid: Number(w.cid)
+			}));
+		},
+
+		// No duration: the endorsement lasts until it is revoked
+		async grantEndorsement(restrictionId, cid) {
+			const found = await call('POST', `${restriction(restrictionId)}/endorsements`, {
+				cid: String(cid)
+			});
+			if (found === null) throw new Error(`The booking system has no restriction ${restrictionId}`);
+		},
+
+		// One that is already gone counts as revoked
+		async revokeEndorsement(restrictionId, endorsementId) {
+			await call(
+				'DELETE',
+				`${restriction(restrictionId)}/endorsements/${encodeURIComponent(endorsementId)}`
+			);
 		}
 	};
 }

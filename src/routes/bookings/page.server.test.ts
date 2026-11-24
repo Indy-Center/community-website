@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eventsTable } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
+import { stubBookingsClient } from '$lib/testing/bookings';
 import { seedAvailableCredentials, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
@@ -23,15 +24,8 @@ const position = (callsign: string, anyOf: string[]): CmsPosition => ({
 
 const POSITIONS = [position('IND_GND', ['S-GC']), position('IND_APP', ['T-RC'])];
 
-function stubClient(listed: AtcBooking[] = []) {
-	return {
-		listOrgBookings: vi.fn(async () => listed),
-		getPositions: vi.fn(async () => POSITIONS),
-		createBooking: vi.fn(async () => {}),
-		updateBooking: vi.fn(async () => {}),
-		cancelBooking: vi.fn(async () => {})
-	} satisfies BookingsClient;
-}
+const stubClient = (listed: AtcBooking[] = []) =>
+	stubBookingsClient({ listed, positions: POSITIONS }) satisfies BookingsClient;
 
 const listed = (overrides: Partial<AtcBooking>): AtcBooking => ({
 	id: 7,

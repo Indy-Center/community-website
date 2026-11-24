@@ -230,6 +230,67 @@ describe('getPositions', () => {
 	});
 });
 
+describe('roster', () => {
+	it('reads the members, filling in what the booking system leaves out', async () => {
+		const api = fakeApi({
+			'GET /org/members': [
+				ok([
+					{ cid: '1000001', rating: 5, role: 'manager', isHome: false, isMentor: true },
+					{ cid: '1000002', rating: 3 }
+				])
+			]
+		});
+
+		expect(await client(api).listMembers()).toEqual([
+			{ cid: 1000001, rating: 5, role: 'manager', isHome: false, isMentor: true },
+			{ cid: 1000002, rating: 3, role: 'member', isHome: true, isMentor: false }
+		]);
+	});
+
+	it('replaces the whole roster, sending every field and pruning the rest', async () => {
+		const api = fakeApi({ 'PUT /org/members': [ok(null)] });
+
+		await client(api).replaceMembers([
+			{ cid: 1000001, rating: 5, role: 'member', isHome: false, isMentor: true }
+		]);
+
+		expect(api.requests[0].body).toEqual({
+			members: [{ cid: '1000001', rating: 5, role: 'member', isHome: false, isMentor: true }],
+			prune: true
+		});
+	});
+});
+
+describe('T2 endorsements', () => {
+	const PATH = '/org/session/restrictions/r-1/endorsements';
+
+	it('lists, grants and revokes on the restriction by its ID', async () => {
+		const api = fakeApi({
+			[`GET ${PATH}`]: [ok([{ id: 7, cid: '1000001', expiresAt: null }])],
+			[`POST ${PATH}`]: [{ status: 201, body: { success: true, data: { id: 8 } } }],
+			[`DELETE ${PATH}/7`]: [{ status: 204 }]
+		});
+		const bookings = client(api);
+
+		expect(await bookings.listEndorsements('r-1')).toEqual([{ id: '7', cid: 1000001 }]);
+		await bookings.grantEndorsement('r-1', 1000002);
+		await bookings.revokeEndorsement('r-1', '7');
+
+		expect(api.requests[1].body).toEqual({ cid: '1000002' });
+		expect(api.requests[2]).toMatchObject({ method: 'DELETE', path: `${PATH}/7` });
+	});
+
+	it('counts revoking an endorsement that is already gone as done', async () => {
+		await expect(client(fakeApi({})).revokeEndorsement('r-1', 'gone')).resolves.toBeUndefined();
+	});
+
+	it('throws when the restriction does not exist, as for a wrong ID setting', async () => {
+		await expect(client(fakeApi({})).listEndorsements('wrong')).rejects.toThrow(
+			'no restriction wrong'
+		);
+	});
+});
+
 describe('bookingsApiFromEnv', () => {
 	it('is off unless both the base URL and the key are set', () => {
 		const store = memoryReadStore();
