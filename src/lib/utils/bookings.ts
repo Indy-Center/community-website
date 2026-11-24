@@ -1,4 +1,3 @@
-import { resolvePosition } from '@indy-center/centerline-svelte';
 import {
 	CREDENTIAL_LADDER,
 	EXTRA_PRIMARY_POSITIONS,
@@ -80,13 +79,20 @@ export function getPositionType(callsign: string): PositionType | null {
 }
 
 /**
- * A position in words, for where Centerline's `Position` can't go: a confirm dialog, an aria-label,
- * a Discord message. The same parts in the same order as `Position` inline: radio name, short name,
- * sector ("Indy Center · FLM 83 · Falmouth 83"), with no frequency. An unknown callsign is shown
- * alone, as `Position` shows it. Everywhere else, use `<Position callsign>`.
+ * A catalogue position in words, for where Centerline's `Position` can't go: a confirm dialog, an
+ * aria-label, a Discord message. The same parts in the same order as `Position` inline: radio name,
+ * short name, sector ("Indy Center · FLM 83 · Falmouth 83"), with no frequency. With no position
+ * found, the callsign alone, as `Position` shows an unknown one. Everywhere else, use
+ * `<Position callsign>`.
+ *
+ * Takes the position already found, so this file never imports Centerline: the cron Worker
+ * (src/worker.ts) is bundled outside SvelteKit, where Centerline can't be resolved. Pages find it
+ * with `positionText` in `$lib/positionText`; the cron matches the callsign exactly.
  */
-export function positionText(callsign: string, positions: readonly CmsPosition[]) {
-	const found = resolvePosition(callsign, positions)?.position;
+export function formatPosition(
+	found: Pick<CmsPosition, 'callsign' | 'radioName' | 'shortName' | 'name'> | undefined,
+	callsign: string
+) {
 	if (!found) return callsign;
 	return [found.radioName, found.shortName ?? found.callsign, found.name]
 		.filter((part, i, parts) => part && parts.indexOf(part) === i)

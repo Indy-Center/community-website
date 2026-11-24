@@ -3,7 +3,7 @@ import { logger } from '$lib/server/logger';
 import { fetchRosterDiscordIds } from '$lib/server/vatsim/vatusaDataClient';
 import type { PositionsReader } from '$lib/server/positions';
 import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
-import { getDueReminders, parseBookingTime, positionText } from '$lib/utils/bookings';
+import { formatPosition, getDueReminders, parseBookingTime } from '$lib/utils/bookings';
 
 // Matches the "0-59/5 * * * *" cron in wrangler.jsonc
 const CRON_INTERVAL_MINUTES = 5;
@@ -51,7 +51,16 @@ export async function runRemindBookings(
 			try {
 				await larry.enqueueDirect({
 					userId,
-					embeds: [reminderEmbed(booking, positionText(booking.callsign, catalogue))]
+					embeds: [
+						reminderEmbed(
+							booking,
+							// Bookings use the catalogue's callsigns, so an exact match finds them
+							formatPosition(
+								catalogue.find((p) => p.callsign === booking.callsign && !p.retired),
+								booking.callsign
+							)
+						)
+					]
 				});
 				logger.info(`Queued ${booking.callsign} reminder for ${booking.cid}`);
 			} catch (error) {

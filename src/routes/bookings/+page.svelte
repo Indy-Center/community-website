@@ -17,9 +17,9 @@
 		formatZuluRange,
 		getBookedPositions,
 		groupEventBookings,
-		parseBookingTime,
-		positionText
+		parseBookingTime
 	} from '$lib/utils/bookings';
+	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
 	import IconPlus from '~icons/mdi/plus';
