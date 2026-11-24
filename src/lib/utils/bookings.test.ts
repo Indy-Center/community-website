@@ -6,11 +6,13 @@ import {
 	findBookingConflict,
 	getBookablePositions,
 	getPositionLabel,
+	getSopRequirements,
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
 	isListed,
 	meetsRequirements,
+	withSopRequirements,
 	type BookablePosition
 } from './bookings';
 
@@ -364,5 +366,38 @@ describe('TMU', () => {
 
 	it('is labelled once, not "ZID TMU · ZID TMU"', () => {
 		expect(getPositionLabel(tmu)).toEqual({ title: 'ZID TMU', detail: null });
+	});
+});
+
+describe('getSopRequirements', () => {
+	const anyOf = (callsign: string) => getSopRequirements(callsign)?.map((entry) => entry.anyOf);
+
+	it('asks S-GC and S-LC at the simple ATCTs of SOP 3.20, and A-GC and A-LC elsewhere', () => {
+		expect(anyOf('AID_GND')).toEqual([['S-GC']]);
+		expect(anyOf('LEX_TWR')).toEqual([['S-LC']]);
+		expect(anyOf('IND_GND')).toEqual([['A-GC']]);
+		expect(anyOf('CVG_A_RMP')).toEqual([['A-GC']]);
+		expect(anyOf('SDF_TWR')).toEqual([['A-LC']]);
+	});
+
+	it('asks S-GC for clearance everywhere, T-RC for approach and E-RC with T2 for center', () => {
+		expect(anyOf('IND_DEL')).toEqual([['S-GC']]);
+		expect(anyOf('IND_N_APP')).toEqual([['T-RC']]);
+		expect(anyOf('IND_83_CTR')).toEqual([['E-RC'], ['T2-CTR']]);
+	});
+
+	it('leaves positions the rules do not cover to the CMS', () => {
+		expect(getSopRequirements('ZID_TMU')).toBeNull();
+		const [tmu] = withSopRequirements([
+			{
+				callsign: 'ZID_TMU',
+				name: 'TMU',
+				radioName: 'TMU',
+				frequency: 1,
+				facility: { id: 'ZID', name: 'ZID', parent: null },
+				requiredCredentials: [{ anyOf: ['E-RC'] }]
+			}
+		]);
+		expect(tmu.requiredCredentials).toEqual([{ anyOf: ['E-RC'] }]);
 	});
 });

@@ -1,4 +1,4 @@
-import { BOOKING_REMINDER_HOURS } from '$lib/config/bookings';
+import { BOOKING_REMINDER_HOURS, BOOKINGS_ADMIN_ONLY } from '$lib/config/bookings';
 import { eventsTable } from '$lib/db/schema/events';
 import { logger } from '$lib/server/logger';
 import { fetchEventNames } from '$lib/server/bookings';
@@ -7,6 +7,7 @@ import { getPositionLabels, getUpcomingBookings, groupEventBookings } from '$lib
 import type { Database } from '$lib/server/db';
 import type { DiscordStep } from '$lib/profile/linkedAccounts';
 import { socialSteps } from '$lib/server/socials';
+import { isAdmin } from '$lib/utils/permissions';
 import { fetchMetars } from '$lib/server/vatsim/vatsimDataClient';
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt, inArray } from 'drizzle-orm';
@@ -44,7 +45,11 @@ export const load = async ({ locals, platform }) => {
 	const [metars, controllers, bookings] = await Promise.all([
 		fetchMetars(),
 		fetchControllers(),
-		fetchUpcomingBookings(locals.bookings, locals.db)
+		// The bookings panel follows /bookings: admins only while BOOKINGS_ADMIN_ONLY is set
+		fetchUpcomingBookings(
+			BOOKINGS_ADMIN_ONLY && !isAdmin(locals.roles) ? undefined : locals.bookings,
+			locals.db
+		)
 	]);
 
 	const events = await locals.db.query.eventsTable.findMany({

@@ -10,6 +10,15 @@ import { formatBookingTime } from '$lib/utils/bookings';
 import { Role } from '$lib/utils/permissions';
 import { actions, load } from './+page.server';
 
+// Bookings are admins-only for now; most tests here cover how they work once open to everyone
+const flags = vi.hoisted(() => ({ adminOnly: false }));
+vi.mock('$lib/config/bookings', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/config/bookings')>()),
+	get BOOKINGS_ADMIN_ONLY() {
+		return flags.adminOnly;
+	}
+}));
+
 const HOUR = 3600000;
 const inHours = (hours: number) => new Date(Date.now() + hours * HOUR);
 
@@ -22,7 +31,7 @@ const position = (callsign: string, anyOf: string[]): CmsPosition => ({
 	requiredCredentials: anyOf.length > 0 ? [{ anyOf }] : []
 });
 
-const POSITIONS = [position('IND_GND', ['S-GC']), position('IND_APP', ['T-RC'])];
+const POSITIONS = [position('AID_GND', ['S-GC']), position('IND_APP', ['T-RC'])];
 
 const stubClient = (listed: AtcBooking[] = []) =>
 	stubBookingsClient({ listed, positions: POSITIONS }) satisfies BookingsClient;
@@ -31,7 +40,7 @@ const listed = (overrides: Partial<AtcBooking>): AtcBooking => ({
 	id: 7,
 	externalId: 'ext-7',
 	cid: 1000001,
-	callsign: 'IND_GND',
+	callsign: 'AID_GND',
 	type: 'booking',
 	start: formatBookingTime(inHours(24)),
 	end: formatBookingTime(inHours(26)),
@@ -52,6 +61,7 @@ const times = (startHours: number, endHours: number) => ({
 let db: Database;
 
 beforeEach(async () => {
+	flags.adminOnly = false;
 	db = await testDb();
 	await seedAvailableCredentials(db);
 	await seedMember(db, {
@@ -95,7 +105,7 @@ describe('/bookings load', () => {
 			locals: asUser('1000001', [], stubClient())
 		});
 
-		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['IND_GND']);
+		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['AID_GND']);
 	});
 
 	it("shows no bookings and disables booking without the booking system's settings", async () => {
@@ -200,7 +210,7 @@ describe('/bookings create', () => {
 		const client = stubClient();
 
 		const result = await call('create', client, '1000001', {
-			callsign: 'IND_GND',
+			callsign: 'AID_GND',
 			...times(24, 26)
 		});
 
@@ -210,15 +220,15 @@ describe('/bookings create', () => {
 		const [sent] = client.createBooking.mock.calls[0] as unknown as [
 			{ externalId: string; cid: number; callsign: string }
 		];
-		expect(sent).toMatchObject({ cid: 1000001, callsign: 'IND_GND' });
+		expect(sent).toMatchObject({ cid: 1000001, callsign: 'AID_GND' });
 		expect(sent.externalId).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
 	it('refuses a position that overlaps a listed booking, so nobody can double-book', async () => {
-		const client = stubClient([listed({ callsign: 'IND_GND', cid: 1000001 })]);
+		const client = stubClient([listed({ callsign: 'AID_GND', cid: 1000001 })]);
 
 		const result = await call('create', client, '1000002', {
-			callsign: 'IND_GND',
+			callsign: 'AID_GND',
 			...times(25, 27)
 		});
 
@@ -243,7 +253,7 @@ describe('/bookings create', () => {
 		client.createBooking.mockRejectedValue(new BookingRefusedError('Overlaps another booking'));
 
 		const result = await call('create', client, '1000001', {
-			callsign: 'IND_GND',
+			callsign: 'AID_GND',
 			...times(24, 26)
 		});
 
@@ -256,7 +266,7 @@ describe('/bookings create', () => {
 		client.createBooking.mockRejectedValue(new Error('The booking system answered 503'));
 
 		const result = await call('create', client, '1000001', {
-			callsign: 'IND_GND',
+			callsign: 'AID_GND',
 			...times(24, 26)
 		});
 
@@ -266,7 +276,7 @@ describe('/bookings create', () => {
 
 	it("is unavailable without the booking system's settings", async () => {
 		const result = await call('create', undefined, '1000001', {
-			callsign: 'IND_GND',
+			callsign: 'AID_GND',
 			...times(24, 26)
 		});
 
@@ -323,5 +333,59 @@ describe('/bookings update and delete', () => {
 
 		expect(result.status).toBe(403);
 		expect(client.cancelBooking).not.toHaveBeenCalled();
+	});
+});
+
+describe('/bookings while admins only', () => {
+	beforeEach(() => {
+		flags.adminOnly = true;
+	});
+
+	it('sends everyone but admins home, signed out included', async () => {
+		const redirectsHome = async (locals: unknown) => {
+			const thrown = await Promise.resolve()
+				.then(() => callLoad(load, { locals }))
+				.catch((e) => e);
+			expect(thrown).toMatchObject({ status: 302, location: '/' });
+		};
+
+		await redirectsHome(asUser('1000001', [], stubClient()));
+		await redirectsHome({ db, roles: [], bookings: stubClient() });
+	});
+
+	it('shows admins the page', async () => {
+		const data = await callLoad(load, { locals: asUser('1000001', [Role.ADMIN], stubClient()) });
+		expect(data.loggedIn).toBe(true);
+	});
+
+	it('refuses every action from anyone but an admin', async () => {
+		const client = stubClient([listed({ externalId: 'mine', cid: 1000001 })]);
+
+		const created = await call('create', client, '1000001', {
+			callsign: 'AID_GND',
+			...times(30, 32)
+		});
+		const updated = await call('update', client, '1000001', {
+			externalId: 'mine',
+			...times(30, 32)
+		});
+		const deleted = await call('delete', client, '1000001', { externalId: 'mine' });
+
+		expect([created.status, updated.status, deleted.status]).toEqual([403, 403, 403]);
+		expect(client.createBooking).not.toHaveBeenCalled();
+		expect(client.updateBooking).not.toHaveBeenCalled();
+		expect(client.cancelBooking).not.toHaveBeenCalled();
+	});
+});
+
+describe('/bookings certification rules (SOP, not the CMS)', () => {
+	it('lets S-GC book ground at a simple field but not at an advanced one, whatever the CMS says', async () => {
+		const client = stubBookingsClient({
+			positions: [position('AID_GND', ['A-GC']), position('IND_GND', ['S-GC'])]
+		});
+
+		const data = await callLoad(load, { locals: asUser('1000001', [], client) });
+
+		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['AID_GND']);
 	});
 });

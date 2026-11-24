@@ -23,6 +23,40 @@ export const T2_ENDORSEMENT = 'T2-CTR';
 // VATUSA facility roles that make someone a mentor in the booking system
 export const MENTOR_ROLES = ['INS', 'MTR'];
 
+// While bookings are tried out, /bookings, its nav link and the home page's bookings panel are for
+// admins only. Set to false to open them to every member.
+export const BOOKINGS_ADMIN_ONLY = true;
+
+// "Simple" ATCTs, by callsign prefix (SOP 3.20, Simple ATCT Definitions): S-GC may work ground and
+// S-LC tower here. Every other ATCT is advanced, needing A-GC and A-LC.
+//
+// TODO: these rules live here only because the CMS positions feed doesn't follow SOP 3.20 yet: it
+// asks A-GC/A-LC at every simple field. Once the CMS's requiredCredentials match the SOP, drop this
+// list and getSopRequirements (src/lib/utils/bookings.ts) and read the feed's requirements again.
+export const SIMPLE_ATCT_FACILITIES = [
+	'AID',
+	'BAK',
+	'BMG',
+	'CRW',
+	'DAY',
+	'EVV',
+	'FFO',
+	'FTK',
+	'HBE',
+	'HTS',
+	'HUF',
+	'ILN',
+	'LCK',
+	'LEX',
+	'LOU',
+	'LUK',
+	'MIE',
+	'OSU',
+	'OWB',
+	'PKB',
+	'TZR'
+];
+
 // Credentials a position can require, from the lowest up. Holding one covers every credential
 // below it. Others, such as T2-CTR, only match themselves.
 export const CREDENTIAL_LADDER = ['S-GC', 'A-GC', 'S-LC', 'A-LC', 'T-RC', 'E-RC'];

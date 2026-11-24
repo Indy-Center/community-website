@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import { inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -6,6 +7,7 @@ import { memberName } from '$lib/members';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
+import { BOOKINGS_ADMIN_ONLY } from '$lib/config/bookings';
 import { fetchEventNames } from '$lib/server/bookings';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
 import type { AtcBooking, BookingsClient, CmsPosition } from '$lib/types/bookings';
@@ -16,6 +18,7 @@ import {
 	getBookablePositions,
 	getPositionLabels,
 	meetsRequirements,
+	withSopRequirements,
 	type BookablePosition,
 	type PositionLabel
 } from '$lib/utils/bookings';
@@ -35,12 +38,13 @@ async function fetchQualifications(db: App.Locals['db'], cid: string | undefined
 	}
 }
 
-// The bookable positions from the CMS feed. When it can't be read nothing is bookable.
+// The bookable positions from the CMS feed, with our SOP's requirements (the booking system checks
+// only T2). When it can't be read nothing is bookable.
 async function fetchPositions(client: BookingsClient | undefined) {
 	if (!client) return [] as CmsPosition[];
 
 	try {
-		return await client.getPositions();
+		return withSopRequirements(await client.getPositions());
 	} catch (error) {
 		logger.error('Failed to read the bookable positions', { error });
 		return [] as CmsPosition[];
@@ -81,7 +85,12 @@ function writeFailure(error: unknown) {
 // Only controllers on the ZID roster (home or visiting) can book
 const isRostered = (user: App.Locals['user']) => user?.membership === 'controller';
 
+// While BOOKINGS_ADMIN_ONLY is set, everyone but admins is sent home and every action refuses them
+const ADMIN_ONLY = 'Bookings are open to admins only for now';
+const shutOut = (roles: string[]) => BOOKINGS_ADMIN_ONLY && !isAdmin(roles);
+
 export const load = async ({ locals }) => {
+	if (shutOut(locals.roles)) redirect(302, '/');
 	const client = locals.bookings;
 	const [createForm, updateForm] = await Promise.all([
 		superValidate(zod4(bookingSchema), { id: 'create-booking' }),
@@ -170,6 +179,7 @@ export const actions = {
 	create: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingSchema));
 		if (!locals.user) return fail(401, { form });
+		if (shutOut(locals.roles)) return setError(form, '', ADMIN_ONLY, { status: 403 });
 		if (!isRostered(locals.user)) {
 			return setError(form, '', 'Only rostered controllers can book positions', { status: 403 });
 		}
@@ -228,6 +238,7 @@ export const actions = {
 	update: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingUpdateSchema));
 		if (!locals.user) return fail(401, { form });
+		if (shutOut(locals.roles)) return setError(form, '', ADMIN_ONLY, { status: 403 });
 		if (!form.valid) return fail(400, { form });
 
 		const client = locals.bookings;
@@ -263,6 +274,7 @@ export const actions = {
 
 	delete: async ({ request, locals }) => {
 		if (!locals.user) return fail(401);
+		if (shutOut(locals.roles)) return fail(403, { message: ADMIN_ONLY });
 
 		const client = locals.bookings;
 		const bookings = client ? await fetchBookings(client) : null;

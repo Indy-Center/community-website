@@ -1,6 +1,7 @@
 import {
 	CREDENTIAL_LADDER,
 	EXTRA_PRIMARY_POSITIONS,
+	SIMPLE_ATCT_FACILITIES,
 	UNBOOKABLE_POSITIONS
 } from '$lib/config/bookings';
 import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
@@ -105,6 +106,43 @@ export function describePosition(callsign: string, label: PositionLabel | undefi
 	if (!label) return callsign;
 	return label.detail ? `${label.title} · ${label.detail}` : label.title;
 }
+
+type Requirements = CmsPosition['requiredCredentials'];
+
+const isSimpleAtct = (callsign: string) =>
+	SIMPLE_ATCT_FACILITIES.includes(callsign.split('_')[0] ?? '');
+
+/**
+ * What a position requires by our SOP, from its callsign. Null for a position these rules don't
+ * cover (TMU, say), which keeps whatever the CMS says.
+ *
+ * TODO: here only until the CMS positions feed follows SOP 3.20; see SIMPLE_ATCT_FACILITIES.
+ */
+export function getSopRequirements(callsign: string): Requirements | null {
+	switch (callsignSuffix(callsign)) {
+		case 'DEL':
+			return [{ anyOf: ['S-GC'] }];
+		case 'GND':
+		case 'RMP':
+			return [{ anyOf: [isSimpleAtct(callsign) ? 'S-GC' : 'A-GC'] }];
+		case 'TWR':
+			return [{ anyOf: [isSimpleAtct(callsign) ? 'S-LC' : 'A-LC'] }];
+		case 'APP':
+		case 'DEP':
+			return [{ anyOf: ['T-RC'] }];
+		case 'CTR':
+			return [{ anyOf: ['E-RC'] }, { anyOf: ['T2-CTR'] }];
+		default:
+			return null;
+	}
+}
+
+// The CMS feed with our SOP's requirements in place of its own, wherever the SOP covers the position
+export const withSopRequirements = (positions: CmsPosition[]): CmsPosition[] =>
+	positions.map((position) => ({
+		...position,
+		requiredCredentials: getSopRequirements(position.callsign) ?? position.requiredCredentials
+	}));
 
 // Whether held credentials meet a position's requirements: every entry must be met, and an entry
 // is met by holding any one of its credentials or a higher one on the ladder. The booking system
