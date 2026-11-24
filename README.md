@@ -431,8 +431,10 @@ refresh, every five minutes:
   sent every time, because the booking system fills in what is left out (home, not a mentor). The
   roster is sent only when it differs, and the booking system removes anyone left off it.
 - **T2.** Every rostered controller holding `T2-CTR` is endorsed on the Indy Center restriction
-  (`IND_*_CTR`), and anyone else's endorsement is revoked. The restriction is created once, and its
-  ID goes in `VATSIM_BOOKING_T2_RESTRICTION_ID`; T2 sync is off until it is set.
+  (`IND_*_CTR`), and anyone else's endorsement is revoked. The restriction is created once, by the
+  **Create the T2 restriction** workflow (Actions tab, run by hand; it needs the repo secrets
+  `VATSIM_BOOKING_API_URL` and `VATSIM_BOOKING_API_KEY`). Its run summary gives the ID, which goes in
+  `VATSIM_BOOKING_T2_RESTRICTION_ID`; T2 sync is off until it is set.
 
 Certifications other than T2 are checked here, not by the booking system: `/bookings` only offers
 and accepts the positions a controller's roster credentials allow.

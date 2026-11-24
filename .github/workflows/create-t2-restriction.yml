@@ -1,0 +1,84 @@
+name: Create the T2 restriction
+
+# One-time setup, run by hand from the Actions tab: creates the booking system's Indy Center (T2)
+# position restriction and prints its ID, which goes in the VATSIM_BOOKING_T2_RESTRICTION_ID var in
+# wrangler.jsonc. The roster cron then grants and revokes T2 on it. Safe to run again: if a
+# restriction with this name exists, it prints that one's ID and creates nothing.
+#
+# Needs the repo secrets VATSIM_BOOKING_API_URL (the base URL, including /api) and
+# VATSIM_BOOKING_API_KEY (Settings, Secrets and variables, Actions).
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Restriction name
+        default: Indy Center
+        required: true
+      tier:
+        description: T1, T2 or SUPERCENTER
+        default: T2
+        required: true
+      patterns:
+        description: Comma-separated callsign patterns (* matches letters and digits)
+        default: IND_*_CTR
+        required: true
+
+permissions: {}
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the restriction, unless it exists
+        env:
+          API_URL: ${{ secrets.VATSIM_BOOKING_API_URL }}
+          API_KEY: ${{ secrets.VATSIM_BOOKING_API_KEY }}
+          NAME: ${{ inputs.name }}
+          TIER: ${{ inputs.tier }}
+          PATTERNS: ${{ inputs.patterns }}
+        run: |
+          set -euo pipefail
+          if [ -z "$API_URL" ] || [ -z "$API_KEY" ]; then
+            echo "::error::Set the VATSIM_BOOKING_API_URL and VATSIM_BOOKING_API_KEY repo secrets first"
+            exit 1
+          fi
+          base="${API_URL%/}/org/session/restrictions"
+
+          # Calls the booking system; fails the run, showing its answer, on anything but 2xx
+          call() {
+            local status
+            status=$(curl -sS -o response.json -w '%{http_code}' -H "Authorization: Bearer $API_KEY" \
+              -H 'Accept: application/json' "$@")
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "::error::The booking system answered $status"
+              cat response.json
+              exit 1
+            fi
+          }
+
+          call "$base"
+          id=$(jq -r --arg name "$NAME" '.data[]? | select(.name == $name) | .id' response.json | head -n 1)
+          if [ -n "$id" ]; then
+            outcome="already exists"
+          else
+            body=$(jq -n --arg name "$NAME" --arg tier "$TIER" --arg patterns "$PATTERNS" \
+              '{name: $name, tier: $tier, patterns: $patterns}')
+            call -X POST -H 'Content-Type: application/json' --data "$body" "$base"
+            id=$(jq -r '.data.id // .id // empty' response.json)
+            if [ -z "$id" ]; then
+              echo "::error::Created, but the answer had no ID"
+              cat response.json
+              exit 1
+            fi
+            outcome="created"
+          fi
+
+          echo "The $NAME restriction $outcome: ID $id"
+          {
+            echo "### $NAME restriction $outcome"
+            echo
+            echo "ID: \`$id\`"
+            echo
+            echo "Put it in \`vars\` in \`wrangler.jsonc\` as \`\"VATSIM_BOOKING_T2_RESTRICTION_ID\": \"$id\"\`."
+          } >> "$GITHUB_STEP_SUMMARY"
