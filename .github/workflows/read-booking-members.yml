@@ -1,0 +1,62 @@
+name: Read our booking roster
+
+# Run by hand from the Actions tab. Reads only: GET /org/members with our API key, the roster the
+# booking system holds for us, which the five-minute roster cron keeps in step with ours. The run
+# summary counts home, visiting and mentors and lists every member; the full answer is attached to
+# the run as booking-members.json.
+#
+# Needs the repo variable VATSIM_BOOKING_API_URL (the base URL, including /api) and the repo secret
+# VATSIM_BOOKING_API_KEY (Settings, Secrets and variables, Actions), the same ones the deploy uses.
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read /org/members
+        env:
+          API_URL: ${{ vars.VATSIM_BOOKING_API_URL }}
+          API_KEY: ${{ secrets.VATSIM_BOOKING_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$API_URL" ] || [ -z "$API_KEY" ]; then
+            echo "::error::Set the VATSIM_BOOKING_API_URL repo variable and VATSIM_BOOKING_API_KEY repo secret first"
+            exit 1
+          fi
+
+          status=$(curl -sS -o booking-members.json -w '%{http_code}' \
+            -H "Authorization: Bearer $API_KEY" -H 'Accept: application/json' \
+            "${API_URL%/}/org/members")
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::The booking system answered $status"
+            cat booking-members.json
+            exit 1
+          fi
+
+          # VATSIM's rating numbers as their short codes, for reading the table
+          jq -r '
+            ["?", "OBS", "S1", "S2", "S3", "C1", "C2", "C3", "I1", "I2", "I3", "SUP", "ADM"] as $codes
+            | (.data // []) as $m
+            | "### Booking roster: \($m | length) members",
+              "",
+              "\([$m[] | select(.isHome != false)] | length) home, \([$m[] | select(.isHome == false)] | length) visiting, \([$m[] | select(.isMentor == true)] | length) mentors, \([$m[] | select(.role == "manager")] | length) managers.",
+              "",
+              (if ($m | length) == 0 then "No members."
+               else ("| CID | Rating | Role | Home | Mentor |", "| --- | --- | --- | --- | --- |",
+                     ($m | sort_by(.cid | tonumber? // 0)[]
+                      | "| \(.cid) | \($codes[(.rating | tonumber? // 0)] // .rating) | \(.role // "member") | \(if .isHome == false then "visiting" else "home" end) | \(if .isMentor == true then "yes" else "" end) |")) end)
+          ' booking-members.json >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r '(.data // []) | "\(length) members: \([.[] | select(.isHome == false)] | length) visiting, \([.[] | select(.isMentor == true)] | length) mentors"' booking-members.json
+
+      - name: Attach the full answer
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-members
+          path: booking-members.json
+          if-no-files-found: ignore
