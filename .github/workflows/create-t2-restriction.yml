@@ -1,8 +1,8 @@
 name: Create the T2 restriction
 
 # One-time setup, run by hand from the Actions tab: creates the booking system's Indy Center (T2)
-# position restriction and prints its ID, which goes in the VATSIM_BOOKING_T2_RESTRICTION_ID var in
-# wrangler.jsonc. The roster cron then grants and revokes T2 on it. Safe to run again: if a
+# position restriction and prints its ID, which goes in the VATSIM_BOOKING_T2_RESTRICTION_ID repo
+# variable; the deploy passes it to the Worker. The roster cron then grants and revokes T2 on it. Safe to run again: if a
 # restriction with this name exists, it prints that one's ID and creates nothing.
 #
 # Needs the repo variable VATSIM_BOOKING_API_URL (the base URL, including /api) and the repo secret
@@ -80,5 +80,5 @@ jobs:
             echo
             echo "ID: \`$id\`"
             echo
-            echo "Put it in \`vars\` in \`wrangler.jsonc\` as \`\"VATSIM_BOOKING_T2_RESTRICTION_ID\": \"$id\"\`."
+            echo "Add it as the repo variable \`VATSIM_BOOKING_T2_RESTRICTION_ID\` (Settings, Secrets and variables, Actions, Variables), then redeploy."
           } >> "$GITHUB_STEP_SUMMARY"
