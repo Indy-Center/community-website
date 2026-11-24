@@ -455,7 +455,8 @@ through `src/lib/server/bookingsApi.ts`; see the settings above and the fake bel
   their booking starts (`src/lib/server/triggers/remindBookings.ts`).
 - **What the booking system holds for us.** The **Read our booking positions** workflow (Actions tab,
   run by hand, read-only) shows our org's bookable position list and its GCAP restrictions from
-  `GET /org/positions`, using the same repo variable and secret as the deploy.
+  `GET /org/positions`, using the same repo variable and secret as the deploy. **Read our booking roster** does the same for
+  `GET /org/members`, to check what the roster cron has pushed.
 
 ## Bookings from a fake booking system
 
