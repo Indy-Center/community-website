@@ -3,7 +3,7 @@ import {
 	EXTRA_PRIMARY_POSITIONS,
 	UNBOOKABLE_POSITIONS
 } from '$lib/config/bookings';
-import type { AtcBooking, WorkerPosition } from '$lib/types/bookings';
+import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
 import type { VnasFacility } from '$lib/types/vnas';
 
 export type PositionType = 'ARTCC' | 'TRACON' | 'ATCT';
@@ -94,7 +94,7 @@ export function getPositionLabel(position: {
 }
 
 // Labels for the positions in the feed, keyed by callsign
-export function getPositionLabels(positions: WorkerPosition[]): Record<string, PositionLabel> {
+export function getPositionLabels(positions: CmsPosition[]): Record<string, PositionLabel> {
 	return Object.fromEntries(
 		positions.map((position) => [position.callsign, getPositionLabel(position)])
 	);
@@ -110,7 +110,7 @@ export function describePosition(callsign: string, label: PositionLabel | undefi
 // is met by holding any one of its credentials or a higher one on the ladder. The booking system
 // makes the final decision; this only hides positions the controller can't book.
 export function meetsRequirements(
-	position: Pick<WorkerPosition, 'requiredCredentials'>,
+	position: Pick<CmsPosition, 'requiredCredentials'>,
 	certification: string | null,
 	endorsements: string[]
 ) {
@@ -127,7 +127,7 @@ export function meetsRequirements(
 // order. Emergency positions and ones with a callsign we can't place in a position type are left
 // out.
 export function getBookablePositions(
-	positions: WorkerPosition[],
+	positions: CmsPosition[],
 	certification: string | null,
 	endorsements: string[]
 ): BookablePosition[] {
@@ -274,48 +274,6 @@ export function groupEventBookings(
 	return sortBookings([...bookings.filter((booking) => !grouped.has(booking)), ...stands]);
 }
 
-// A pending booking as the list shows it. It has no number from the booking system yet.
-export type PendingRow = {
-	externalId: string;
-	callsign: string;
-	cid: string;
-	start: Date;
-	end: Date;
-	createdAt: Date;
-};
-
-// How long a booking may stay pending before it is taken as refused by the booking system
-export const PENDING_MAX_MINUTES = 10;
-
-// The list with pending bookings added, and the pending rows that are done: now in the list, or
-// too old. A pending row is only a stand-in until the real booking shows up.
-export function mergePendingBookings(bookings: AtcBooking[], rows: PendingRow[], now: Date) {
-	const listed = new Set(bookings.flatMap((booking) => booking.externalId ?? []));
-	const oldest = now.getTime() - PENDING_MAX_MINUTES * 60000;
-	const isDone = (row: PendingRow) =>
-		listed.has(row.externalId) || row.createdAt.getTime() < oldest;
-
-	const pending = rows
-		.filter((row) => !isDone(row))
-		.map(
-			(row): AtcBooking => ({
-				id: -1,
-				externalId: row.externalId,
-				callsign: row.callsign,
-				cid: Number(row.cid),
-				type: 'booking',
-				start: formatBookingTime(row.start),
-				end: formatBookingTime(row.end),
-				pending: true
-			})
-		);
-
-	return {
-		bookings: sortBookings([...bookings, ...pending]),
-		doneIds: rows.filter(isDone).map((row) => row.externalId)
-	};
-}
-
 // Bookings carry UTC times without a zone marker; the API client converts from its ISO 8601
 export function parseBookingTime(time: string) {
 	return new Date(time.replace(' ', 'T') + 'Z');
@@ -411,7 +369,7 @@ export function getDueReminders(
 }
 
 // Bookings that start within the next `leadHours`, soonest first. Once one starts the controller
-// is on the network, so it drops off. Bookings not yet in the list (pending) are not here.
+// is on the network, so it drops off.
 export function getUpcomingBookings(bookings: AtcBooking[], now: Date, leadHours: number) {
 	const windowEnd = now.getTime() + leadHours * 3600000;
 

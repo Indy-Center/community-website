@@ -11,10 +11,7 @@ import {
 	groupPositions,
 	isListed,
 	meetsRequirements,
-	mergePendingBookings,
-	PENDING_MAX_MINUTES,
-	type BookablePosition,
-	type PendingRow
+	type BookablePosition
 } from './bookings';
 
 const requires = (...entries: string[][]) => ({
@@ -65,67 +62,6 @@ const booking = (overrides: Partial<AtcBooking>): AtcBooking => ({
 	start: '2026-12-01 18:00:00',
 	end: '2026-12-01 20:00:00',
 	...overrides
-});
-
-const NOW = new Date('2026-12-01T12:00:00Z');
-const pendingRow = (overrides: Partial<PendingRow>): PendingRow => ({
-	externalId: 'pending-1',
-	callsign: 'IND_GND',
-	cid: '1000002',
-	start: new Date('2026-12-01T21:00:00Z'),
-	end: new Date('2026-12-01T22:00:00Z'),
-	createdAt: new Date(NOW.getTime() - 60000),
-	...overrides
-});
-
-describe('mergePendingBookings', () => {
-	it('adds a pending booking to the list, in start order, marked pending', () => {
-		const { bookings, doneIds } = mergePendingBookings(
-			[booking({ id: 2 })],
-			[pendingRow({ start: new Date('2026-12-01T17:00:00Z') })],
-			NOW
-		);
-
-		expect(bookings.map((b) => [b.externalId, b.pending ?? false])).toEqual([
-			['pending-1', true],
-			[null, false]
-		]);
-		expect(bookings[0]).toMatchObject({
-			callsign: 'IND_GND',
-			cid: 1000002,
-			start: '2026-12-01 17:00:00'
-		});
-		expect(doneIds).toEqual([]);
-	});
-
-	it('drops a pending booking once the list shows its externalId', () => {
-		const { bookings, doneIds } = mergePendingBookings(
-			[booking({ externalId: 'pending-1' })],
-			[pendingRow({ callsign: 'IND_TWR' })],
-			NOW
-		);
-
-		expect(bookings).toHaveLength(1);
-		expect(bookings[0].pending).toBeUndefined();
-		expect(doneIds).toEqual(['pending-1']);
-	});
-
-	it('drops a pending booking that has waited too long, as the booking system refused it', () => {
-		const old = new Date(NOW.getTime() - (PENDING_MAX_MINUTES + 1) * 60000);
-		const { bookings, doneIds } = mergePendingBookings([], [pendingRow({ createdAt: old })], NOW);
-
-		expect(bookings).toEqual([]);
-		expect(doneIds).toEqual(['pending-1']);
-	});
-
-	it('holds the position: a pending booking counts as a conflict', () => {
-		const { bookings } = mergePendingBookings([], [pendingRow({})], NOW);
-		const start = new Date('2026-12-01T21:30:00Z');
-		const end = new Date('2026-12-01T22:30:00Z');
-
-		expect(findBookingConflict(bookings, 'IND_GND', start, end)?.externalId).toBe('pending-1');
-		expect(findBookingConflict(bookings, 'IND_TWR', start, end)).toBeUndefined();
-	});
 });
 
 describe('groupPositions', () => {

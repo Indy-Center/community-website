@@ -195,8 +195,8 @@
 							? `${group.name} · ${group.members.length} positions · ${zulu(booking.start)}–${zulu(booking.end)}`
 							: `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
 									names[booking.cid] ?? booking.cid
-								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}${booking.pending ? ' · pending' : ''}`}
-						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]} ${booking.pending ? 'border-dashed opacity-60' : ''}`}
+								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}`}
+						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]}`}
 						{@const style = `top: ${(segment.startMinute / 60) * hourHeight}px; height: ${
 							height - 1
 						}px; left: calc(${(segment.lane / segment.lanes) * 100}% + 2px); width: calc(${

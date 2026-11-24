@@ -12,29 +12,14 @@ export type AtcBooking = {
 	type: BookingType;
 	start: string;
 	end: string;
-	// Sent to the bookings Worker but not in its list yet; the position is held meanwhile
-	pending?: boolean;
 	// Stands in for an event's many bookings: the calendar shows this one block, and opening it
 	// lists them (see groupEventBookings)
 	group?: { eventId: string; name: string; members: AtcBooking[] };
 };
 
-// What the bookings Worker (Indy-Center/bookings-worker) says to us over the BOOKINGS service
-// binding. Typed here, only for the calls we make, until its npm package
-// (@indy-center/bookings-worker) is published.
-export type WorkerBooking = {
-	id: number;
-	externalId: string | null;
-	cid: number;
-	callsign: string;
-	type: BookingType;
-	start: Date;
-	end: Date;
-};
-
 // A bookable position from the CMS feed; retired ones are left out. Credentials: every entry must
 // be met, and an entry is met by holding any one of its `anyOf` credentials or a higher one.
-export type WorkerPosition = {
+export type CmsPosition = {
 	callsign: string;
 	name: string;
 	radioName: string;
@@ -45,18 +30,21 @@ export type WorkerPosition = {
 	requiredCredentials: { anyOf: string[] }[];
 };
 
-export type BookingsWorker = {
-	listOrgBookings(): Promise<WorkerBooking[]>;
-	getPositions(): Promise<WorkerPosition[]>;
-	// Writes return once queued; the Worker retries, and drops what the booking system refuses
-	createBooking(booking: {
-		externalId: string;
-		cid: number;
-		callsign: string;
-		type?: BookingType;
-		start: Date;
-		end: Date;
-	}): Promise<void>;
+export type NewBooking = {
+	externalId: string;
+	cid: number;
+	callsign: string;
+	type?: BookingType;
+	start: Date;
+	end: Date;
+};
+
+// The booking system as the site sees it (see $lib/server/bookingsApi). Writes return once the
+// booking system has accepted them, and throw BookingRefusedError with its reason when it won't.
+export type BookingsClient = {
+	listOrgBookings(): Promise<AtcBooking[]>;
+	getPositions(): Promise<CmsPosition[]>;
+	createBooking(booking: NewBooking): Promise<void>;
 	updateBooking(change: { externalId: string; start?: Date; end?: Date }): Promise<void>;
 	cancelBooking(ref: { externalId: string }): Promise<void>;
 };

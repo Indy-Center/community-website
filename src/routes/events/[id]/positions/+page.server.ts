@@ -65,7 +65,7 @@ const removePositionSchema = z.object({
 });
 
 export const actions = {
-	updateAssignment: async ({ locals, request, params, platform }) => {
+	updateAssignment: async ({ locals, request, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -102,7 +102,7 @@ export const actions = {
 
 		// Once the roster is out, changes to it follow onto the booking calendar
 		if (event) {
-			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.positionId, {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.positionId, {
 				previousUserId: previous?.userId,
 				userId: form.data.userId || null
 			});
@@ -151,7 +151,7 @@ export const actions = {
 		return { success: true };
 	},
 
-	removePosition: async ({ locals, request, params, platform }) => {
+	removePosition: async ({ locals, request, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -183,7 +183,7 @@ export const actions = {
 			);
 
 		if (event) {
-			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.position, {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.position, {
 				previousUserId: previous?.userId,
 				userId: null
 			});
@@ -192,7 +192,7 @@ export const actions = {
 		return { success: true };
 	},
 
-	toggleRosterPublished: async ({ locals, params, platform }) => {
+	toggleRosterPublished: async ({ locals, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -217,7 +217,7 @@ export const actions = {
 		const after = await locals.db.query.eventsTable.findFirst({
 			where: eq(eventsTable.id, params.id)
 		});
-		if (after) await syncEvent(platform?.env.BOOKINGS, locals.db, event, after);
+		if (after) await syncEvent(locals.bookings, locals.db, event, after);
 
 		return { success: true };
 	}

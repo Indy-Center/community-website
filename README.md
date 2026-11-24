@@ -340,7 +340,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `IDENTITY_API_CLIENT_SECRET` — writes to identity; see "Identity API client". Without it those writes are refused locally and logged.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
-- Bookings need no key here: the site reaches the booking system through the `BOOKINGS` service binding to the `bookings` Worker ([Indy-Center/bookings-worker](https://github.com/Indy-Center/bookings-worker)), which holds the API key. Without the binding the bookings page loads empty and booking is disabled.
+- `VATSIM_BOOKING_API_URL`, `VATSIM_BOOKING_API_KEY` — the booking system: its base URL (including `/api`) and our organization's API key. Without both the bookings page loads empty and booking is disabled; see [Bookings from a fake booking system](#bookings-from-a-fake-booking-system) to try it locally.
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Link Discord on the profile, through the "Indy Center" Discord app; see [Linked accounts](#linked-accounts). Without them Link Discord says Discord didn't confirm the account.
 
@@ -399,20 +399,25 @@ app`, and `/roster` lists them. Stop the fake and run it again to see a refused 
 says `Keeping the last roster copy` and `Skipping the membership sync`, and `/roster` is
 unchanged. The copy stays in `.wrangler/state` between runs.
 
-## Bookings from a fake worker
+## Bookings from a fake booking system
 
-`/bookings` reads and writes through the `BOOKINGS` service binding to the `bookings` Worker. To try
-it locally, run `dev/fake-bookings/`, a stand-in that serves the live CMS positions (nine made-up ones
-if the CMS can't be reached) and starts with no bookings, in a
-third terminal next to the two above, and restart `npm run dev:worker` so it finds the binding:
+`/bookings` talks to the booking system's API directly (`src/lib/server/bookingsApi.ts`), at
+`VATSIM_BOOKING_API_URL` with our `VATSIM_BOOKING_API_KEY`; the bookable positions come from the
+CMS's public positions feed. To try it without the real key, run `dev/fake-bookings/`, a stand-in
+for the booking system's API that starts with no bookings, and point the site at it in `.env`:
 
 ```bash
-npm run dev:bookings           # the fake bookings Worker, on port 8790
+npm run dev:bookings           # the fake booking system, on port 8790
 ```
 
-Bookings sit in its memory and reset when it stops. A write takes about eight seconds to land, as
-the real Worker's queue does, so a new booking shows as pending in the meantime and holds its
-position. Without it the page loads empty and booking is disabled.
+```
+VATSIM_BOOKING_API_URL=http://localhost:8790/api
+VATSIM_BOOKING_API_KEY=anything
+```
+
+Bookings sit in its memory and reset when it stops. Like the real one, it refuses a booking that
+overlaps another on the same position, and the site shows its reason. Without both settings the
+page loads empty and booking is disabled.
 
 ## Tests
 
@@ -449,7 +454,7 @@ npm run build && npm run deploy
 
 The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`. The `bookings` Worker must be deployed before this site: the `BOOKINGS` service binding in `wrangler.jsonc` points at it.
+Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks, `VATSIM_BOOKING_API_URL` and `VATSIM_BOOKING_API_KEY`) live in Cloudflare — set each with `wrangler secret put`.
 
 ## Disclaimer
 

@@ -48,7 +48,7 @@ export const load = async ({ locals, params }) => {
 };
 
 export const actions = {
-	default: async ({ request, locals, params, platform }) => {
+	default: async ({ request, locals, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -82,7 +82,7 @@ export const actions = {
 
 		// New hours, or a roster type change, move the controllers' bookings with them
 		if (before && savedEvent) {
-			await syncEvent(platform?.env.BOOKINGS, locals.db, before, savedEvent);
+			await syncEvent(locals.bookings, locals.db, before, savedEvent);
 		}
 
 		return redirect(302, `/events/${params.id}`);

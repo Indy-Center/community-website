@@ -78,7 +78,7 @@ const requestPositionSchema = z.object({
 });
 
 export const actions = {
-	delete: async ({ locals, params, platform }) => {
+	delete: async ({ locals, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -87,13 +87,13 @@ export const actions = {
 		const doomed = await locals.db.query.eventsTable.findFirst({
 			where: eq(eventsTable.id, params.id)
 		});
-		if (doomed) await cancelEvent(platform?.env.BOOKINGS, locals.db, doomed);
+		if (doomed) await cancelEvent(locals.bookings, locals.db, doomed);
 
 		await locals.db.delete(eventsTable).where(eq(eventsTable.id, params.id));
 
 		return redirect(302, '/events');
 	},
-	togglePublish: async ({ locals, params, platform }) => {
+	togglePublish: async ({ locals, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -124,12 +124,12 @@ export const actions = {
 		const after = await locals.db.query.eventsTable.findFirst({
 			where: eq(eventsTable.id, params.id)
 		});
-		if (before && after) await syncEvent(platform?.env.BOOKINGS, locals.db, before, after);
+		if (before && after) await syncEvent(locals.bookings, locals.db, before, after);
 
 		return redirect(302, `/events/${params.id}`);
 	},
 
-	signUpForPosition: async ({ locals, request, params, platform }) => {
+	signUpForPosition: async ({ locals, request, params }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -178,7 +178,7 @@ export const actions = {
 
 		// An open roster books people as they sign up
 		if (event) {
-			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.position, {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.position, {
 				previousUserId: previous?.userId,
 				userId: locals.session.userId
 			});
@@ -187,7 +187,7 @@ export const actions = {
 		return { success: true };
 	},
 
-	unassignFromPosition: async ({ locals, request, params, platform }) => {
+	unassignFromPosition: async ({ locals, request, params }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -224,7 +224,7 @@ export const actions = {
 			);
 
 		if (event) {
-			await syncAssignment(platform?.env.BOOKINGS, locals.db, event, form.data.position, {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.position, {
 				previousUserId: previous?.userId,
 				userId: null
 			});

@@ -1,169 +1,76 @@
-// A stand-in for the bookings Worker's default entrypoint (Indy-Center/bookings-worker), for local
-// development only: run it beside the site under `wrangler dev` (see the README) and the site's
-// `BOOKINGS` binding reaches it. Bookings live in memory, so they reset when it restarts. Writes
-// land after a short delay, like the real Worker's queue, so the "pending" state can be seen. Every
-// position and CID is made up; the repository is public.
-import { WorkerEntrypoint } from 'cloudflare:workers';
-import type { BookingsWorker, WorkerBooking, WorkerPosition } from '../../src/lib/types/bookings';
+// A stand-in for the booking system's API, for local development only: run it beside the site (see
+// the README's "Bookings from a fake booking system") and point VATSIM_BOOKING_API_URL at it.
+// It answers only what the site calls, in the booking system's own shapes and envelope, and checks
+// that a key is sent. Bookings live in memory, so they reset when it restarts. Every CID is made up;
+// the repository is public.
 
-// Public, no key needed
-const CMS_POSITIONS_URL = 'https://cms.flyindycenter.com/api/public/v1/positions';
-
-// How long a write takes to show up in the list
-const QUEUE_DELAY_MS = 8000;
-
-const facility = { id: 'IND', name: 'Indianapolis ATCT/TRACON', parent: null };
-// Fields under Indianapolis, as the real feed nests them
-const anderson = {
-	id: 'AID',
-	name: 'Anderson Muni ATCT',
-	parent: { id: 'IND', name: facility.name }
+type Booking = {
+	id: number;
+	externalId: string;
+	cid: string;
+	callsign: string;
+	type: string;
+	start: string;
+	end: string;
 };
-const columbus = {
-	id: 'BAK',
-	name: 'Columbus Muni ATCT',
-	parent: { id: 'IND', name: facility.name }
-};
-
-const POSITIONS: WorkerPosition[] = [
-	{
-		callsign: 'IND_DEL',
-		name: 'Clearance Delivery',
-		radioName: 'Indianapolis Clearance',
-		frequency: 121650000,
-		facility,
-		requiredCredentials: [{ anyOf: ['S-GC'] }]
-	},
-	{
-		callsign: 'IND_GND',
-		name: 'Ground Control',
-		radioName: 'Indianapolis Ground',
-		frequency: 121900000,
-		facility,
-		requiredCredentials: [{ anyOf: ['A-GC'] }]
-	},
-	{
-		callsign: 'IND_TWR',
-		name: 'Local Control',
-		radioName: 'Indianapolis Tower',
-		frequency: 118300000,
-		facility,
-		requiredCredentials: [{ anyOf: ['A-LC'] }]
-	},
-	{
-		callsign: 'AID_GND',
-		name: 'Ground Control',
-		radioName: 'Anderson Ground',
-		frequency: 121600000,
-		facility: anderson,
-		requiredCredentials: [{ anyOf: ['A-GC'] }]
-	},
-	{
-		callsign: 'AID_TWR',
-		name: 'Local Control',
-		radioName: 'Anderson Tower',
-		frequency: 126000000,
-		facility: anderson,
-		requiredCredentials: [{ anyOf: ['A-LC'] }]
-	},
-	{
-		callsign: 'BAK_GND',
-		name: 'Ground Control',
-		radioName: 'Columbus Ground',
-		frequency: 121950000,
-		facility: columbus,
-		requiredCredentials: [{ anyOf: ['A-GC'] }]
-	},
-	{
-		callsign: 'BAK_TWR',
-		name: 'Local Control',
-		radioName: 'Columbus Tower',
-		frequency: 118600000,
-		facility: columbus,
-		requiredCredentials: [{ anyOf: ['S-LC'] }]
-	},
-	{
-		callsign: 'IND_APP',
-		name: 'Approach',
-		radioName: 'Indianapolis Approach',
-		frequency: 124200000,
-		facility,
-		requiredCredentials: [{ anyOf: ['T-RC'] }]
-	},
-	{
-		callsign: 'ZID_CTR',
-		name: 'Indianapolis Center',
-		radioName: 'Indianapolis Center',
-		frequency: 132250000,
-		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
-		requiredCredentials: [{ anyOf: ['E-RC'] }, { anyOf: ['T2-CTR'] }]
-	}
-];
 
 let nextId = 100;
-const bookings: WorkerBooking[] = [];
+const bookings: Booking[] = [];
 
-export default class FakeBookings extends WorkerEntrypoint implements BookingsWorker {
-	async listOrgBookings() {
-		return bookings;
-	}
+const ok = (data: unknown, status = 200) => Response.json({ success: true, data }, { status });
+const refuse = (status: number, message: string) =>
+	Response.json({ success: false, message }, { status });
 
-	// The live CMS feed, as the real Worker reads it (retired positions left out), so the site shows
-	// the ARTCC's real positions. The made-up list answers if the CMS can't be reached.
-	async getPositions() {
-		try {
-			const response = await fetch(CMS_POSITIONS_URL);
-			if (!response.ok) throw new Error(`CMS answered ${response.status}`);
-			const feed = (await response.json()) as (WorkerPosition & { retired?: boolean })[];
+// Back-to-back bookings (one ends as the next starts) don't overlap
+const clash = (b: Pick<Booking, 'callsign' | 'start' | 'end' | 'externalId'>) =>
+	bookings.find(
+		(other) =>
+			other.externalId !== b.externalId &&
+			other.callsign === b.callsign &&
+			other.start < b.end &&
+			other.end > b.start
+	);
 
-			return feed
-				.filter((position) => position.retired !== true)
-				.map(
-					({ callsign, name, radioName, frequency, starred, facility, requiredCredentials }) => ({
-						callsign,
-						name,
-						radioName,
-						frequency,
-						starred,
-						facility,
-						requiredCredentials
-					})
-				);
-		} catch (error) {
-			console.warn('Could not read the CMS positions; using the made-up list', error);
-			return POSITIONS;
+export default {
+	async fetch(request: Request) {
+		const url = new URL(request.url);
+		const path = url.pathname.replace(/^\/api/, '');
+		if (!request.headers.get('Authorization')?.startsWith('Bearer ')) {
+			return refuse(401, 'Missing API key');
 		}
-	}
 
-	// A timer dies with the call that set it, so the delay is held open with waitUntil
-	private later(apply: () => void) {
-		this.ctx.waitUntil(
-			new Promise<void>((resolve) => setTimeout(resolve, QUEUE_DELAY_MS)).then(apply)
-		);
-	}
+		if (request.method === 'GET' && path === '/org/bookings') return ok(bookings);
 
-	async createBooking(booking: Parameters<BookingsWorker['createBooking']>[0]) {
-		this.later(() => {
-			if (bookings.some((b) => b.externalId === booking.externalId)) return;
-			bookings.push({ id: nextId++, type: 'booking', ...booking });
-		});
-	}
+		if (request.method === 'POST' && path === '/bookings/external') {
+			const body = (await request.json()) as Omit<Booking, 'id'>;
+			if (bookings.some((b) => b.externalId === body.externalId)) {
+				return refuse(409, 'A booking with this externalId already exists');
+			}
+			if (clash(body)) return refuse(409, 'This position is already booked at that time');
+			const booking = { id: nextId++, ...body, type: body.type ?? 'booking' };
+			bookings.push(booking);
+			return ok(booking, 201);
+		}
 
-	async updateBooking(change: Parameters<BookingsWorker['updateBooking']>[0]) {
-		this.later(() => {
-			const booking = bookings.find((b) => b.externalId === change.externalId);
-			if (booking)
-				Object.assign(booking, {
-					start: change.start ?? booking.start,
-					end: change.end ?? booking.end
-				});
-		});
-	}
+		const match = /^\/bookings\/external\/(.+)$/.exec(path);
+		const index = match
+			? bookings.findIndex((b) => b.externalId === decodeURIComponent(match[1]))
+			: -1;
+		if (match && index === -1) return refuse(404, 'Booking not found');
 
-	async cancelBooking({ externalId }: Parameters<BookingsWorker['cancelBooking']>[0]) {
-		this.later(() => {
-			const index = bookings.findIndex((b) => b.externalId === externalId);
-			if (index !== -1) bookings.splice(index, 1);
-		});
+		if (match && request.method === 'PUT') {
+			const change = (await request.json()) as Partial<Booking>;
+			const updated = { ...bookings[index], ...change };
+			if (clash(updated)) return refuse(409, 'This position is already booked at that time');
+			bookings[index] = updated;
+			return ok(updated);
+		}
+
+		if (match && request.method === 'DELETE') {
+			bookings.splice(index, 1);
+			return new Response(null, { status: 204 });
+		}
+
+		return refuse(404, 'Not found');
 	}
-}
+};

@@ -1,3 +1,4 @@
+import { bookingsApiFromEnv, cacheApiReadStore } from '$lib/server/bookingsApi';
 import { drizzle } from '$lib/server/db';
 import { runProcessRoster } from '$lib/server/triggers/processRoster.js';
 import { runRemindBookings } from '$lib/server/triggers/remindBookings.js';
@@ -12,7 +13,15 @@ export default {
 		// Independent jobs, so one failing doesn't stop the other; failures still fail the run
 		const results = await Promise.allSettled([
 			runProcessRoster({ training: env.TRAINING, db: drizzle(env.DB) }),
-			runRemindBookings(env.LARRY, env.BOOKINGS, new Date(event.scheduledTime))
+			runRemindBookings(
+				env.LARRY,
+				bookingsApiFromEnv(
+					env as unknown as Record<string, string | undefined>,
+					// Workers' CacheStorage has a default cache that the DOM's type doesn't know about
+					cacheApiReadStore((caches as unknown as { default: Cache }).default)
+				),
+				new Date(event.scheduledTime)
+			)
 		]);
 		const errors = results.flatMap((result) =>
 			result.status === 'rejected' ? [result.reason] : []

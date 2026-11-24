@@ -1,6 +1,6 @@
-// The CMS stars the primary position of each facility (Falmouth 83 for the center), but the
-// bookings Worker doesn't pass that on yet. List the positions to treat as primary here until it
-// does; they head their list and the center's gets a Primary badge.
+// The CMS stars the primary position of each facility. Positions listed here count as primary too,
+// for any the CMS hasn't starred (Falmouth 83 for the center); they head their list and the
+// center's gets a Primary badge.
 export const EXTRA_PRIMARY_POSITIONS: string[] = ['IND_83_CTR'];
 
 // Emergency (guard) positions are in the CMS feed but are never bookable

@@ -1,8 +1,7 @@
 import { BOOKING_REMINDER_HOURS, BOOKINGS_URL } from '$lib/config/bookings';
 import { logger } from '$lib/server/logger';
-import { fetchBookings } from '$lib/server/bookings';
 import { fetchRosterDiscordIds } from '$lib/server/vatsim/vatusaDataClient';
-import type { AtcBooking, BookingsWorker } from '$lib/types/bookings';
+import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
 import {
 	describePosition,
 	getDueReminders,
@@ -30,13 +29,13 @@ function reminderEmbed(booking: AtcBooking, label: PositionLabel | undefined) {
 // DMs each controller through Indy Larry a few hours before their booking starts
 export async function runRemindBookings(
 	larry: Cloudflare.Env['LARRY'],
-	bookings: BookingsWorker | undefined,
+	bookings: BookingsClient | undefined,
 	runTime: Date
 ) {
 	if (!larry || !bookings) return;
 
 	const [allBookings, positions, discordIds] = await Promise.all([
-		fetchBookings(bookings),
+		bookings.listOrgBookings(),
 		bookings.getPositions().catch((error) => {
 			// Reminders still go out, naming positions by callsign
 			logger.error('Failed to read the bookable positions for reminders', { error });

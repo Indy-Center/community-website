@@ -1,8 +1,8 @@
 import { BOOKING_REMINDER_HOURS } from '$lib/config/bookings';
 import { eventsTable } from '$lib/db/schema/events';
 import { logger } from '$lib/server/logger';
-import { fetchBookings, fetchEventNames } from '$lib/server/bookings';
-import type { AtcBooking, BookingsWorker } from '$lib/types/bookings';
+import { fetchEventNames } from '$lib/server/bookings';
+import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
 import { getPositionLabels, getUpcomingBookings, groupEventBookings } from '$lib/utils/bookings';
 import type { Database } from '$lib/server/db';
 import type { DiscordStep } from '$lib/profile/linkedAccounts';
@@ -12,12 +12,15 @@ import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt, inArray } from 'drizzle-orm';
 
 // Bookings starting soon, with the position names to show. The home page doesn't depend on the
-// booking system: if the Worker is missing or fails, there are simply none to show.
-async function fetchUpcomingBookings(worker: BookingsWorker | undefined, db: Database) {
-	if (!worker) return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
+// booking system: if it isn't set up or fails, there are simply none to show.
+async function fetchUpcomingBookings(client: BookingsClient | undefined, db: Database) {
+	if (!client) return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
 
 	try {
-		const [bookings, positions] = await Promise.all([fetchBookings(worker), worker.getPositions()]);
+		const [bookings, positions] = await Promise.all([
+			client.listOrgBookings(),
+			client.getPositions()
+		]);
 		const upcoming = getUpcomingBookings(bookings, new Date(), BOOKING_REMINDER_HOURS);
 		// An event with many positions is one row, not one per position
 		const upcomingBookings = groupEventBookings(upcoming, await fetchEventNames(db, upcoming));
@@ -41,7 +44,7 @@ export const load = async ({ locals, platform }) => {
 	const [metars, controllers, bookings] = await Promise.all([
 		fetchMetars(),
 		fetchControllers(),
-		fetchUpcomingBookings(platform?.env.BOOKINGS, locals.db)
+		fetchUpcomingBookings(locals.bookings, locals.db)
 	]);
 
 	const events = await locals.db.query.eventsTable.findMany({

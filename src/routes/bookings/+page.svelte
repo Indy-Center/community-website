@@ -40,7 +40,7 @@
 	let updateModal: Modal | undefined = $state();
 	let editing: AtcBooking | undefined = $state();
 	let deleteError: string | undefined = $state();
-	// Writes are queued, so tell people their change is on its way rather than done
+	// What the last change did, as the server worded it
 	let notice: string | undefined = $state();
 	let view: 'calendar' | 'list' = $state('calendar');
 
@@ -293,9 +293,6 @@
 												<span class="font-mono font-semibold text-white">{booking.callsign}</span>
 											{/if}
 										</div>
-										{#if booking.pending}
-											<Badge label="pending" color="orange" size="sm" />
-										{/if}
 										{#if booking.type !== 'booking'}
 											<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
 										{/if}

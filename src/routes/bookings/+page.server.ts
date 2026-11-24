@@ -1,4 +1,4 @@
-﻿import { inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
@@ -6,14 +6,9 @@ import { memberName } from '$lib/members';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
 import { readMemberCredentials } from '$lib/server/roster';
-import {
-	cancelBooking,
-	createBooking,
-	fetchBookingsWithPending,
-	fetchEventNames,
-	updateBooking
-} from '$lib/server/bookings';
-import type { AtcBooking, BookingsWorker, WorkerPosition } from '$lib/types/bookings';
+import { fetchEventNames } from '$lib/server/bookings';
+import { BookingRefusedError } from '$lib/server/bookingsApi';
+import type { AtcBooking, BookingsClient, CmsPosition } from '$lib/types/bookings';
 import {
 	EVENT_BOOKING_PREFIX,
 	findBookingConflict,
@@ -41,37 +36,53 @@ async function fetchQualifications(db: App.Locals['db'], cid: string | undefined
 }
 
 // The bookable positions from the CMS feed. When it can't be read nothing is bookable.
-async function fetchPositions(worker: BookingsWorker | undefined) {
-	if (!worker) return [] as WorkerPosition[];
+async function fetchPositions(client: BookingsClient | undefined) {
+	if (!client) return [] as CmsPosition[];
 
 	try {
-		return await worker.getPositions();
+		return await client.getPositions();
 	} catch (error) {
 		logger.error('Failed to read the bookable positions', { error });
-		return [] as WorkerPosition[];
+		return [] as CmsPosition[];
 	}
 }
 
-// Only bookings with our ID (made through this site) that the list shows can be changed; the
-// bookings Worker addresses them by it. A pending one can be changed once it is listed.
+// The booking system's list. When it can't be read the page shows none, and booking is refused.
+async function fetchBookings(client: BookingsClient) {
+	try {
+		return await client.listOrgBookings();
+	} catch (error) {
+		logger.error('Failed to read bookings', { error });
+		return null;
+	}
+}
+
+// Only bookings with our ID (made through this site) can be changed; the booking system addresses
+// them by it
 function canManageBooking(booking: AtcBooking, cid: string | undefined, roles: string[]) {
 	return (
 		booking.externalId !== null &&
 		// An event booking follows its event's roster, so it is changed from the event
 		!booking.externalId.startsWith(EVENT_BOOKING_PREFIX) &&
-		!booking.pending &&
 		(isAdmin(roles) || String(booking.cid) === cid)
 	);
 }
 
-const SUBMITTED = 'Submitted. It can take a minute for the calendar to catch up.';
 const UNAVAILABLE = 'Booking is not available right now. Please try again later.';
+
+// What the booker is told when a write fails: the booking system's reason when it refused, else
+// that it is unavailable
+function writeFailure(error: unknown) {
+	return error instanceof BookingRefusedError
+		? { status: 400 as const, message: `The booking system refused: ${error.message}` }
+		: { status: 502 as const, message: UNAVAILABLE };
+}
 
 // Only controllers on the ZID roster (home or visiting) can book
 const isRostered = (user: App.Locals['user']) => user?.membership === 'controller';
 
-export const load = async ({ locals, platform }) => {
-	const worker = platform?.env.BOOKINGS;
+export const load = async ({ locals }) => {
+	const client = locals.bookings;
 	const [createForm, updateForm] = await Promise.all([
 		superValidate(zod4(bookingSchema), { id: 'create-booking' }),
 		superValidate(zod4(bookingUpdateSchema), { id: 'update-booking' })
@@ -94,11 +105,12 @@ export const load = async ({ locals, platform }) => {
 		};
 	}
 
-	const [bookings, feed, qualifications] = await Promise.all([
-		worker ? fetchBookingsWithPending(worker, locals.db) : ([] as AtcBooking[]),
-		fetchPositions(worker),
+	const [listed, feed, qualifications] = await Promise.all([
+		client ? fetchBookings(client) : null,
+		fetchPositions(client),
 		fetchQualifications(locals.db, locals.user.cid)
 	]);
+	const bookings = listed ?? [];
 
 	const eventNames = await fetchEventNames(locals.db, bookings);
 
@@ -148,14 +160,14 @@ export const load = async ({ locals, platform }) => {
 		bookablePositions,
 		manageable,
 		canBook: isRostered(locals.user),
-		bookingEnabled: Boolean(worker),
+		bookingEnabled: listed !== null,
 		createForm,
 		updateForm
 	};
 };
 
 export const actions = {
-	create: async ({ request, locals, platform }) => {
+	create: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingSchema));
 		if (!locals.user) return fail(401, { form });
 		if (!isRostered(locals.user)) {
@@ -163,15 +175,16 @@ export const actions = {
 		}
 		if (!form.valid) return fail(400, { form });
 
-		const worker = platform?.env.BOOKINGS;
-		if (!worker) return setError(form, '', UNAVAILABLE, { status: 503 });
+		const client = locals.bookings;
+		if (!client) return setError(form, '', UNAVAILABLE, { status: 503 });
 
 		const [feed, qualifications, bookings] = await Promise.all([
-			fetchPositions(worker),
+			fetchPositions(client),
 			fetchQualifications(locals.db, locals.user.cid),
-			fetchBookingsWithPending(worker, locals.db)
+			fetchBookings(client)
 		]);
 
+		if (!bookings) return setError(form, '', UNAVAILABLE, { status: 503 });
 		if (!qualifications) {
 			return setError(form, '', "We couldn't verify your certifications right now", {
 				status: 503
@@ -192,32 +205,36 @@ export const actions = {
 			return setError(form, 'callsign', `Already booked ${formatZuluRange(conflict)}`);
 		}
 
+		// Our own ID for it: how it is updated and cancelled later
+		const externalId = crypto.randomUUID();
 		try {
-			const externalId = await createBooking(worker, locals.db, {
+			await client.createBooking({
+				externalId,
 				callsign,
 				cid: Number(locals.user.cid),
 				start,
 				end
 			});
-			logger.info(`User ${locals.user.cid} booked ${callsign}`, { externalId, start, end });
 		} catch (error) {
-			logger.error(`Failed to queue ${callsign} booking for ${locals.user.cid}`, { error });
-			return setError(form, '', UNAVAILABLE, { status: 502 });
+			logger.error(`Failed to book ${callsign} for ${locals.user.cid}`, { error });
+			const { status, message: reason } = writeFailure(error);
+			return setError(form, '', reason, { status });
 		}
 
-		return message(form, SUBMITTED);
+		logger.info(`User ${locals.user.cid} booked ${callsign}`, { externalId, start, end });
+		return message(form, 'Booked.');
 	},
 
-	update: async ({ request, locals, platform }) => {
+	update: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingUpdateSchema));
 		if (!locals.user) return fail(401, { form });
 		if (!form.valid) return fail(400, { form });
 
-		const worker = platform?.env.BOOKINGS;
-		if (!worker) return setError(form, '', UNAVAILABLE, { status: 503 });
+		const client = locals.bookings;
+		const bookings = client ? await fetchBookings(client) : null;
+		if (!client || !bookings) return setError(form, '', UNAVAILABLE, { status: 503 });
 
 		const { externalId, start, end } = form.data;
-		const bookings = await fetchBookingsWithPending(worker, locals.db);
 		const booking = bookings.find((candidate) => candidate.externalId === externalId);
 
 		if (!booking || !canManageBooking(booking, locals.user.cid, locals.roles)) {
@@ -230,27 +247,28 @@ export const actions = {
 		}
 
 		try {
-			await updateBooking(worker, externalId, { start, end });
+			await client.updateBooking({ externalId, start, end });
 		} catch (error) {
-			logger.error(`Failed to queue update of booking ${externalId}`, { error });
-			return setError(form, '', UNAVAILABLE, { status: 502 });
+			logger.error(`Failed to update booking ${externalId}`, { error });
+			const { status, message: reason } = writeFailure(error);
+			return setError(form, '', reason, { status });
 		}
 
 		logger.info(`User ${locals.user.cid} updated booking ${externalId} (${booking.callsign})`, {
 			start,
 			end
 		});
-		return message(form, SUBMITTED);
+		return message(form, 'Booking updated.');
 	},
 
-	delete: async ({ request, locals, platform }) => {
+	delete: async ({ request, locals }) => {
 		if (!locals.user) return fail(401);
 
-		const worker = platform?.env.BOOKINGS;
-		if (!worker) return fail(503, { message: UNAVAILABLE });
+		const client = locals.bookings;
+		const bookings = client ? await fetchBookings(client) : null;
+		if (!client || !bookings) return fail(503, { message: UNAVAILABLE });
 
 		const externalId = String((await request.formData()).get('externalId') ?? '');
-		const bookings = await fetchBookingsWithPending(worker, locals.db);
 		const booking = bookings.find((candidate) => candidate.externalId === externalId);
 
 		if (!booking || !canManageBooking(booking, locals.user.cid, locals.roles)) {
@@ -258,13 +276,14 @@ export const actions = {
 		}
 
 		try {
-			await cancelBooking(worker, externalId);
+			await client.cancelBooking({ externalId });
 		} catch (error) {
-			logger.error(`Failed to queue cancel of booking ${externalId}`, { error });
-			return fail(502, { message: UNAVAILABLE });
+			logger.error(`Failed to cancel booking ${externalId}`, { error });
+			const { status, message: reason } = writeFailure(error);
+			return fail(status, { message: reason });
 		}
 
 		logger.info(`User ${locals.user.cid} deleted booking ${externalId} (${booking.callsign})`);
-		return { success: true, message: SUBMITTED };
+		return { success: true, message: 'Booking deleted.' };
 	}
 };

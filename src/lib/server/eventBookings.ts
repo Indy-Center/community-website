@@ -3,14 +3,14 @@ import { eventPositionsTable, type Event } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient';
-import type { BookingsWorker } from '$lib/types/bookings';
+import type { BookingsClient } from '$lib/types/bookings';
 import { EVENT_BOOKING_PREFIX, getPositionCallsigns } from '$lib/utils/bookings';
 
 // Keeps event rosters on the booking calendar: a controller who holds an event position is booked
 // on its callsign, as an event booking, for the event's hours. A roster only holds positions once
 // it is out: an open roster when the event is published, an assigned one when its manager
-// publishes the roster. Writes are queued by the bookings Worker, so nothing here waits for the
-// booking system, and a failure is logged without failing the event action that triggered it.
+// publishes the roster. A booking the booking system refuses or can't take is logged without
+// failing the event action that triggered it.
 
 type Held = Pick<Event, 'isPublished' | 'isRosterPublished' | 'rosterType' | 'endTime'>;
 
@@ -21,7 +21,7 @@ export const holdsBookings = (event: Held, now = new Date()) =>
 	event.rosterType !== 'none' &&
 	event.endTime > now;
 
-// Our ID for one controller on one event position: ev_<event id>_<hash>, within the Worker's 64
+// Our ID for one controller on one event position: ev_<event id>_<hash>, within the booking system's 64
 // characters. The event ID stays readable so /bookings can group by event; the hash covers the
 // position and CID, so putting someone else on the position is a cancel and a new booking.
 export async function eventBookingId(eventId: string, positionId: string, cid: string) {
@@ -69,11 +69,11 @@ async function callsignOf(positionId: string) {
 	return callsign;
 }
 
-async function book(worker: BookingsWorker, event: Event, { positionId, cid }: Assigned) {
+async function book(client: BookingsClient, event: Event, { positionId, cid }: Assigned) {
 	const callsign = await callsignOf(positionId);
 	if (!callsign) return;
 
-	await worker.createBooking({
+	await client.createBooking({
 		externalId: await eventBookingId(event.id, positionId, cid),
 		cid: Number(cid),
 		callsign,
@@ -83,11 +83,11 @@ async function book(worker: BookingsWorker, event: Event, { positionId, cid }: A
 	});
 }
 
-const cancel = async (worker: BookingsWorker, eventId: string, { positionId, cid }: Assigned) =>
-	worker.cancelBooking({ externalId: await eventBookingId(eventId, positionId, cid) });
+const cancel = async (client: BookingsClient, eventId: string, { positionId, cid }: Assigned) =>
+	client.cancelBooking({ externalId: await eventBookingId(eventId, positionId, cid) });
 
-const reschedule = async (worker: BookingsWorker, event: Event, { positionId, cid }: Assigned) =>
-	worker.updateBooking({
+const reschedule = async (client: BookingsClient, event: Event, { positionId, cid }: Assigned) =>
+	client.updateBooking({
 		externalId: await eventBookingId(event.id, positionId, cid),
 		start: event.startTime,
 		end: event.endTime
@@ -98,18 +98,18 @@ const reschedule = async (worker: BookingsWorker, event: Event, { positionId, ci
  * holds it now; either may be null. Does nothing unless the event's roster is out.
  */
 export async function syncAssignment(
-	worker: BookingsWorker | undefined,
+	client: BookingsClient | undefined,
 	db: Database,
 	event: Event,
 	positionId: string,
 	{ previousUserId, userId }: { previousUserId?: string | null; userId?: string | null }
 ) {
-	if (!worker || !holdsBookings(event) || previousUserId === userId) return;
+	if (!client || !holdsBookings(event) || previousUserId === userId) return;
 
 	await safely(`position ${positionId} of ${event.id}`, async () => {
 		const [previous, next] = await Promise.all([cidOf(db, previousUserId), cidOf(db, userId)]);
-		if (previous) await cancel(worker, event.id, { positionId, cid: previous });
-		if (next) await book(worker, event, { positionId, cid: next });
+		if (previous) await cancel(client, event.id, { positionId, cid: previous });
+		if (next) await book(client, event, { positionId, cid: next });
 	});
 }
 
@@ -118,12 +118,12 @@ export async function syncAssignment(
  * as it was with how it is now, and books everyone, cancels everyone, or moves everyone's hours.
  */
 export async function syncEvent(
-	worker: BookingsWorker | undefined,
+	client: BookingsClient | undefined,
 	db: Database,
 	before: Event,
 	after: Event
 ) {
-	if (!worker) return;
+	if (!client) return;
 
 	const wasHolding = holdsBookings(before);
 	const nowHolding = holdsBookings(after);
@@ -137,20 +137,20 @@ export async function syncEvent(
 		const assigned = await assignedPositions(db, after.id);
 
 		for (const position of assigned) {
-			if (!nowHolding) await cancel(worker, after.id, position);
-			else if (!wasHolding) await book(worker, after, position);
-			else await reschedule(worker, after, position);
+			if (!nowHolding) await cancel(client, after.id, position);
+			else if (!wasHolding) await book(client, after, position);
+			else await reschedule(client, after, position);
 		}
 	});
 }
 
 // An event is about to be deleted: take everyone off the calendar first
-export async function cancelEvent(worker: BookingsWorker | undefined, db: Database, event: Event) {
-	if (!worker || !holdsBookings(event)) return;
+export async function cancelEvent(client: BookingsClient | undefined, db: Database, event: Event) {
+	if (!client || !holdsBookings(event)) return;
 
 	await safely(`deleting event ${event.id}`, async () => {
 		for (const position of await assignedPositions(db, event.id)) {
-			await cancel(worker, event.id, position);
+			await cancel(client, event.id, position);
 		}
 	});
 }
