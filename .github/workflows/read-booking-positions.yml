@@ -1,0 +1,70 @@
+name: Read our booking positions
+
+# Run by hand from the Actions tab. Reads only: GET /org/positions with our API key, which gives our
+# organization, whether it has a bookable list, each position with the GCAP restrictions it
+# requires, and those restrictions. The run summary shows them; the full answer is attached to the
+# run as booking-positions.json.
+#
+# Needs the repo variable VATSIM_BOOKING_API_URL (the base URL, including /api) and the repo secret
+# VATSIM_BOOKING_API_KEY (Settings, Secrets and variables, Actions), the same ones the deploy uses.
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read /org/positions
+        env:
+          API_URL: ${{ vars.VATSIM_BOOKING_API_URL }}
+          API_KEY: ${{ secrets.VATSIM_BOOKING_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$API_URL" ] || [ -z "$API_KEY" ]; then
+            echo "::error::Set the VATSIM_BOOKING_API_URL repo variable and VATSIM_BOOKING_API_KEY repo secret first"
+            exit 1
+          fi
+
+          status=$(curl -sS -o booking-positions.json -w '%{http_code}' \
+            -H "Authorization: Bearer $API_KEY" -H 'Accept: application/json' \
+            "${API_URL%/}/org/positions")
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::The booking system answered $status"
+            cat booking-positions.json
+            exit 1
+          fi
+
+          # The summary: org, list state, restrictions, then every position with what it requires
+          jq -r '
+            .data as $d
+            | "### Booking positions for \($d.org.name // "?") (org \($d.org.id // "?"), \($d.org.division // "?")/\($d.org.subdivision // "?"))",
+              "",
+              (if $d.restricted then "A bookable list is set: \($d.positions | length) positions. Bookings for other callsigns are refused."
+               else "No bookable list is set: any callsign the rating allows can be booked." end),
+              "",
+              "#### GCAP restrictions (\($d.restrictions // [] | length))",
+              "",
+              (if ($d.restrictions // [] | length) == 0 then "None."
+               else ("| ID | Name | Tier | Patterns |", "| --- | --- | --- | --- |",
+                     ($d.restrictions[] | "| \(.id) | \(.name) | \(.tier) | `\(.patterns)` |")) end),
+              "",
+              "#### Positions",
+              "",
+              (if ($d.positions // [] | length) == 0 then "None."
+               else ("| Callsign | Requires |", "| --- | --- |",
+                     ($d.positions[] | "| `\(.callsign)` | \(if (.requires | length) == 0 then "rating only"
+                                                            else ([.requires[] | "\(.name) (\(.tier))"] | join(", ")) end) |")) end)
+          ' booking-positions.json >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r '.data | "Org \(.org.name // "?"): restricted=\(.restricted), \(.positions // [] | length) positions, \(.restrictions // [] | length) restrictions"' booking-positions.json
+
+      - name: Attach the full answer
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-positions
+          path: booking-positions.json
+          if-no-files-found: ignore
