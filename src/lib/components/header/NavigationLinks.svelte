@@ -21,16 +21,16 @@
 	import IconRadioTower from '~icons/mdi/radio-tower';
 	import IconForum from '~icons/mdi/forum-outline';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
-	import { BOOKINGS_ADMIN_ONLY } from '$lib/config/bookings';
-	import { isAdmin } from '$lib/utils/permissions';
+	import { BOOKINGS_BETA_ONLY } from '$lib/config/bookings';
+	import { isBetaTester } from '$lib/utils/permissions';
 
-	// adminOnly: shown to admins alone, for pages not yet open to everyone
+	// betaOnly: shown to admins and beta testers alone, for pages not yet open to everyone
 	type NavLink = {
 		label: string;
 		href: string;
 		icon: Component;
 		external?: boolean;
-		adminOnly?: boolean;
+		betaOnly?: boolean;
 	};
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
 	type NavItem = NavLink | NavGroup;
@@ -73,7 +73,7 @@
 					label: 'Bookings',
 					href: '/bookings',
 					icon: IconCalendarClock,
-					adminOnly: BOOKINGS_ADMIN_ONLY
+					betaOnly: BOOKINGS_BETA_ONLY
 				},
 				{
 					label: 'Join Indy Center',
@@ -145,8 +145,8 @@
 	];
 
 	const links = $derived.by(() => {
-		const admin = isAdmin(page.data.roles);
-		const shown = (link: NavLink) => admin || !link.adminOnly;
+		const beta = isBetaTester(page.data.roles);
+		const shown = (link: NavLink) => beta || !link.betaOnly;
 		return allLinks.flatMap((item): NavItem[] => {
 			if ('children' in item) return [{ ...item, children: item.children.filter(shown) }];
 			return shown(item) ? [item] : [];

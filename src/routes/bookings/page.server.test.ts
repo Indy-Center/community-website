@@ -10,12 +10,12 @@ import { formatBookingTime } from '$lib/utils/bookings';
 import { Role } from '$lib/utils/permissions';
 import { actions, load } from './+page.server';
 
-// Bookings are admins-only for now; most tests here cover how they work once open to everyone
-const flags = vi.hoisted(() => ({ adminOnly: false }));
+// Bookings are for admins and beta testers only for now; most tests here cover how they work once open to everyone
+const flags = vi.hoisted(() => ({ betaOnly: false }));
 vi.mock('$lib/config/bookings', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/config/bookings')>()),
-	get BOOKINGS_ADMIN_ONLY() {
-		return flags.adminOnly;
+	get BOOKINGS_BETA_ONLY() {
+		return flags.betaOnly;
 	}
 }));
 
@@ -55,7 +55,7 @@ const times = (startHours: number, endHours: number) => ({
 let db: Database;
 
 beforeEach(async () => {
-	flags.adminOnly = false;
+	flags.betaOnly = false;
 	db = await testDb();
 	await seedAvailableCredentials(db);
 	await seedMember(db, {
@@ -337,12 +337,12 @@ describe('/bookings update and delete', () => {
 	});
 });
 
-describe('/bookings while admins only', () => {
+describe('/bookings while beta testers only', () => {
 	beforeEach(() => {
-		flags.adminOnly = true;
+		flags.betaOnly = true;
 	});
 
-	it('sends everyone but admins home, signed out included', async () => {
+	it('sends everyone but admins and beta testers home, signed out included', async () => {
 		const redirectsHome = async (locals: unknown) => {
 			const thrown = await Promise.resolve()
 				.then(() => callLoad(load, { locals }))
@@ -354,12 +354,34 @@ describe('/bookings while admins only', () => {
 		await redirectsHome({ db, roles: [], bookings: stubClient() });
 	});
 
-	it('shows admins the page', async () => {
-		const data = await callLoad(load, { locals: asUser('1000001', [Role.ADMIN], stubClient()) });
-		expect(data.loggedIn).toBe(true);
+	it('shows admins and beta testers the page', async () => {
+		for (const role of [Role.ADMIN, Role.BETA_TESTER]) {
+			const data = await callLoad(load, { locals: asUser('1000001', [role], stubClient()) });
+			expect(data.loggedIn).toBe(true);
+		}
 	});
 
-	it('refuses every action from anyone but an admin', async () => {
+	it('lets a beta tester book, but change only their own bookings', async () => {
+		const client = stubClient([listed({ externalId: 'theirs', cid: 1000002 })]);
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001', [Role.BETA_TESTER], client)
+		});
+		expect(data.manageable).toEqual([]);
+
+		await call('create', client, '1000001', { callsign: 'AID_GND', ...times(30, 32) }, [
+			Role.BETA_TESTER
+		]);
+		expect(client.createBooking).toHaveBeenCalledOnce();
+
+		const deleted = await call('delete', client, '1000001', { externalId: 'theirs' }, [
+			Role.BETA_TESTER
+		]);
+		expect(deleted.status).toBe(403);
+		expect(client.cancelBooking).not.toHaveBeenCalled();
+	});
+
+	it('refuses every action from anyone but an admin or beta tester', async () => {
 		const client = stubClient([listed({ externalId: 'mine', cid: 1000001 })]);
 
 		const created = await call('create', client, '1000001', {
