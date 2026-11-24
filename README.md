@@ -359,7 +359,7 @@ There is no `.env` template. The vars in `wrangler.jsonc` cover the rest; set th
 - `IDENTITY_API_CLIENT_SECRET` — writes to identity; see "Identity API client". Without it those writes are refused locally and logged.
 - `CMS_URL`, `COMMUNITY_API_TOKEN` — partners; see above.
 - `VATUSA_API_KEY` — VATUSA API calls, such as adding a visitor. (The roster comes from the training app.)
-- `VATSIM_BOOKING_API_URL`, `VATSIM_BOOKING_API_KEY` — the booking system: its base URL (including `/api`) and our organization's API key. Without both the bookings page loads empty and booking is disabled; see [Bookings from a fake booking system](#bookings-from-a-fake-booking-system) to try it locally.
+- `VATSIM_BOOKING_API_URL`, `VATSIM_BOOKING_API_KEY` — the booking system: its base URL (including `/api`) and our organization's API key. In production they are a GitHub repo variable and secret, which the deploy passes to the Worker (see [Deployment](#deployment)). Without both the bookings page loads empty and booking is disabled; see [Bookings from a fake booking system](#bookings-from-a-fake-booking-system) to try it locally.
 - `VATSIM_BOOKING_T2_RESTRICTION_ID` — the booking system's Indy Center (T2) restriction, created once; T2 sync is off without it. Not a secret: once it exists, it belongs in `vars` in `wrangler.jsonc`. See [Roster and T2 in the booking system](#roster-and-t2-in-the-booking-system).
 - `DISCORD_WEBHOOK_SENIOR_STAFF_ALERTS`, `DISCORD_WEBHOOK_TECH_TEAM_ALERTS` — Discord alerts.
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` — Link Discord on the profile, through the "Indy Center" Discord app; see [Linked accounts](#linked-accounts). Without them Link Discord says Discord didn't confirm the account.
@@ -484,8 +484,7 @@ refresh, every five minutes:
   roster is sent only when it differs, and the booking system removes anyone left off it.
 - **T2.** Every rostered controller holding `T2-CTR` is endorsed on the Indy Center restriction
   (`IND_*_CTR`), and anyone else's endorsement is revoked. The restriction is created once, by the
-  **Create the T2 restriction** workflow (Actions tab, run by hand; it needs the repo secrets
-  `VATSIM_BOOKING_API_URL` and `VATSIM_BOOKING_API_KEY`). Its run summary gives the ID, which goes in
+  **Create the T2 restriction** workflow (Actions tab, run by hand; it uses the same repo variable `VATSIM_BOOKING_API_URL` and secret `VATSIM_BOOKING_API_KEY` as the deploy). Its run summary gives the ID, which goes in
   `VATSIM_BOOKING_T2_RESTRICTION_ID`; T2 sync is off until it is set.
 
 With the fake, create the restriction and put its ID in `.env`:
@@ -530,7 +529,7 @@ npm run build && npm run deploy
 
 The roster cron deploys with the site; it is `triggers.crons` in `wrangler.jsonc`.
 
-Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks, `VATSIM_BOOKING_API_URL` and `VATSIM_BOOKING_API_KEY`) live in Cloudflare — set each with `wrangler secret put`.
+Production secrets (OAuth client secrets, `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`, `COMMUNITY_API_TOKEN`, `VATUSA_API_KEY`, the Discord webhooks) live in Cloudflare — set each with `wrangler secret put`. The booking system's settings are the exception: `VATSIM_BOOKING_API_URL` is a GitHub repo variable and `VATSIM_BOOKING_API_KEY` a repo secret (Settings → Secrets and variables → Actions), and the deploy workflow passes both to the Worker.
 
 ## Disclaimer
 

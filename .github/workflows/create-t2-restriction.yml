@@ -5,8 +5,8 @@ name: Create the T2 restriction
 # wrangler.jsonc. The roster cron then grants and revokes T2 on it. Safe to run again: if a
 # restriction with this name exists, it prints that one's ID and creates nothing.
 #
-# Needs the repo secrets VATSIM_BOOKING_API_URL (the base URL, including /api) and
-# VATSIM_BOOKING_API_KEY (Settings, Secrets and variables, Actions).
+# Needs the repo variable VATSIM_BOOKING_API_URL (the base URL, including /api) and the repo secret
+# VATSIM_BOOKING_API_KEY (Settings, Secrets and variables, Actions), the same ones the deploy uses.
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Create the restriction, unless it exists
         env:
-          API_URL: ${{ secrets.VATSIM_BOOKING_API_URL }}
+          API_URL: ${{ vars.VATSIM_BOOKING_API_URL }}
           API_KEY: ${{ secrets.VATSIM_BOOKING_API_KEY }}
           NAME: ${{ inputs.name }}
           TIER: ${{ inputs.tier }}
@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$API_URL" ] || [ -z "$API_KEY" ]; then
-            echo "::error::Set the VATSIM_BOOKING_API_URL and VATSIM_BOOKING_API_KEY repo secrets first"
+            echo "::error::Set the VATSIM_BOOKING_API_URL repo variable and VATSIM_BOOKING_API_KEY repo secret first"
             exit 1
           fi
           base="${API_URL%/}/org/session/restrictions"
