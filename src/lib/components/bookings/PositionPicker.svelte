@@ -1,0 +1,299 @@
+<script lang="ts">
+	import {
+		POSITION_TYPES,
+		POSITION_TYPE_LABELS,
+		plainFacilityName,
+		groupPositions,
+		isListed,
+		formatZuluRange,
+		searchPositions,
+		type BookablePosition,
+		type PositionType
+	} from '$lib/utils/bookings';
+	import type { AtcBooking } from '$lib/types/bookings';
+	import { Position } from '@indy-center/centerline-svelte';
+	import IconMagnify from '~icons/mdi/magnify';
+
+	type Props = {
+		positions: BookablePosition[];
+		value: string;
+		error?: string | string[];
+		// Positions already booked during the chosen times; shown greyed out and can't be picked
+		booked?: Map<string, AtcBooking>;
+		// Also list the non-primary positions. The page resets it each time the form opens.
+		showAll?: boolean;
+	};
+
+	let {
+		positions,
+		value = $bindable(),
+		error,
+		booked = new Map(),
+		showAll = $bindable(false)
+	}: Props = $props();
+
+	// Tower cab positions can be narrowed further within ATCT
+	type AtctRole = 'TWR' | 'GND' | 'DEL' | 'RMP';
+	const ATCT_ROLES: { role: AtctRole; label: string }[] = [
+		{ role: 'TWR', label: 'Tower' },
+		{ role: 'GND', label: 'Ground' },
+		{ role: 'RMP', label: 'Ramp' },
+		{ role: 'DEL', label: 'Clearance' }
+	];
+	const roleOf = (position: BookablePosition) => position.callsign.split('_').at(-1);
+
+	const availableTypes = $derived(
+		POSITION_TYPES.filter((type) => positions.some((position) => position.type === type))
+	);
+	// What the list offers right now; the rest sits behind the toggle
+	const listed = $derived(positions.filter((position) => isListed(position, showAll)));
+	const availableRoles = $derived(
+		ATCT_ROLES.filter(({ role }) =>
+			listed.some((position) => position.type === 'ATCT' && roleOf(position) === role)
+		)
+	);
+
+	let selectedType: PositionType | undefined = $state();
+	let atctRole: AtctRole | 'ALL' = $state('ALL');
+	let query = $state('');
+
+	const activeType = $derived(
+		selectedType && availableTypes.includes(selectedType)
+			? selectedType
+			: (positions.find((position) => position.callsign === value)?.type ?? availableTypes[0])
+	);
+
+	const inActiveGroup = (position: BookablePosition) =>
+		position.type === activeType &&
+		(activeType !== 'ATCT' || atctRole === 'ALL' || roleOf(position) === atctRole);
+
+	const matches = $derived(searchPositions(listed, query));
+	const typeMatches = $derived(matches.filter(inActiveGroup));
+	// Positions the search would find here if the toggle were on
+	const hiddenCount = $derived(
+		showAll
+			? 0
+			: searchPositions(positions, query).filter(
+					(position) => inActiveGroup(position) && !isListed(position, false)
+				).length
+	);
+	const otherMatches = $derived(
+		query
+			? availableTypes
+					.filter((type) => type !== activeType)
+					.map((type) => ({
+						type,
+						count: matches.filter((position) => position.type === type).length
+					}))
+					.filter(({ count }) => count > 0)
+			: []
+	);
+
+	const groups = $derived(groupPositions(typeMatches));
+
+	// Turning the toggle off drops a selected position that is no longer listed
+	function setShowAll(next: boolean) {
+		showAll = next;
+		const selected = positions.find((position) => position.callsign === value);
+		if (!next && selected && !isListed(selected, false)) value = '';
+	}
+
+	function selectType(type: PositionType) {
+		if (type === activeType) return;
+		selectedType = type;
+		value = '';
+	}
+
+	const chipClass = (active: boolean) =>
+		`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+			active
+				? 'border-sky-500 bg-sky-600/30 text-white'
+				: 'border-slate-600 text-slate-300 hover:text-white'
+		}`;
+</script>
+
+<div class="space-y-3">
+	<!-- Submitted even when search hides the selected radio -->
+	<input type="hidden" name="callsign" {value} />
+
+	<div>
+		<span class="mb-2 block text-sm font-medium text-gray-300">Position Type</span>
+		<div class="grid grid-cols-3 gap-2" role="group" aria-label="Position type">
+			{#each POSITION_TYPES as type (type)}
+				{@const available = availableTypes.includes(type)}
+				<button
+					type="button"
+					disabled={!available}
+					aria-pressed={activeType === type}
+					onclick={() => selectType(type)}
+					title={available ? undefined : "You aren't certified for any positions of this type"}
+					class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors {activeType ===
+					type
+						? 'border-sky-500 bg-sky-600/30 text-white'
+						: available
+							? 'cursor-pointer border-slate-600 bg-slate-700 text-slate-300 hover:text-white'
+							: 'cursor-not-allowed border-slate-700 bg-slate-800 text-slate-600'}"
+				>
+					{POSITION_TYPE_LABELS[type]}
+				</button>
+			{/each}
+		</div>
+	</div>
+
+	<div>
+		<label class="mb-2 block text-sm font-medium text-gray-300" for="position-search">
+			Position
+			{#if error}
+				<span class="text-red-400">- {error}</span>
+			{/if}
+		</label>
+		<div class="relative">
+			<IconMagnify
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+			/>
+			<input
+				id="position-search"
+				type="search"
+				bind:value={query}
+				placeholder="Search callsign or name, e.g. LOU, Louisville, tower"
+				autocomplete="off"
+				class="w-full rounded-lg border border-slate-600 bg-slate-700 py-2 pr-4 pl-9 text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+			/>
+		</div>
+
+		<!-- Every Center sector is listed, so the toggle only matters for TRACON and ATCT -->
+		{#if activeType !== 'ARTCC'}
+			<div class="mt-2 flex items-center gap-2 text-xs text-slate-300">
+				<button
+					type="button"
+					role="switch"
+					aria-checked={showAll}
+					aria-label="Show all positions"
+					onclick={() => setShowAll(!showAll)}
+					class="relative h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors {showAll
+						? 'bg-sky-600'
+						: 'bg-slate-600'}"
+				>
+					<span
+						class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform {showAll
+							? 'translate-x-4'
+							: ''}"
+					></span>
+				</button>
+				<span>Show all positions, not just the primary ones</span>
+			</div>
+		{/if}
+
+		{#if activeType === 'ATCT' && availableRoles.length > 1}
+			<div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="ATCT position filter">
+				<button
+					type="button"
+					aria-pressed={atctRole === 'ALL'}
+					onclick={() => (atctRole = 'ALL')}
+					class={chipClass(atctRole === 'ALL')}
+				>
+					All
+				</button>
+				{#each availableRoles as { role, label } (role)}
+					<button
+						type="button"
+						aria-pressed={atctRole === role}
+						onclick={() => (atctRole = role)}
+						class={chipClass(atctRole === role)}
+					>
+						{label}
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		<div
+			class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-slate-600 bg-slate-900/40"
+			role="radiogroup"
+			aria-label="{activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions"
+		>
+			{#each groups as group (group.label)}
+				<div
+					class="sticky top-0 bg-slate-800 px-3 py-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase"
+				>
+					{plainFacilityName(group.label)}
+				</div>
+				{#each group.facilities as facility (facility.id)}
+					<!-- A field under a parent facility gets its own line; a facility with no parent is its own heading -->
+					{#if facility.label !== group.label}
+						<div class="bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-400">
+							{plainFacilityName(facility.label)}
+						</div>
+					{/if}
+					{#each facility.positions as position (position.callsign)}
+						{@const conflict = booked.get(position.callsign)}
+						<label
+							class="flex items-center gap-3 px-3 py-2 text-sm transition-colors {conflict
+								? 'cursor-not-allowed text-slate-500'
+								: value === position.callsign
+									? 'cursor-pointer bg-sky-600/30 text-white'
+									: 'cursor-pointer text-slate-300 hover:bg-slate-700/60'}"
+						>
+							<input
+								type="radio"
+								name="callsign-choice"
+								value={position.callsign}
+								bind:group={value}
+								disabled={!!conflict}
+								class="h-4 w-4 border-slate-500 bg-slate-700 text-sky-500 focus:ring-sky-500 disabled:opacity-40"
+							/>
+							<Position class="min-w-0" callsign={position.callsign} />
+
+							{#if conflict}
+								<span
+									class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"
+								>
+									Booked {formatZuluRange(conflict)}
+								</span>
+							{:else if position.primary && activeType === 'ARTCC'}
+								<!-- TRACON and ATCT facilities are small enough that a badge would only add noise -->
+								<span
+									class="ml-auto shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-300"
+								>
+									Primary
+								</span>
+							{/if}
+						</label>
+					{/each}
+				{/each}
+			{:else}
+				<p class="px-3 py-4 text-sm text-slate-400">
+					{#if query}
+						No {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions match "{query}".
+					{:else}
+						No primary {activeType ? POSITION_TYPE_LABELS[activeType] : ''} positions here.
+					{/if}
+				</p>
+			{/each}
+		</div>
+
+		{#if hiddenCount > 0}
+			<p class="mt-2 text-xs text-slate-400">
+				{hiddenCount} non-primary {hiddenCount === 1 ? 'position' : 'positions'} hidden.
+				<button
+					type="button"
+					class="cursor-pointer text-sky-400 hover:underline"
+					onclick={() => setShowAll(true)}>Show all</button
+				>
+			</p>
+		{/if}
+
+		{#if otherMatches.length > 0}
+			<p class="mt-2 text-xs text-slate-400">
+				Also matching:
+				{#each otherMatches as { type, count }, i (type)}
+					<button
+						type="button"
+						class="cursor-pointer text-sky-400 hover:underline"
+						onclick={() => selectType(type)}>{count} in {POSITION_TYPE_LABELS[type]}</button
+					>{i < otherMatches.length - 1 ? ', ' : ''}
+				{/each}
+			</p>
+		{/if}
+	</div>
+</div>

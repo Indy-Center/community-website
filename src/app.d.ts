@@ -4,7 +4,9 @@ import type { LarryBinding } from '@indy-center/indy-larry-worker';
 import type { TrainingBinding } from '@indy-center/training-tools';
 import type { Cms } from '$lib/server/cms';
 import type { Database } from '$lib/server/db';
+import type { PositionsReader } from '$lib/server/positions';
 import type { Session } from '$lib/server/session';
+import type { BookingsClient } from '$lib/types/bookings';
 import type { UserWithRelations } from '$lib/user';
 
 // for information about these interfaces
@@ -18,6 +20,13 @@ declare global {
 			LARRY: LarryBinding;
 			/** The CMS's server credential; see the README. */
 			COMMUNITY_API_TOKEN?: string;
+			/** The CMS's origin; https://cms.flyindycenter.com when unset. */
+			CMS_URL?: string;
+			/** The booking system's base URL (including `/api`) and our API key; see the README. */
+			VATSIM_BOOKING_API_URL?: string;
+			VATSIM_BOOKING_API_KEY?: string;
+			/** The booking system's Indy Center (T2) restriction; T2 sync is off without it. */
+			VATSIM_BOOKING_T2_RESTRICTION_ID?: string;
 		}
 	}
 	namespace App {
@@ -36,6 +45,10 @@ declare global {
 			roles: string[];
 			/** The CMS client, which reads the partners document and keeps a copy of it. */
 			cms: Cms;
+			/** The booking system's client; undefined when its settings are missing. */
+			bookings?: BookingsClient;
+			/** Reads the CMS positions catalogue; none when the CMS can't be read. */
+			positions: PositionsReader;
 		}
 	}
 }

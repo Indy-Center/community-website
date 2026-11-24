@@ -3,13 +3,18 @@ import type { Roster, RosterMember } from '@indy-center/training-tools';
 import { usersTable } from '$lib/db/schema/users';
 import type { Database } from '$lib/server/db';
 import { readAvailableCredentials, readMemberCredentials } from '$lib/server/roster';
+import { stubBookingsClient } from '$lib/testing/bookings';
 import { seedMember, testDb } from '$lib/testing/db';
 import { runProcessRoster } from './processRoster';
 
 const facilityInfo = vi.hoisted(() => ({
 	fetch: vi.fn(async () => ({ id: 'ZID', atm: 0, datm: 0, ta: 0, ec: 0, fe: 0, wm: 0 }))
 }));
-vi.mock('$lib/server/vatsim/vatusaDataClient', () => ({ fetchFacilityInfo: facilityInfo.fetch }));
+vi.mock('$lib/server/vatsim/vatusaDataClient', () => ({
+	fetchFacilityInfo: facilityInfo.fetch,
+	// VATUSA's home list, for the booking system sync
+	fetchRoster: async () => [{ cid: 1000001 }]
+}));
 // The new- and leaving-controller alerts need a webhook to send to
 vi.mock('$env/dynamic/private', async (importOriginal) => {
 	const original = await importOriginal<typeof import('$env/dynamic/private')>();
@@ -254,5 +259,47 @@ describe('the roster refresh', () => {
 		await runProcessRoster({ training: fakeTraining(GOOD), db });
 
 		expect(await db.query.vatsimControllersTable.findMany()).toHaveLength(2);
+	});
+});
+
+describe('the booking system sync', () => {
+	it('sends the refreshed roster and T2 to the booking system', async () => {
+		const bookings = stubBookingsClient();
+
+		await runProcessRoster({ training: fakeTraining(GOOD), db, bookings, t2RestrictionId: 'r-1' });
+
+		expect(bookings.replaceMembers).toHaveBeenCalledWith([
+			{ cid: 1000001, rating: 4, role: 'member', isHome: true, isMentor: true },
+			{ cid: 1000002, rating: 3, role: 'member', isHome: false, isMentor: false }
+		]);
+		expect(bookings.grantEndorsement).toHaveBeenCalledWith('r-1', 1000001);
+	});
+
+	it('still syncs memberships when the booking system fails', async () => {
+		await seedMember(db, {
+			cid: '1000001',
+			firstName: 'Jordan',
+			lastName: 'Sample',
+			onRoster: false,
+			user: { id: 'user-jordan', email: 'jordan@private.example.test', membership: 'community' }
+		});
+		const bookings = stubBookingsClient();
+		bookings.listMembers.mockRejectedValue(new Error('The booking system answered 503'));
+		bookings.replaceMembers.mockRejectedValue(new Error('The booking system answered 503'));
+
+		await runProcessRoster({ training: fakeTraining(GOOD), db, bookings, t2RestrictionId: 'r-1' });
+
+		expect(await membership('user-jordan')).toBe('controller');
+	});
+
+	it('sends nothing when the roster copy was not refreshed', async () => {
+		const training = fakeTraining(GOOD);
+		training.down();
+		const bookings = stubBookingsClient();
+
+		await runProcessRoster({ training, db, bookings, t2RestrictionId: 'r-1' });
+
+		expect(bookings.listMembers).not.toHaveBeenCalled();
+		expect(bookings.replaceMembers).not.toHaveBeenCalled();
 	});
 });

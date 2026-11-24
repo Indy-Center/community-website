@@ -1,0 +1,8 @@
+// The fake booking system for local development; see the README's "Bookings from a fake booking
+// system". The site reaches it over HTTP: set VATSIM_BOOKING_API_URL to http://localhost:8790/api.
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "fake-bookings",
+	"main": "worker.ts",
+	"compatibility_date": "2025-08-30"
+}

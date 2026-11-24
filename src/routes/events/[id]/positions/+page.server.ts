@@ -8,6 +8,7 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 import { readAvailableCredentials } from '$lib/server/roster';
 import { memberNameColumns, memberPickerColumns } from '$lib/members';
+import { syncAssignment, syncEvent } from '$lib/server/eventBookings';
 
 export const load = async ({ locals, params, depends }) => {
 	if (!canManageEvents(locals.roles)) {
@@ -75,6 +76,17 @@ export const actions = {
 			return fail(400, { form });
 		}
 
+		const [event, previous] = await Promise.all([
+			locals.db.query.eventsTable.findFirst({ where: eq(eventsTable.id, params.id) }),
+			locals.db.query.eventPositionsTable.findFirst({
+				where: and(
+					eq(eventPositionsTable.position, form.data.positionId),
+					eq(eventPositionsTable.eventId, params.id)
+				),
+				columns: { userId: true }
+			})
+		]);
+
 		await locals.db
 			.update(eventPositionsTable)
 			.set({
@@ -87,6 +99,14 @@ export const actions = {
 					eq(eventPositionsTable.eventId, params.id)
 				)
 			);
+
+		// Once the roster is out, changes to it follow onto the booking calendar
+		if (event) {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.positionId, {
+				previousUserId: previous?.userId,
+				userId: form.data.userId || null
+			});
+		}
 
 		return { success: true };
 	},
@@ -142,6 +162,17 @@ export const actions = {
 			return fail(400, { form });
 		}
 
+		const [event, previous] = await Promise.all([
+			locals.db.query.eventsTable.findFirst({ where: eq(eventsTable.id, params.id) }),
+			locals.db.query.eventPositionsTable.findFirst({
+				where: and(
+					eq(eventPositionsTable.eventId, params.id),
+					eq(eventPositionsTable.position, form.data.position)
+				),
+				columns: { userId: true }
+			})
+		]);
+
 		await locals.db
 			.delete(eventPositionsTable)
 			.where(
@@ -150,6 +181,13 @@ export const actions = {
 					eq(eventPositionsTable.position, form.data.position)
 				)
 			);
+
+		if (event) {
+			await syncAssignment(locals.bookings, locals.db, event, form.data.position, {
+				previousUserId: previous?.userId,
+				userId: null
+			});
+		}
 
 		return { success: true };
 	},
@@ -174,6 +212,12 @@ export const actions = {
 				updatedAt: new Date()
 			})
 			.where(eq(eventsTable.id, params.id));
+
+		// Publishing an assigned roster is what puts its controllers on the booking calendar
+		const after = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
+		if (after) await syncEvent(locals.bookings, locals.db, event, after);
 
 		return { success: true };
 	}

@@ -26,10 +26,25 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: npm run build
 
-      - name: Deploy
+      - name: Apply migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_KEY }}
-          command: |
-            d1 migrations apply website-db --remote
-            deploy
+          command: d1 migrations apply website-db --remote
+
+      # The booking system's settings live only in GitHub (Settings, Secrets and variables,
+      # Actions): its base URL and the T2 restriction's ID are repo variables, its key a repo
+      # secret. The deploy hands them to the Worker.
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        env:
+          VATSIM_BOOKING_API_URL: ${{ vars.VATSIM_BOOKING_API_URL }}
+          VATSIM_BOOKING_T2_RESTRICTION_ID: ${{ vars.VATSIM_BOOKING_T2_RESTRICTION_ID }}
+          VATSIM_BOOKING_API_KEY: ${{ secrets.VATSIM_BOOKING_API_KEY }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_WORKERS_API_KEY }}
+          vars: |
+            VATSIM_BOOKING_API_URL
+            VATSIM_BOOKING_T2_RESTRICTION_ID
+          secrets: VATSIM_BOOKING_API_KEY
+          command: deploy

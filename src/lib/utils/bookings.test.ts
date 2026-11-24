@@ -1,0 +1,438 @@
+import { describe, expect, it } from 'vitest';
+import type { AtcBooking } from '$lib/types/bookings';
+import {
+	comparePositions,
+	eventIdOf,
+	findBookingConflict,
+	getBookablePositions,
+	getSopRequirements,
+	positionText,
+	getUpcomingBookings,
+	groupEventBookings,
+	groupPositions,
+	isListed,
+	meetsRequirements,
+	withSopRequirements,
+	type BookablePosition
+} from './bookings';
+
+const requires = (...entries: string[][]) => ({
+	requiredCredentials: entries.map((anyOf) => ({ anyOf }))
+});
+
+describe('meetsRequirements', () => {
+	it('needs nothing for a position with no requirements', () => {
+		expect(meetsRequirements(requires(), null, [])).toBe(true);
+	});
+
+	it('is met by the credential itself, as a certification or an endorsement', () => {
+		expect(meetsRequirements(requires(['A-LC']), 'A-LC', [])).toBe(true);
+		expect(meetsRequirements(requires(['S-LC']), null, ['S-LC'])).toBe(true);
+	});
+
+	it('is met by a higher credential on the ladder', () => {
+		expect(meetsRequirements(requires(['S-GC']), 'T-RC', [])).toBe(true);
+		expect(meetsRequirements(requires(['S-LC']), 'A-LC', [])).toBe(true);
+		expect(meetsRequirements(requires(['A-GC']), null, ['S-LC'])).toBe(true);
+	});
+
+	it('is not met by a lower credential', () => {
+		expect(meetsRequirements(requires(['A-LC']), 'A-GC', ['S-LC'])).toBe(false);
+		expect(meetsRequirements(requires(['T-RC']), 'A-LC', [])).toBe(false);
+	});
+
+	it('needs every entry met, and any one credential within an entry', () => {
+		const position = requires(['T-RC', 'E-RC'], ['T2-CTR']);
+
+		expect(meetsRequirements(position, 'E-RC', ['T2-CTR'])).toBe(true);
+		expect(meetsRequirements(position, 'E-RC', [])).toBe(false);
+		expect(meetsRequirements(position, null, ['T2-CTR'])).toBe(false);
+	});
+
+	it('matches credentials off the ladder, such as T2-CTR, only as themselves', () => {
+		expect(meetsRequirements(requires(['T2-CTR']), 'E-RC', [])).toBe(false);
+		expect(meetsRequirements(requires(['T2-CTR']), 'E-RC', ['T2-CTR'])).toBe(true);
+	});
+});
+
+const booking = (overrides: Partial<AtcBooking>): AtcBooking => ({
+	id: 1,
+	externalId: null,
+	callsign: 'IND_TWR',
+	cid: 1000001,
+	type: 'booking',
+	start: '2026-12-01 18:00:00',
+	end: '2026-12-01 20:00:00',
+	...overrides
+});
+
+describe('groupPositions', () => {
+	const ind = { id: 'IND', name: 'Indianapolis ATCT/TRACON', parent: null };
+	const field = (id: string, name: string) => ({
+		id,
+		name,
+		parent: { id: 'IND', name: ind.name }
+	});
+	const at = (callsign: string, facility: BookablePosition['facility']): BookablePosition => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		type: 'ATCT',
+		primary: false,
+		facility
+	});
+
+	it('puts fields under their parent facility, and a parentless facility under itself', () => {
+		const groups = groupPositions([
+			at('BAK_TWR', field('BAK', 'Columbus Muni ATCT')),
+			at('IND_TWR', ind),
+			at('AID_GND', field('AID', 'Anderson Muni ATCT')),
+			at('AID_TWR', field('AID', 'Anderson Muni ATCT')),
+			at('ZZZ_TWR', { id: 'ZZZ', name: 'Another Field', parent: null })
+		]);
+
+		expect(
+			groups.map((g) => [
+				g.label,
+				g.facilities.map((f) => [f.label, f.positions.map((p) => p.callsign)])
+			])
+		).toEqual([
+			['Another Field', [['Another Field', ['ZZZ_TWR']]]],
+			[
+				'Indianapolis ATCT/TRACON',
+				[
+					['Anderson Muni ATCT', ['AID_TWR', 'AID_GND']],
+					['Columbus Muni ATCT', ['BAK_TWR']],
+					['Indianapolis ATCT/TRACON', ['IND_TWR']]
+				]
+			]
+		]);
+	});
+});
+
+describe('getUpcomingBookings', () => {
+	const now = new Date('2026-12-01T12:00:00Z');
+	const starting = (start: string) =>
+		booking({ id: Math.random(), start, end: '2026-12-02 23:00:00' });
+
+	it('keeps bookings starting within the lead time, soonest first, and drops the rest', () => {
+		const later = starting('2026-12-01 14:30:00');
+		const sooner = starting('2026-12-01 12:30:00');
+		const upcoming = getUpcomingBookings(
+			[
+				later,
+				starting('2026-12-01 15:00:01'),
+				starting('2026-12-01 11:59:59'),
+				starting('2026-12-01 12:00:00'),
+				sooner,
+				starting('2026-12-01 15:00:00')
+			],
+			now,
+			3
+		);
+
+		expect(upcoming.map((b) => b.start)).toEqual([
+			'2026-12-01 12:30:00',
+			'2026-12-01 14:30:00',
+			'2026-12-01 15:00:00'
+		]);
+	});
+});
+
+describe('getBookablePositions', () => {
+	const facility = { id: 'ZID', name: 'Indianapolis ARTCC', parent: null };
+	const feed = (callsign: string, extra: object = {}) => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		frequency: 1,
+		id: 'vnas-id',
+		shortName: null,
+		retired: false,
+		facility,
+		requiredCredentials: [],
+		...extra
+	});
+
+	it('leaves out emergency (guard) positions', () => {
+		const offered = getBookablePositions(
+			[feed('IND_EM_CTR'), feed('IND_20_CTR'), feed('CMH_EM_APP'), feed('CMH_GND')],
+			null,
+			[]
+		);
+
+		expect(offered.map((p) => p.callsign)).toEqual(['IND_20_CTR', 'CMH_GND']);
+	});
+
+	it('puts primary positions first: the CMS star, or Falmouth 83 from config', () => {
+		const offered = getBookablePositions(
+			[
+				feed('IND_17_CTR'),
+				feed('IND_83_CTR'),
+				feed('IND_18_CTR'),
+				feed('IND_19_CTR', { starred: true })
+			],
+			null,
+			[]
+		);
+
+		expect(offered.map((p) => [p.callsign, p.primary])).toEqual([
+			['IND_83_CTR', true],
+			['IND_19_CTR', true],
+			['IND_17_CTR', false],
+			['IND_18_CTR', false]
+		]);
+	});
+});
+
+describe('isListed', () => {
+	const position = (type: BookablePosition['type'], primary: boolean): BookablePosition => ({
+		callsign: 'X_TWR',
+		name: 'x',
+		radioName: 'x',
+		type,
+		primary,
+		facility: { id: 'X', name: 'X', parent: null }
+	});
+
+	it('lists primary positions, hides the rest until asked, and always lists Center sectors', () => {
+		expect(isListed(position('ATCT', true), false)).toBe(true);
+		expect(isListed(position('ATCT', false), false)).toBe(false);
+		expect(isListed(position('TRACON', false), true)).toBe(true);
+		expect(isListed(position('ARTCC', false), false)).toBe(true);
+	});
+});
+
+describe('groupEventBookings', () => {
+	const EVENT = '327cfa5e-2090-4ff7-9f59-0e017bef6923';
+	const eventBooking = (n: number, eventId = EVENT, overrides: Partial<AtcBooking> = {}) =>
+		booking({
+			id: n,
+			externalId: `ev_${eventId}_${String(n).padStart(16, '0')}`,
+			type: 'event',
+			callsign: `IND_${n}_TWR`,
+			start: '2026-12-01 04:00:00',
+			end: '2026-12-01 06:00:00',
+			...overrides
+		});
+	const names = { [EVENT]: 'Never Dull' };
+
+	it('reads the event from a booking’s ID, and only from an event booking', () => {
+		expect(eventIdOf(`ev_${EVENT}_0123456789abcdef`)).toBe(EVENT);
+		expect(eventIdOf('0123-not-an-event')).toBeNull();
+		expect(eventIdOf(null)).toBeNull();
+	});
+
+	it('folds an event with enough positions into one block that lists them', () => {
+		const grouped = groupEventBookings(
+			[1, 2, 3, 4, 5].map((n) => eventBooking(n)),
+			names
+		);
+
+		expect(grouped).toHaveLength(1);
+		expect(grouped[0]).toMatchObject({
+			externalId: `group:${EVENT}`,
+			type: 'event',
+			start: '2026-12-01 04:00:00',
+			end: '2026-12-01 06:00:00',
+			group: { eventId: EVENT, name: 'Never Dull' }
+		});
+		expect(grouped[0].group?.members).toHaveLength(5);
+	});
+
+	it('leaves small events and ordinary bookings as they are', () => {
+		const small = [1, 2, 3].map((n) => eventBooking(n));
+		const ordinary = booking({ id: 99, start: '2026-12-01 01:00:00' });
+
+		const result = groupEventBookings([...small, ordinary], names);
+
+		expect(result.map((b) => b.id)).toEqual([99, 1, 2, 3]);
+		expect(result.every((b) => !b.group)).toBe(true);
+	});
+
+	it('groups each event separately, and names one it has no name for "Event"', () => {
+		const other = '11111111-2222-3333-4444-555555555555';
+		const bookings = [
+			...[1, 2, 3, 4].map((n) => eventBooking(n)),
+			...[5, 6, 7, 8].map((n) =>
+				eventBooking(n, other, { start: '2026-12-02 04:00:00', end: '2026-12-02 06:00:00' })
+			)
+		];
+
+		const grouped = groupEventBookings(bookings, names);
+
+		expect(grouped.map((b) => b.group?.name)).toEqual(['Never Dull', 'Event']);
+	});
+});
+
+describe('comparePositions', () => {
+	it('orders TMU, Center, Approach and Departure, Tower, Ground, Ramp, then Clearance', () => {
+		const callsigns = [
+			'IND_DEL',
+			'CVG_1_RMP',
+			'IND_GND',
+			'IND_E_TWR',
+			'CMH_P_APP',
+			'IND_83_CTR',
+			'ZID_TMU',
+			'EVV_DEL',
+			'SDF_E_APP',
+			'DAY_DEP',
+			'MYSTERY_XYZ',
+			'IND_17_CTR'
+		];
+
+		expect(callsigns.sort(comparePositions)).toEqual([
+			'ZID_TMU',
+			'IND_17_CTR',
+			'IND_83_CTR',
+			'CMH_P_APP',
+			'DAY_DEP',
+			'SDF_E_APP',
+			'IND_E_TWR',
+			'IND_GND',
+			'CVG_1_RMP',
+			'EVV_DEL',
+			'IND_DEL',
+			'MYSTERY_XYZ'
+		]);
+	});
+
+	it('lists an event group’s positions in that order', () => {
+		const EVENT = 'e1';
+		const at = (n: number, callsign: string) =>
+			booking({
+				id: n,
+				externalId: `ev_${EVENT}_${String(n).padStart(16, '0')}`,
+				type: 'event',
+				callsign
+			});
+
+		const [group] = groupEventBookings(
+			[at(1, 'IND_DEL'), at(2, 'IND_GND'), at(3, 'IND_83_CTR'), at(4, 'ZID_TMU')],
+			{}
+		);
+
+		expect(group.group?.members.map((m) => m.callsign)).toEqual([
+			'ZID_TMU',
+			'IND_83_CTR',
+			'IND_GND',
+			'IND_DEL'
+		]);
+	});
+});
+
+describe('groupPositions order', () => {
+	const facility = { id: 'IND', name: 'Indianapolis', parent: null };
+	const at = (callsign: string, primary = false): BookablePosition => ({
+		callsign,
+		name: callsign,
+		radioName: callsign,
+		type: 'ATCT',
+		primary,
+		facility
+	});
+
+	it('lists a facility’s positions in roster order, a primary one first among its own kind', () => {
+		// getBookablePositions hands them over with primary positions first
+		const [group] = groupPositions([
+			at('IND_E_TWR', true),
+			at('IND_DEL'),
+			at('IND_W_TWR'),
+			at('IND_GND'),
+			at('IND_FX_RMP')
+		]);
+
+		expect(group.facilities[0].positions.map((p) => p.callsign)).toEqual([
+			'IND_E_TWR',
+			'IND_W_TWR',
+			'IND_GND',
+			'IND_FX_RMP',
+			'IND_DEL'
+		]);
+	});
+});
+
+describe('TMU', () => {
+	const tmu = {
+		callsign: 'ZID_TMU',
+		name: 'ZID TMU',
+		radioName: 'ZID TMU',
+		frequency: 1,
+		id: 'vnas-id',
+		shortName: null,
+		retired: false,
+		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
+		requiredCredentials: []
+	};
+
+	it('is not offered in the booking form, whatever the member holds', () => {
+		expect(getBookablePositions([tmu], 'E-RC', ['T2-CTR'])).toEqual([]);
+	});
+
+	it('is named once in words, not "ZID TMU · ZID TMU"', () => {
+		expect(positionText('ZID_TMU', [tmu])).toBe('ZID TMU · ZID_TMU');
+	});
+});
+
+describe('getSopRequirements', () => {
+	const anyOf = (callsign: string) => getSopRequirements(callsign)?.map((entry) => entry.anyOf);
+
+	it('asks S-GC and S-LC at the simple ATCTs of SOP 3.20, and A-GC and A-LC elsewhere', () => {
+		expect(anyOf('AID_GND')).toEqual([['S-GC']]);
+		expect(anyOf('LEX_TWR')).toEqual([['S-LC']]);
+		expect(anyOf('IND_GND')).toEqual([['A-GC']]);
+		expect(anyOf('CVG_A_RMP')).toEqual([['A-GC']]);
+		expect(anyOf('SDF_TWR')).toEqual([['A-LC']]);
+	});
+
+	it('asks S-GC for clearance everywhere, T-RC for approach and E-RC with T2 for center', () => {
+		expect(anyOf('IND_DEL')).toEqual([['S-GC']]);
+		expect(anyOf('IND_N_APP')).toEqual([['T-RC']]);
+		expect(anyOf('IND_83_CTR')).toEqual([['E-RC'], ['T2-CTR']]);
+	});
+
+	it('leaves positions the rules do not cover to the CMS', () => {
+		expect(getSopRequirements('ZID_TMU')).toBeNull();
+		const [tmu] = withSopRequirements([
+			{
+				callsign: 'ZID_TMU',
+				name: 'TMU',
+				radioName: 'TMU',
+				frequency: 1,
+				id: 'vnas-id',
+				shortName: null,
+				retired: false,
+				facility: { id: 'ZID', name: 'ZID', parent: null },
+				requiredCredentials: [{ anyOf: ['E-RC'] }]
+			}
+		]);
+		expect(tmu.requiredCredentials).toEqual([{ anyOf: ['E-RC'] }]);
+	});
+});
+
+describe('positionText', () => {
+	const falmouth = {
+		id: 'vnas-falmouth',
+		callsign: 'IND_83_CTR',
+		name: 'Falmouth 83',
+		shortName: 'FLM 83',
+		radioName: 'Indy Center',
+		frequency: 128225000,
+		retired: false,
+		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
+		requiredCredentials: []
+	};
+
+	it('reads like Position inline, without the frequency', () => {
+		expect(positionText('IND_83_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
+	});
+
+	it('finds a relief login as the position it covers', () => {
+		expect(positionText('IND_831_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
+	});
+
+	it('shows an unknown callsign alone', () => {
+		expect(positionText('XYZ_GND', [falmouth])).toBe('XYZ_GND');
+	});
+});

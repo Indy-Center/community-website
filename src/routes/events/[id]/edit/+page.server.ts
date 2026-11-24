@@ -1,3 +1,4 @@
+import { syncEvent } from '$lib/server/eventBookings';
 import { eventsTable } from '$lib/db/schema/events';
 import { eventSchema } from '$lib/forms/events';
 import { fetchEvents } from '$lib/server/vatsim/vatsimDataClient';
@@ -58,6 +59,10 @@ export const actions = {
 			return fail(400, { form, vatsimEvents });
 		}
 
+		const before = await locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id)
+		});
+
 		logger.info(`User ${locals.user?.id} updated event "${form.data.name}" (${params.id})`);
 		const [savedEvent] = await locals.db
 			.update(eventsTable)
@@ -74,6 +79,12 @@ export const actions = {
 			})
 			.where(eq(eventsTable.id, params.id))
 			.returning();
+
+		// New hours, or a roster type change, move the controllers' bookings with them
+		if (before && savedEvent) {
+			await syncEvent(locals.bookings, locals.db, before, savedEvent);
+		}
+
 		return redirect(302, `/events/${params.id}`);
 	}
 };
