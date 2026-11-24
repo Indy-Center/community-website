@@ -25,8 +25,8 @@ export const T2_ENDORSEMENT = 'T2-CTR';
 export const MENTOR_ROLES = ['ATM', 'DATM', 'TA', 'INS', 'MTR'];
 
 // While bookings are tried out, /bookings, its nav link and the home page's bookings panel are for
-// admins only. Set to false to open them to every member.
-export const BOOKINGS_ADMIN_ONLY = true;
+// admins and beta testers only. Set to false to open them to every member.
+export const BOOKINGS_BETA_ONLY = true;
 
 // "Simple" ATCTs, by callsign prefix (SOP 3.20, Simple ATCT Definitions): S-GC may work ground and
 // S-LC tower here. Every other ATCT is advanced, needing A-GC and A-LC.
