@@ -60,7 +60,7 @@
 		{
 			key: Role.BETA_TESTER,
 			label: 'Beta Tester',
-			description: 'Can try features not yet open to everyone, such as bookings'
+			description: 'Can see the bookings page while it is limited to testers'
 		}
 	];
 
