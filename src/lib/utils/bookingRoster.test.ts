@@ -37,20 +37,26 @@ describe('toBookingMembers', () => {
 		]);
 	});
 
-	it('marks instructors and mentors as mentors, and everyone a member', () => {
+	it('marks ATM, DATM, TA, INS and MTR as mentors, and everyone a member', () => {
 		const { members } = toBookingMembers(
 			[
 				controller({ cid: '1000001', roles: ['INS'] }),
 				controller({ cid: '1000002', roles: ['MTR', 'EC'] }),
-				controller({ cid: '1000003', roles: ['ATM'] })
+				controller({ cid: '1000003', roles: ['ATM'] }),
+				controller({ cid: '1000004', roles: ['DATM'] }),
+				controller({ cid: '1000005', roles: ['TA'] }),
+				controller({ cid: '1000006', roles: ['EC', 'WM'] })
 			],
-			new Set(['1000001', '1000002', '1000003'])
+			new Set(['1000001', '1000002', '1000003', '1000004', '1000005', '1000006'])
 		);
 
 		expect(members.map((m) => [m.cid, m.isMentor, m.role])).toEqual([
 			[1000001, true, 'member'],
 			[1000002, true, 'member'],
-			[1000003, false, 'member']
+			[1000003, true, 'member'],
+			[1000004, true, 'member'],
+			[1000005, true, 'member'],
+			[1000006, false, 'member']
 		]);
 	});
 

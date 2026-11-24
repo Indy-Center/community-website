@@ -10,6 +10,7 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import BookingCalendar from '$lib/components/bookings/BookingCalendar.svelte';
 	import PositionPicker from '$lib/components/bookings/PositionPicker.svelte';
+	import ControllerSearch from '$lib/components/feedback/ControllerSearch.svelte';
 	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
 	import { getPositions, Position } from '@indy-center/centerline-svelte';
 	import {
@@ -379,6 +380,37 @@
 	>
 		{#if $createErrors._errors}
 			<p class="text-sm text-red-400">{$createErrors._errors.join(' ')}</p>
+		{/if}
+		{#if data.students.length > 0}
+			<!-- Mentors only: book a training session for a student, on a position you hold -->
+			<div>
+				<label class="mb-2 block text-sm font-medium text-gray-300" for="forCid">
+					Book training for
+				</label>
+				<ControllerSearch
+					name="forCid"
+					users={data.students}
+					bind:value={$createForm.forCid}
+					invalid={!!$createErrors.forCid}
+				/>
+				{#if $createErrors.forCid}
+					<p class="mt-1 text-sm text-red-400">{$createErrors.forCid.join(' ')}</p>
+				{/if}
+				<p class="mt-1 text-xs text-slate-400">
+					{#if $createForm.forCid}
+						Posted as a training booking under the student's name.
+						<button
+							type="button"
+							class="cursor-pointer text-sky-400 hover:text-sky-300"
+							onclick={() => ($createForm.forCid = '')}
+						>
+							Book for myself instead
+						</button>
+					{:else}
+						Leave empty to book for yourself.
+					{/if}
+				</p>
+			</div>
 		{/if}
 		<!-- Times come first so the picker can grey out positions already booked then -->
 		<DateTimeInput

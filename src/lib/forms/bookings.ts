@@ -32,7 +32,16 @@ const withinAdvanceWindowError = {
 };
 
 export const bookingSchema = z
-	.object({ callsign: z.string().min(1, { message: 'Position is required' }), ...bookingTimes })
+	.object({
+		callsign: z.string().min(1, { message: 'Position is required' }),
+		// A mentor booking training for a student: the student's CID. Empty books for yourself.
+		forCid: z
+			.string()
+			.regex(/^\d*$/, { message: 'Pick a member from the list' })
+			.optional()
+			.default(''),
+		...bookingTimes
+	})
 	.refine(endAfterStart, endAfterStartError)
 	.refine(withinMaxLength, withinMaxLengthError)
 	.refine(withinAdvanceWindow, withinAdvanceWindowError);

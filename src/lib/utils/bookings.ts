@@ -2,6 +2,7 @@ import { resolvePosition } from '@indy-center/centerline-svelte';
 import {
 	CREDENTIAL_LADDER,
 	EXTRA_PRIMARY_POSITIONS,
+	MENTOR_ROLES,
 	SIMPLE_ATCT_FACILITIES,
 	UNBOOKABLE_POSITIONS
 } from '$lib/config/bookings';
@@ -91,6 +92,9 @@ export function positionText(callsign: string, positions: readonly CmsPosition[]
 		.filter((part, i, parts) => part && parts.indexOf(part) === i)
 		.join(' · ');
 }
+
+// Whether VATUSA facility roles make someone a mentor (MENTOR_ROLES)
+export const isMentor = (roles: string[]) => roles.some((role) => MENTOR_ROLES.includes(role));
 
 type Requirements = CmsPosition['requiredCredentials'];
 

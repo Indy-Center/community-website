@@ -20,8 +20,9 @@ export const MAX_BOOKING_ADVANCE_DAYS = 180;
 // endorsement. The restriction's own ID is the VATSIM_BOOKING_T2_RESTRICTION_ID setting.
 export const T2_ENDORSEMENT = 'T2-CTR';
 
-// VATUSA facility roles that make someone a mentor in the booking system
-export const MENTOR_ROLES = ['INS', 'MTR'];
+// VATUSA facility roles that make someone a mentor: they may book training for students here, and
+// are flagged as mentors in the booking system's roster
+export const MENTOR_ROLES = ['ATM', 'DATM', 'TA', 'INS', 'MTR'];
 
 // While bookings are tried out, /bookings, its nav link and the home page's bookings panel are for
 // admins only. Set to false to open them to every member.

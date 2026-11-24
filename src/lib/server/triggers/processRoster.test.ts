@@ -269,7 +269,7 @@ describe('the booking system sync', () => {
 		await runProcessRoster({ training: fakeTraining(GOOD), db, bookings, t2RestrictionId: 'r-1' });
 
 		expect(bookings.replaceMembers).toHaveBeenCalledWith([
-			{ cid: 1000001, rating: 4, role: 'member', isHome: true, isMentor: false },
+			{ cid: 1000001, rating: 4, role: 'member', isHome: true, isMentor: true },
 			{ cid: 1000002, rating: 3, role: 'member', isHome: false, isMentor: false }
 		]);
 		expect(bookings.grantEndorsement).toHaveBeenCalledWith('r-1', 1000001);

@@ -1,6 +1,7 @@
-import { MENTOR_ROLES, T2_ENDORSEMENT } from '$lib/config/bookings';
+import { T2_ENDORSEMENT } from '$lib/config/bookings';
 import { ATC_RATINGS } from '$lib/config/ratings';
 import type { BookingMember, RestrictionEndorsement } from '$lib/types/bookings';
+import { isMentor } from '$lib/utils/bookings';
 
 // What the roster sync needs of each controller in the roster copy
 export type RosterController = {
@@ -31,7 +32,7 @@ export function toBookingMembers(controllers: RosterController[], homeCids: Set<
 			rating,
 			role: 'member',
 			isHome: homeCids.has(controller.cid),
-			isMentor: controller.roles.some((role) => MENTOR_ROLES.includes(role))
+			isMentor: isMentor(controller.roles)
 		});
 	}
 

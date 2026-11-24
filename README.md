@@ -427,7 +427,7 @@ so the roster cron (`src/lib/server/bookingRoster.ts`) keeps both in step after 
 refresh, every five minutes:
 
 - **Roster.** Every rostered controller, home and visiting, goes with their rating, `isHome` (from
-  VATUSA's home roster) and `isMentor` (VATUSA's `INS` or `MTR` role), all as members. Every field is
+  VATUSA's home roster) and `isMentor` (VATUSA's `ATM`, `DATM`, `TA`, `INS` or `MTR` role), all as members. Every field is
   sent every time, because the booking system fills in what is left out (home, not a mentor). The
   roster is sent only when it differs, and the booking system removes anyone left off it.
 - **T2.** Every rostered controller holding `T2-CTR` is endorsed on the Indy Center restriction
@@ -436,6 +436,10 @@ refresh, every five minutes:
 
 Certifications other than T2 are checked here, not by the booking system: `/bookings` only offers
 and accepts the positions a controller's roster credentials allow.
+
+Mentors (VATUSA `ATM`, `DATM`, `TA`, `INS` or `MTR`) can also book for any other rostered controller:
+the booking goes in as `training` under the student's CID, on a position the mentor holds, and
+mentors can change or cancel any training booking.
 
 With the fake, create the restriction and put its ID in `.env`:
 

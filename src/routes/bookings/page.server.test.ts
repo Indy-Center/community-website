@@ -400,3 +400,98 @@ describe('/bookings certification rules (SOP, not the CMS)', () => {
 		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['AID_GND']);
 	});
 });
+
+describe('/bookings mentors booking training', () => {
+	// A mentor (VATUSA MTR), and a rostered student who has never signed in to the site
+	beforeEach(async () => {
+		await seedMember(db, {
+			cid: '1000003',
+			firstName: 'Morgan',
+			lastName: 'Mentor',
+			certification: 'S-GC',
+			roles: ['MTR'],
+			user: { id: 'user-morgan', email: 'morgan@private.example.test' }
+		});
+		await seedMember(db, { cid: '1000004', firstName: 'Sam', lastName: 'Student' });
+	});
+
+	it('offers mentors every other rostered controller as a student, by CID', async () => {
+		const data = await callLoad(load, { locals: asUser('1000003', [], stubClient()) });
+
+		expect(data.students.map((s) => [s.id, s.name])).toEqual([
+			['1000001', 'Pat Example'],
+			['1000002', 'Robin Sample'],
+			['1000004', 'Sam Student']
+		]);
+	});
+
+	it('offers nobody to a controller who does not mentor', async () => {
+		const data = await callLoad(load, { locals: asUser('1000001', [], stubClient()) });
+		expect(data.students).toEqual([]);
+	});
+
+	it("books the student's training, as a training booking under their CID", async () => {
+		const client = stubClient();
+
+		const result = await call('create', client, '1000003', {
+			callsign: 'AID_GND',
+			forCid: '1000004',
+			...times(24, 26)
+		});
+
+		expect(result.form.message).toBe('Training booked.');
+		expect(client.createBooking).toHaveBeenCalledWith(
+			expect.objectContaining({ cid: 1000004, callsign: 'AID_GND', type: 'training' })
+		);
+	});
+
+	it("checks the mentor's credentials, not the student's", async () => {
+		const client = stubClient();
+
+		const result = await call('create', client, '1000003', {
+			callsign: 'IND_APP',
+			forCid: '1000004',
+			...times(24, 26)
+		});
+
+		expect(result.data.form.errors.callsign?.[0]).toMatch(/aren't certified/);
+		expect(client.createBooking).not.toHaveBeenCalled();
+	});
+
+	it('refuses a controller who does not mentor booking for someone else', async () => {
+		const client = stubClient();
+
+		const result = await call('create', client, '1000001', {
+			callsign: 'AID_GND',
+			forCid: '1000002',
+			...times(24, 26)
+		});
+
+		expect(result.status).toBe(403);
+		expect(result.data.form.errors.forCid?.[0]).toMatch(/Only mentors/);
+		expect(client.createBooking).not.toHaveBeenCalled();
+	});
+
+	it('refuses a student who is not on the roster', async () => {
+		const result = await call('create', stubClient(), '1000003', {
+			callsign: 'AID_GND',
+			forCid: '1999999',
+			...times(24, 26)
+		});
+
+		expect(result.data.form.errors.forCid?.[0]).toMatch(/not on the roster/);
+	});
+
+	it("lets mentors change any training booking, but not someone else's own booking", async () => {
+		const client = stubClient([
+			listed({ id: 1, externalId: 'training', cid: 1000004, type: 'training' }),
+			listed({ id: 2, externalId: 'theirs', cid: 1000002, callsign: 'IND_APP' })
+		]);
+
+		const data = await callLoad(load, { locals: asUser('1000003', [], client) });
+		expect(data.manageable).toEqual(['training']);
+
+		await call('delete', client, '1000003', { externalId: 'training' });
+		expect(client.cancelBooking).toHaveBeenCalledWith({ externalId: 'training' });
+	});
+});
