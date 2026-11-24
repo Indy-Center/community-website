@@ -21,23 +21,19 @@
 	import IconRadioTower from '~icons/mdi/radio-tower';
 	import IconForum from '~icons/mdi/forum-outline';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
-	import { BOOKINGS_BETA_ONLY } from '$lib/config/bookings';
-	import { isBetaTester } from '$lib/utils/permissions';
 
-	// betaOnly: shown to admins and beta testers alone, for pages not yet open to everyone
 	type NavLink = {
 		label: string;
 		href: string;
 		icon: Component;
 		external?: boolean;
-		betaOnly?: boolean;
 	};
 	type NavGroup = { label: string; icon: Component; children: NavLink[] };
 	type NavItem = NavLink | NavGroup;
 
 	let { mobile = false }: { mobile?: boolean } = $props();
 
-	const allLinks: NavItem[] = [
+	const links: NavItem[] = [
 		{
 			label: 'Home',
 			href: '/',
@@ -72,8 +68,7 @@
 				{
 					label: 'Bookings',
 					href: '/bookings',
-					icon: IconCalendarClock,
-					betaOnly: BOOKINGS_BETA_ONLY
+					icon: IconCalendarClock
 				},
 				{
 					label: 'Join Indy Center',
@@ -143,15 +138,6 @@
 			]
 		}
 	];
-
-	const links = $derived.by(() => {
-		const beta = isBetaTester(page.data.roles);
-		const shown = (link: NavLink) => beta || !link.betaOnly;
-		return allLinks.flatMap((item): NavItem[] => {
-			if ('children' in item) return [{ ...item, children: item.children.filter(shown) }];
-			return shown(item) ? [item] : [];
-		});
-	});
 
 	let openGroup = $state<string | null>(null);
 

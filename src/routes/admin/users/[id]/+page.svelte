@@ -25,8 +25,6 @@
 				return 'bg-purple-600/20 text-purple-300 border-purple-500/30';
 			case Role.FEEDBACK_REVIEWER:
 				return 'bg-sky-600/20 text-sky-300 border-sky-500/30';
-			case Role.BETA_TESTER:
-				return 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30';
 			case Role.EVENTS_PROHIBIT_SIGNUP:
 				return 'bg-orange-600/20 text-orange-300 border-orange-500/30';
 			default:
@@ -56,11 +54,6 @@
 			key: Role.FEEDBACK_REVIEWER,
 			label: 'Feedback Reviewer',
 			description: 'Can review, follow up on, and publish feedback'
-		},
-		{
-			key: Role.BETA_TESTER,
-			label: 'Beta Tester',
-			description: 'Can see the bookings page while it is limited to testers'
 		}
 	];
 

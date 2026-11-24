@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import { eq, inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -6,7 +5,6 @@ import { vatsimControllersTable } from '$lib/db/schema/vatsimControllers';
 import { memberName, type PickableShownMember } from '$lib/members';
 import { bookingSchema, bookingUpdateSchema } from '$lib/forms/bookings';
 import { logger } from '$lib/server/logger';
-import { BOOKINGS_BETA_ONLY } from '$lib/config/bookings';
 import { fetchEventNames } from '$lib/server/bookings';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
 import type { AtcBooking, BookingsClient, CmsPosition } from '$lib/types/bookings';
@@ -22,7 +20,7 @@ import {
 	withSopRequirements,
 	type BookablePosition
 } from '$lib/utils/bookings';
-import { isAdmin, isBetaTester } from '$lib/utils/permissions';
+import { isAdmin } from '$lib/utils/permissions';
 
 // A controller's credentials and VATUSA roles from the roster copy, or null when they aren't on the
 // roster or it can't be read, in which case nothing is bookable
@@ -117,13 +115,7 @@ function writeFailure(error: unknown) {
 // Only controllers on the ZID roster (home or visiting) can book
 const isRostered = (user: App.Locals['user']) => user?.membership === 'controller';
 
-// While BOOKINGS_BETA_ONLY is set, everyone but admins and beta testers is sent home and every
-// action refuses them
-const BETA_ONLY = 'Bookings are open to beta testers only for now';
-const shutOut = (roles: string[]) => BOOKINGS_BETA_ONLY && !isBetaTester(roles);
-
 export const load = async ({ locals }) => {
-	if (shutOut(locals.roles)) redirect(302, '/');
 	const client = locals.bookings;
 	const [createForm, updateForm] = await Promise.all([
 		superValidate(zod4(bookingSchema), { id: 'create-booking' }),
@@ -210,7 +202,6 @@ export const actions = {
 	create: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingSchema));
 		if (!locals.user) return fail(401, { form });
-		if (shutOut(locals.roles)) return setError(form, '', BETA_ONLY, { status: 403 });
 		if (!isRostered(locals.user)) {
 			return setError(form, '', 'Only rostered controllers can book positions', { status: 403 });
 		}
@@ -306,7 +297,6 @@ export const actions = {
 	update: async ({ request, locals }) => {
 		const form = await superValidate(request, zod4(bookingUpdateSchema));
 		if (!locals.user) return fail(401, { form });
-		if (shutOut(locals.roles)) return setError(form, '', BETA_ONLY, { status: 403 });
 		if (!form.valid) return fail(400, { form });
 
 		const client = locals.bookings;
@@ -357,7 +347,6 @@ export const actions = {
 
 	delete: async ({ request, locals }) => {
 		if (!locals.user) return fail(401);
-		if (shutOut(locals.roles)) return fail(403, { message: BETA_ONLY });
 
 		const client = locals.bookings;
 		const [bookings, qualifications] = await Promise.all([
