@@ -5,8 +5,8 @@ import {
 	eventIdOf,
 	findBookingConflict,
 	getBookablePositions,
-	getPositionLabel,
 	getSopRequirements,
+	positionText,
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
@@ -146,6 +146,9 @@ describe('getBookablePositions', () => {
 		name: callsign,
 		radioName: callsign,
 		frequency: 1,
+		id: 'vnas-id',
+		shortName: null,
+		retired: false,
 		facility,
 		requiredCredentials: [],
 		...extra
@@ -356,6 +359,9 @@ describe('TMU', () => {
 		name: 'ZID TMU',
 		radioName: 'ZID TMU',
 		frequency: 1,
+		id: 'vnas-id',
+		shortName: null,
+		retired: false,
 		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
 		requiredCredentials: []
 	};
@@ -364,8 +370,8 @@ describe('TMU', () => {
 		expect(getBookablePositions([tmu], 'E-RC', ['T2-CTR'])).toEqual([]);
 	});
 
-	it('is labelled once, not "ZID TMU · ZID TMU"', () => {
-		expect(getPositionLabel(tmu)).toEqual({ title: 'ZID TMU', detail: null });
+	it('is named once in words, not "ZID TMU · ZID TMU"', () => {
+		expect(positionText('ZID_TMU', [tmu])).toBe('ZID TMU · ZID_TMU');
 	});
 });
 
@@ -394,10 +400,39 @@ describe('getSopRequirements', () => {
 				name: 'TMU',
 				radioName: 'TMU',
 				frequency: 1,
+				id: 'vnas-id',
+				shortName: null,
+				retired: false,
 				facility: { id: 'ZID', name: 'ZID', parent: null },
 				requiredCredentials: [{ anyOf: ['E-RC'] }]
 			}
 		]);
 		expect(tmu.requiredCredentials).toEqual([{ anyOf: ['E-RC'] }]);
+	});
+});
+
+describe('positionText', () => {
+	const falmouth = {
+		id: 'vnas-falmouth',
+		callsign: 'IND_83_CTR',
+		name: 'Falmouth 83',
+		shortName: 'FLM 83',
+		radioName: 'Indy Center',
+		frequency: 128225000,
+		retired: false,
+		facility: { id: 'ZID', name: 'Indianapolis ARTCC', parent: null },
+		requiredCredentials: []
+	};
+
+	it('reads like Position inline, without the frequency', () => {
+		expect(positionText('IND_83_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
+	});
+
+	it('finds a relief login as the position it covers', () => {
+		expect(positionText('IND_831_CTR', [falmouth])).toBe('Indy Center · FLM 83 · Falmouth 83');
+	});
+
+	it('shows an unknown callsign alone', () => {
+		expect(positionText('XYZ_GND', [falmouth])).toBe('XYZ_GND');
 	});
 });

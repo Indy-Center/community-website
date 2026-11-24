@@ -90,7 +90,7 @@
 
 			<!-- Bookings starting within the reminder window -->
 			{#if data.upcomingBookings.length > 0}
-				<UpcomingBookings bookings={data.upcomingBookings} positions={data.bookingPositions} />
+				<UpcomingBookings bookings={data.upcomingBookings} />
 			{/if}
 
 			<!-- Status Section - Two Columns -->

@@ -2,7 +2,8 @@
 	import { format } from 'date-fns';
 	import { utc } from '@date-fns/utc';
 	import Panel from '$lib/components/Panel.svelte';
-	import { describePosition, parseBookingTime, type PositionLabel } from '$lib/utils/bookings';
+	import { Position } from '@indy-center/centerline-svelte';
+	import { parseBookingTime } from '$lib/utils/bookings';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
 
 	type Props = {
@@ -12,10 +13,9 @@
 			start: string;
 			group?: { eventId: string; name: string; count: number };
 		}[];
-		positions: Record<string, PositionLabel>;
 	};
 
-	let { bookings, positions }: Props = $props();
+	let { bookings }: Props = $props();
 
 	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
 
@@ -36,17 +36,14 @@
 	<ul class="divide-y divide-slate-700/60">
 		{#each bookings as booking (booking.group?.eventId ?? booking.callsign + booking.start)}
 			<li class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-				<span
-					class="min-w-0 truncate font-semibold text-white"
-					title={booking.group ? booking.group.name : booking.callsign}
-				>
-					{#if booking.group}
+				{#if booking.group}
+					<span class="min-w-0 truncate font-semibold text-white" title={booking.group.name}>
 						{booking.group.name}
 						<span class="font-normal text-slate-400">· {booking.group.count} positions</span>
-					{:else}
-						{describePosition(booking.callsign, positions[booking.callsign])}
-					{/if}
-				</span>
+					</span>
+				{:else}
+					<Position class="min-w-0" callsign={booking.callsign} layout="inline" />
+				{/if}
 				<span class="shrink-0 text-right">
 					<span class="font-mono text-white">{zulu(booking.start)}</span>
 					<span class="ml-2 text-slate-400">{until(booking.start)}</span>

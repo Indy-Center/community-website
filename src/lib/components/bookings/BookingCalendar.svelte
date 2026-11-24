@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { format } from 'date-fns';
 	import { utc } from '@date-fns/utc';
+	import { getPositions, Position } from '@indy-center/centerline-svelte';
 	import {
-		describePosition,
 		getWeekDays,
 		layoutCalendarDay,
 		parseBookingTime,
-		startOfUtcDay,
-		type PositionLabel
+		positionText,
+		startOfUtcDay
 	} from '$lib/utils/bookings';
-	import type { AtcBooking, BookingType } from '$lib/types/bookings';
+	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
 	import IconChevronLeft from '~icons/mdi/chevron-left';
 	import IconChevronRight from '~icons/mdi/chevron-right';
 	import IconMinus from '~icons/mdi/magnify-minus-outline';
@@ -18,7 +18,6 @@
 	type Props = {
 		bookings: AtcBooking[];
 		names: Record<string, string>;
-		positions: Record<string, PositionLabel>;
 		// ExternalIds of the bookings the viewer may change
 		manageable: string[];
 		onEdit?: (booking: AtcBooking) => void;
@@ -26,7 +25,10 @@
 		onOpenGroup?: (booking: AtcBooking) => void;
 	};
 
-	let { bookings, names, positions, manageable, onEdit, onOpenGroup }: Props = $props();
+	let { bookings, names, manageable, onEdit, onOpenGroup }: Props = $props();
+
+	// The root layout's catalogue, for tooltips in words; blocks show <Position> itself
+	const positions = getPositions<CmsPosition>();
 
 	// How tall an hour is, in pixels. A taller hour gives a booking room for more lines of text.
 	const ZOOM_LEVELS = [28, 40, 56, 72];
@@ -48,7 +50,7 @@
 	);
 	// A day with bookings side by side gets a wider column, so each keeps room to be read
 	const MIN_LANE_PX = 100;
-	// From this many side by side, a booking shows its short callsign and time only
+	// From this many side by side, a booking shows its position's short name and time only
 	const COMPACT_LANES = 3;
 	const gridColumns = $derived(
 		`3rem ${days
@@ -170,10 +172,10 @@
 						{@const editable =
 							onEdit && booking.externalId !== null && manageable.includes(booking.externalId)}
 						{@const height = ((segment.endMinute - segment.startMinute) / 60) * hourHeight}
-						{@const label = positions[booking.callsign]}
-						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - 1)}
 						{@const group = booking.group}
 						{@const compact = segment.lanes >= COMPACT_LANES}
+						{@const nameLines = group || compact ? 1 : 2}
+						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - nameLines)}
 						{@const lines = (
 							group
 								? [
@@ -187,13 +189,12 @@
 										]
 									: [
 											names[booking.cid] ?? String(booking.cid),
-											...(label?.detail ? [label.detail] : []),
 											`${zulu(booking.start)}–${zulu(booking.end)}`
 										]
 						).slice(0, fit)}
 						{@const title = group
 							? `${group.name} · ${group.members.length} positions · ${zulu(booking.start)}–${zulu(booking.end)}`
-							: `${describePosition(booking.callsign, label)} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
+							: `${positionText(booking.callsign, positions())} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
 									names[booking.cid] ?? booking.cid
 								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}`}
 						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]}`}
@@ -205,10 +206,14 @@
 						{#snippet content()}
 							{#if group}
 								<div class="truncate font-semibold">{group.name}</div>
-							{:else if label && !compact}
-								<div class="truncate font-semibold">{label.title}</div>
+							{:else if compact}
+								<Position class="block truncate" callsign={booking.callsign} show={['shortName']} />
 							{:else}
-								<div class="truncate font-mono font-semibold">{booking.callsign}</div>
+								<Position
+									class="block truncate"
+									callsign={booking.callsign}
+									show={['radioName', 'shortName', 'name']}
+								/>
 							{/if}
 							{#each lines as line, i (i)}
 								<div class="truncate opacity-80">{line}</div>

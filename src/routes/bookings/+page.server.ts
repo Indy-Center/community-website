@@ -10,17 +10,15 @@ import { readMemberCredentials } from '$lib/server/roster';
 import { BOOKINGS_ADMIN_ONLY } from '$lib/config/bookings';
 import { fetchEventNames } from '$lib/server/bookings';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
-import type { AtcBooking, BookingsClient, CmsPosition } from '$lib/types/bookings';
+import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
 import {
 	EVENT_BOOKING_PREFIX,
 	findBookingConflict,
 	formatZuluRange,
 	getBookablePositions,
-	getPositionLabels,
 	meetsRequirements,
 	withSopRequirements,
-	type BookablePosition,
-	type PositionLabel
+	type BookablePosition
 } from '$lib/utils/bookings';
 import { isAdmin } from '$lib/utils/permissions';
 
@@ -38,18 +36,10 @@ async function fetchQualifications(db: App.Locals['db'], cid: string | undefined
 	}
 }
 
-// The bookable positions from the CMS feed, with our SOP's requirements (the booking system checks
-// only T2). When it can't be read nothing is bookable.
-async function fetchPositions(client: BookingsClient | undefined) {
-	if (!client) return [] as CmsPosition[];
-
-	try {
-		return withSopRequirements(await client.getPositions());
-	} catch (error) {
-		logger.error('Failed to read the bookable positions', { error });
-		return [] as CmsPosition[];
-	}
-}
+// The CMS catalogue's live positions, with our SOP's requirements (the booking system checks only
+// T2). With no catalogue, nothing is bookable.
+const fetchPositions = async (locals: App.Locals) =>
+	withSopRequirements((await locals.positions()).filter((position) => !position.retired));
 
 // The booking system's list. When it can't be read the page shows none, and booking is refused.
 async function fetchBookings(client: BookingsClient) {
@@ -104,7 +94,6 @@ export const load = async ({ locals }) => {
 			bookings: [] as AtcBooking[],
 			eventNames: {} as Record<string, string>,
 			names: {} as Record<string, string>,
-			positions: {} as Record<string, PositionLabel>,
 			bookablePositions: [] as BookablePosition[],
 			manageable: [] as string[],
 			canBook: false,
@@ -116,20 +105,13 @@ export const load = async ({ locals }) => {
 
 	const [listed, feed, qualifications] = await Promise.all([
 		client ? fetchBookings(client) : null,
-		fetchPositions(client),
+		fetchPositions(locals),
 		fetchQualifications(locals.db, locals.user.cid)
 	]);
 	const bookings = listed ?? [];
 
 	const eventNames = await fetchEventNames(locals.db, bookings);
 
-	// Labels for the booked positions only; one no longer in the feed falls back to its callsign
-	const allLabels = getPositionLabels(feed);
-	const positions = Object.fromEntries(
-		bookings
-			.filter((booking) => allLabels[booking.callsign])
-			.map((booking) => [booking.callsign, allLabels[booking.callsign]])
-	);
 	// Without roster credentials nothing is bookable
 	const bookablePositions =
 		isRostered(locals.user) && qualifications
@@ -165,7 +147,6 @@ export const load = async ({ locals }) => {
 		bookings,
 		eventNames,
 		names,
-		positions,
 		bookablePositions,
 		manageable,
 		canBook: isRostered(locals.user),
@@ -189,7 +170,7 @@ export const actions = {
 		if (!client) return setError(form, '', UNAVAILABLE, { status: 503 });
 
 		const [feed, qualifications, bookings] = await Promise.all([
-			fetchPositions(client),
+			fetchPositions(locals),
 			fetchQualifications(locals.db, locals.user.cid),
 			fetchBookings(client)
 		]);

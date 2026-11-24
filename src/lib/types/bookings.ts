@@ -17,13 +17,23 @@ export type AtcBooking = {
 	group?: { eventId: string; name: string; members: AtcBooking[] };
 };
 
-// A bookable position from the CMS feed; retired ones are left out. Credentials: every entry must
+// A position from the CMS catalogue, with every field Centerline's PositionInfo reads (so the
+// catalogue goes to setPositions as it is) plus what bookings use. Credentials: every entry must
 // be met, and an entry is met by holding any one of its `anyOf` credentials or a higher one.
 export type CmsPosition = {
+	// The vNAS id
+	id: string;
 	callsign: string;
+	// The sector or position name: "Falmouth 83"
 	name: string;
+	// As controllers say it: "FLM 83"; null where the CMS has none
+	shortName: string | null;
+	// What pilots call it: "Indy Center"
 	radioName: string;
+	// In hertz
 	frequency: number;
+	// vNAS no longer lists it
+	retired: boolean;
 	// The CMS stars each facility's primary position
 	starred?: boolean;
 	facility: { id: string; name: string; parent: { id: string; name: string } | null };
@@ -56,7 +66,6 @@ export type RestrictionEndorsement = { id: string; cid: number };
 // booking system has accepted them, and throw BookingRefusedError with its reason when it won't.
 export type BookingsClient = {
 	listOrgBookings(): Promise<AtcBooking[]>;
-	getPositions(): Promise<CmsPosition[]>;
 	createBooking(booking: NewBooking): Promise<void>;
 	updateBooking(change: { externalId: string; start?: Date; end?: Date }): Promise<void>;
 	cancelBooking(ref: { externalId: string }): Promise<void>;

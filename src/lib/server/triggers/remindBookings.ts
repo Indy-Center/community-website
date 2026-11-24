@@ -1,26 +1,21 @@
 import { BOOKING_REMINDER_HOURS, BOOKINGS_URL } from '$lib/config/bookings';
 import { logger } from '$lib/server/logger';
 import { fetchRosterDiscordIds } from '$lib/server/vatsim/vatusaDataClient';
+import type { PositionsReader } from '$lib/server/positions';
 import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
-import {
-	describePosition,
-	getDueReminders,
-	getPositionLabels,
-	parseBookingTime,
-	type PositionLabel
-} from '$lib/utils/bookings';
+import { getDueReminders, parseBookingTime, positionText } from '$lib/utils/bookings';
 
 // Matches the "0-59/5 * * * *" cron in wrangler.jsonc
 const CRON_INTERVAL_MINUTES = 5;
 
 const unix = (time: string) => Math.floor(parseBookingTime(time).getTime() / 1000);
 
-function reminderEmbed(booking: AtcBooking, label: PositionLabel | undefined) {
+function reminderEmbed(booking: AtcBooking, position: string) {
 	return {
 		title: 'Upcoming booking',
 		color: 0x0ea5e9,
 		description: [
-			`You're booked on **${describePosition(booking.callsign, label)}** from <t:${unix(booking.start)}:t> to <t:${unix(booking.end)}:t> (<t:${unix(booking.start)}:R>).`,
+			`You're booked on **${position}** from <t:${unix(booking.start)}:t> to <t:${unix(booking.end)}:t> (<t:${unix(booking.start)}:R>).`,
 			`If your plans have changed, please [update or cancel your booking](${BOOKINGS_URL}).`
 		].join('\n\n')
 	};
@@ -30,24 +25,20 @@ function reminderEmbed(booking: AtcBooking, label: PositionLabel | undefined) {
 export async function runRemindBookings(
 	larry: Cloudflare.Env['LARRY'],
 	bookings: BookingsClient | undefined,
+	positions: PositionsReader,
 	runTime: Date
 ) {
 	if (!larry || !bookings) return;
 
-	const [allBookings, positions, discordIds] = await Promise.all([
+	// With no catalogue, reminders still go out, naming positions by callsign
+	const [allBookings, catalogue, discordIds] = await Promise.all([
 		bookings.listOrgBookings(),
-		bookings.getPositions().catch((error) => {
-			// Reminders still go out, naming positions by callsign
-			logger.error('Failed to read the bookable positions for reminders', { error });
-			return [];
-		}),
+		positions(),
 		fetchRosterDiscordIds()
 	]);
 
 	const due = getDueReminders(allBookings, runTime, BOOKING_REMINDER_HOURS, CRON_INTERVAL_MINUTES);
 	if (due.length === 0) return;
-
-	const labels = getPositionLabels(positions);
 
 	await Promise.all(
 		due.map(async (booking) => {
@@ -60,7 +51,7 @@ export async function runRemindBookings(
 			try {
 				await larry.enqueueDirect({
 					userId,
-					embeds: [reminderEmbed(booking, labels[booking.callsign])]
+					embeds: [reminderEmbed(booking, positionText(booking.callsign, catalogue))]
 				});
 				logger.info(`Queued ${booking.callsign} reminder for ${booking.cid}`);
 			} catch (error) {

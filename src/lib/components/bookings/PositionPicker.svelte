@@ -6,12 +6,12 @@
 		groupPositions,
 		isListed,
 		formatZuluRange,
-		getPositionLabel,
 		searchPositions,
 		type BookablePosition,
 		type PositionType
 	} from '$lib/utils/bookings';
 	import type { AtcBooking } from '$lib/types/bookings';
+	import { Position } from '@indy-center/centerline-svelte';
 	import IconMagnify from '~icons/mdi/magnify';
 
 	type Props = {
@@ -226,7 +226,6 @@
 						</div>
 					{/if}
 					{#each facility.positions as position (position.callsign)}
-						{@const label = getPositionLabel(position)}
 						{@const conflict = booked.get(position.callsign)}
 						<label
 							class="flex items-center gap-3 px-3 py-2 text-sm transition-colors {conflict
@@ -243,10 +242,8 @@
 								disabled={!!conflict}
 								class="h-4 w-4 border-slate-500 bg-slate-700 text-sky-500 focus:ring-sky-500 disabled:opacity-40"
 							/>
-							<span class="shrink-0 font-semibold" title={position.callsign}>{label.title}</span>
-							{#if label.detail}
-								<span class="truncate {conflict ? '' : 'text-slate-400'}">{label.detail}</span>
-							{/if}
+							<Position class="min-w-0" callsign={position.callsign} />
+
 							{#if conflict}
 								<span
 									class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"

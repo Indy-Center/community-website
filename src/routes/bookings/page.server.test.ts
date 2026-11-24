@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eventsTable } from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
-import { stubBookingsClient } from '$lib/testing/bookings';
+import { cmsPosition, stubBookingsClient } from '$lib/testing/bookings';
 import { seedAvailableCredentials, seedMember, testDb } from '$lib/testing/db';
 import { callLoad } from '$lib/testing/site';
 import { BookingRefusedError } from '$lib/server/bookingsApi';
@@ -22,19 +22,13 @@ vi.mock('$lib/config/bookings', async (importOriginal) => ({
 const HOUR = 3600000;
 const inHours = (hours: number) => new Date(Date.now() + hours * HOUR);
 
-const position = (callsign: string, anyOf: string[]): CmsPosition => ({
-	callsign,
-	name: callsign,
-	radioName: `${callsign} radio`,
-	frequency: 121600000,
-	facility: { id: 'IND', name: 'Indianapolis', parent: null },
-	requiredCredentials: anyOf.length > 0 ? [{ anyOf }] : []
-});
+const position = (callsign: string, anyOf: string[]): CmsPosition =>
+	cmsPosition(callsign, { requiredCredentials: anyOf.length > 0 ? [{ anyOf }] : [] });
 
 const POSITIONS = [position('AID_GND', ['S-GC']), position('IND_APP', ['T-RC'])];
 
 const stubClient = (listed: AtcBooking[] = []) =>
-	stubBookingsClient({ listed, positions: POSITIONS }) satisfies BookingsClient;
+	stubBookingsClient({ listed }) satisfies BookingsClient;
 
 const listed = (overrides: Partial<AtcBooking>): AtcBooking => ({
 	id: 7,
@@ -80,10 +74,17 @@ beforeEach(async () => {
 	});
 });
 
-const asUser = (cid: string, roles: string[] = [], bookings?: BookingsClient) => ({
+// The catalogue's positions come from the root layout's reader, on locals
+const asUser = (
+	cid: string,
+	roles: string[] = [],
+	bookings?: BookingsClient,
+	positions: CmsPosition[] = POSITIONS
+) => ({
 	db,
 	roles,
 	bookings,
+	positions: async () => positions,
 	user: { cid, membership: 'controller' }
 });
 
@@ -380,11 +381,21 @@ describe('/bookings while admins only', () => {
 
 describe('/bookings certification rules (SOP, not the CMS)', () => {
 	it('lets S-GC book ground at a simple field but not at an advanced one, whatever the CMS says', async () => {
-		const client = stubBookingsClient({
-			positions: [position('AID_GND', ['A-GC']), position('IND_GND', ['S-GC'])]
+		const catalogue = [position('AID_GND', ['A-GC']), position('IND_GND', ['S-GC'])];
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001', [], stubClient(), catalogue)
 		});
 
-		const data = await callLoad(load, { locals: asUser('1000001', [], client) });
+		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['AID_GND']);
+	});
+
+	it('never offers a position vNAS no longer lists', async () => {
+		const catalogue = [position('AID_GND', []), cmsPosition('BAK_GND', { retired: true })];
+
+		const data = await callLoad(load, {
+			locals: asUser('1000001', [], stubClient(), catalogue)
+		});
 
 		expect(data.bookablePositions.map((p) => p.callsign)).toEqual(['AID_GND']);
 	});

@@ -3,7 +3,7 @@ import { eventsTable } from '$lib/db/schema/events';
 import { logger } from '$lib/server/logger';
 import { fetchEventNames } from '$lib/server/bookings';
 import type { AtcBooking, BookingsClient } from '$lib/types/bookings';
-import { getPositionLabels, getUpcomingBookings, groupEventBookings } from '$lib/utils/bookings';
+import { getUpcomingBookings, groupEventBookings } from '$lib/utils/bookings';
 import type { Database } from '$lib/server/db';
 import type { DiscordStep } from '$lib/profile/linkedAccounts';
 import { socialSteps } from '$lib/server/socials';
@@ -12,32 +12,22 @@ import { fetchMetars } from '$lib/server/vatsim/vatsimDataClient';
 import { fetchControllers } from '$lib/server/vatsim/vnasDataClient.js';
 import { asc, and, eq, gt, inArray } from 'drizzle-orm';
 
-// Bookings starting soon, with the position names to show. The home page doesn't depend on the
-// booking system: if it isn't set up or fails, there are simply none to show.
+// Bookings starting soon. The home page doesn't depend on the booking system: if it isn't set up
+// or fails, there are simply none to show. Positions name themselves from the layout's catalogue.
 async function fetchUpcomingBookings(client: BookingsClient | undefined, db: Database) {
-	if (!client) return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
+	if (!client) return [] as AtcBooking[];
 
 	try {
-		const [bookings, positions] = await Promise.all([
-			client.listOrgBookings(),
-			client.getPositions()
-		]);
-		const upcoming = getUpcomingBookings(bookings, new Date(), BOOKING_REMINDER_HOURS);
+		const upcoming = getUpcomingBookings(
+			await client.listOrgBookings(),
+			new Date(),
+			BOOKING_REMINDER_HOURS
+		);
 		// An event with many positions is one row, not one per position
-		const upcomingBookings = groupEventBookings(upcoming, await fetchEventNames(db, upcoming));
-		const labels = getPositionLabels(positions);
-
-		return {
-			upcomingBookings,
-			bookingPositions: Object.fromEntries(
-				upcomingBookings
-					.filter((booking) => labels[booking.callsign])
-					.map((booking) => [booking.callsign, labels[booking.callsign]])
-			)
-		};
+		return groupEventBookings(upcoming, await fetchEventNames(db, upcoming));
 	} catch (error) {
 		logger.error('Failed to read upcoming bookings for the home page', { error });
-		return { upcomingBookings: [] as AtcBooking[], bookingPositions: {} };
+		return [] as AtcBooking[];
 	}
 }
 
@@ -72,7 +62,7 @@ export const load = async ({ locals, platform }) => {
 		metars,
 		controllers,
 		// Position and time only: names stay on /bookings, which asks people to sign in
-		upcomingBookings: bookings.upcomingBookings.map(({ callsign, type, start, group }) => ({
+		upcomingBookings: bookings.map(({ callsign, type, start, group }) => ({
 			callsign,
 			type,
 			start,
@@ -80,7 +70,6 @@ export const load = async ({ locals, platform }) => {
 				? { group: { eventId: group.eventId, name: group.name, count: group.members.length } }
 				: {})
 		})),
-		bookingPositions: bookings.bookingPositions,
 		discord
 	};
 };

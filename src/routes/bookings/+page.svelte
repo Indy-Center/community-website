@@ -11,14 +11,15 @@
 	import BookingCalendar from '$lib/components/bookings/BookingCalendar.svelte';
 	import PositionPicker from '$lib/components/bookings/PositionPicker.svelte';
 	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
+	import { getPositions, Position } from '@indy-center/centerline-svelte';
 	import {
-		describePosition,
 		formatZuluRange,
 		getBookedPositions,
 		groupEventBookings,
-		parseBookingTime
+		parseBookingTime,
+		positionText
 	} from '$lib/utils/bookings';
-	import type { AtcBooking, BookingType } from '$lib/types/bookings';
+	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
 	import IconPlus from '~icons/mdi/plus';
 	import IconPencil from '~icons/mdi/pencil-outline';
@@ -125,8 +126,9 @@
 		updateModal?.open();
 	}
 
-	const positionOf = (booking: AtcBooking) =>
-		describePosition(booking.callsign, data.positions[booking.callsign]);
+	// A position in words, where <Position> can't go: confirm dialogs, aria-labels, titles
+	const catalogue = getPositions<CmsPosition>();
+	const positionOf = (booking: AtcBooking) => positionText(booking.callsign, catalogue());
 
 	const confirmDelete =
 		(booking: AtcBooking): SubmitFunction =>
@@ -232,7 +234,6 @@
 			bookings={displayBookings}
 			onOpenGroup={openGroup}
 			names={data.names}
-			positions={data.positions}
 			manageable={data.manageable}
 			onEdit={data.bookingEnabled ? openEdit : undefined}
 		/>
@@ -263,7 +264,7 @@
 										<ul class="mt-3 divide-y divide-slate-700/40 text-sm">
 											{#each booking.group.members as member (member.externalId)}
 												<li class="flex items-center justify-between gap-4 py-1.5">
-													<span class="text-slate-200">{positionOf(member)}</span>
+													<Position class="min-w-0" callsign={member.callsign} layout="inline" />
 													<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
 												</li>
 											{/each}
@@ -277,22 +278,12 @@
 									</details>
 								</li>
 							{:else}
-								{@const label = data.positions[booking.callsign]}
 								<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
 								<li
-									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_1fr_auto_3.5rem]"
+									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[16rem_1fr_auto_3.5rem]"
 								>
 									<div class="flex min-w-0 items-center gap-3">
-										<div class="min-w-0" title={booking.callsign}>
-											{#if label}
-												<div class="truncate font-semibold text-white">{label.title}</div>
-												{#if label.detail}
-													<div class="truncate text-sm text-slate-400">{label.detail}</div>
-												{/if}
-											{:else}
-												<span class="font-mono font-semibold text-white">{booking.callsign}</span>
-											{/if}
-										</div>
+										<Position class="min-w-0" callsign={booking.callsign} />
 										{#if booking.type !== 'booking'}
 											<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
 										{/if}
@@ -364,7 +355,7 @@
 			<ul class="divide-y divide-slate-700/60 text-sm">
 				{#each openedGroup.group.members as member (member.externalId)}
 					<li class="flex items-center justify-between gap-4 py-2">
-						<span class="text-slate-200">{positionOf(member)}</span>
+						<Position class="min-w-0" callsign={member.callsign} layout="inline" />
 						<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
 					</li>
 				{/each}

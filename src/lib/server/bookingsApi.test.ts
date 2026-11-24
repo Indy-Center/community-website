@@ -3,19 +3,17 @@ import {
 	BookingRefusedError,
 	FRESH_MS,
 	KEEP_MS,
-	POSITIONS_PATH,
 	bookingsApiFromEnv,
 	createBookingsApi,
 	memoryReadStore
 } from './bookingsApi';
 
 const BASE = 'https://bookings.example.test/api';
-const CMS = 'https://cms.example.test';
 
 type Answer = { status: number; body?: unknown };
 
 /**
- * A stand-in for the booking system and the CMS feed: answers each request with the next queued
+ * A stand-in for the booking system: answers each request with the next queued
  * answer for its method and path (the last one repeats), and records every request.
  */
 function fakeApi(answers: Record<string, Answer[]>) {
@@ -64,7 +62,6 @@ function client(api: ReturnType<typeof fakeApi>, clock = { now: 0 }) {
 	return createBookingsApi({
 		baseUrl: `${BASE}/`,
 		apiKey: 'secret-key',
-		cmsUrl: CMS,
 		store: memoryReadStore(),
 		fetch: api.fetch,
 		now: () => clock.now
@@ -197,36 +194,6 @@ describe('writes', () => {
 		await expect(client(fakeApi({})).cancelBooking({ externalId: 'gone' })).resolves.toBe(
 			undefined
 		);
-	});
-});
-
-describe('getPositions', () => {
-	it('reads the CMS feed without the key, leaving out retired positions', async () => {
-		const facility = { id: 'IND', name: 'Indianapolis', parent: null };
-		const api = fakeApi({
-			[`GET ${POSITIONS_PATH}`]: [
-				{
-					status: 200,
-					body: [
-						{
-							callsign: 'IND_TWR',
-							name: 'Local',
-							radioName: 'Indy Tower',
-							frequency: 1,
-							starred: true,
-							facility,
-							requiredCredentials: [{ anyOf: ['A-LC'] }]
-						},
-						{ callsign: 'IND_OLD', retired: true, facility }
-					]
-				}
-			]
-		});
-
-		const positions = await client(api).getPositions();
-
-		expect(positions.map((p) => [p.callsign, p.starred])).toEqual([['IND_TWR', true]]);
-		expect(api.requests[0].auth).toBeNull();
 	});
 });
 

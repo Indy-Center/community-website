@@ -1,3 +1,4 @@
+import { resolvePosition } from '@indy-center/centerline-svelte';
 import {
 	CREDENTIAL_LADDER,
 	EXTRA_PRIMARY_POSITIONS,
@@ -77,34 +78,18 @@ export function getPositionType(callsign: string): PositionType | null {
 	}
 }
 
-export type PositionLabel = { title: string; detail: string | null };
-
-// Centers go by sector name alone ("Falmouth 83"); everything else by radio name with the
-// position name as detail ("Columbus Tower", "Local Control East")
-export function getPositionLabel(position: {
-	callsign: string;
-	radioName: string;
-	name: string;
-}): PositionLabel {
-	return getPositionType(position.callsign) === 'ARTCC'
-		? { title: position.name, detail: null }
-		: {
-				title: position.radioName,
-				detail: position.name === position.radioName ? null : position.name
-			};
-}
-
-// Labels for the positions in the feed, keyed by callsign
-export function getPositionLabels(positions: CmsPosition[]): Record<string, PositionLabel> {
-	return Object.fromEntries(
-		positions.map((position) => [position.callsign, getPositionLabel(position)])
-	);
-}
-
-// One-line form for titles and dialogs, falling back to the callsign
-export function describePosition(callsign: string, label: PositionLabel | undefined) {
-	if (!label) return callsign;
-	return label.detail ? `${label.title} · ${label.detail}` : label.title;
+/**
+ * A position in words, for where Centerline's `Position` can't go: a confirm dialog, an aria-label,
+ * a Discord message. The same parts in the same order as `Position` inline: radio name, short name,
+ * sector ("Indy Center · FLM 83 · Falmouth 83"), with no frequency. An unknown callsign is shown
+ * alone, as `Position` shows it. Everywhere else, use `<Position callsign>`.
+ */
+export function positionText(callsign: string, positions: readonly CmsPosition[]) {
+	const found = resolvePosition(callsign, positions)?.position;
+	if (!found) return callsign;
+	return [found.radioName, found.shortName ?? found.callsign, found.name]
+		.filter((part, i, parts) => part && parts.indexOf(part) === i)
+		.join(' · ');
 }
 
 type Requirements = CmsPosition['requiredCredentials'];

@@ -5,7 +5,9 @@ import { colorSchemeHandle } from '@indy-center/centerline-svelte/hooks';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import { bookingsApiFromEnv, cacheApiReadStore, memoryReadStore } from '$lib/server/bookingsApi';
+import { bookingsApiFromEnv } from '$lib/server/bookingsApi';
+import { cacheApiReadStore, memoryReadStore } from '$lib/server/keptReads';
+import { createPositionsReader } from '$lib/server/positions';
 import { cacheApiStore, createCms, memoryStore } from '$lib/server/cms';
 import { drizzle } from '$lib/server/db';
 
@@ -73,13 +75,16 @@ async function cmsHandle({ event, resolve }: Parameters<Handle>[0]) {
 const devReads = memoryReadStore();
 let warnedNoBookings = false;
 
-// The booking system's client, or undefined without its settings (bookings show empty, booking off)
+// The CMS positions catalogue, for Centerline's Position everywhere, and the booking system's
+// client, or undefined without its settings (bookings show empty, booking off)
 async function bookingsHandle({ event, resolve }: Parameters<Handle>[0]) {
 	const cache = event.platform?.caches?.default;
-	event.locals.bookings = bookingsApiFromEnv(
-		env,
-		dev || !cache ? devReads : cacheApiReadStore(cache)
-	);
+	const store = dev || !cache ? devReads : cacheApiReadStore(cache);
+	event.locals.positions = createPositionsReader({
+		cmsUrl: env.CMS_URL ?? 'https://cms.flyindycenter.com',
+		store
+	});
+	event.locals.bookings = bookingsApiFromEnv(env, store);
 	if (!event.locals.bookings && !warnedNoBookings) {
 		warnedNoBookings = true;
 		logger.warn('VATSIM_BOOKING_API_URL or VATSIM_BOOKING_API_KEY is not set; booking is off');

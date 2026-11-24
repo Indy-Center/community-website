@@ -1,16 +1,9 @@
-import { logger } from '$lib/server/logger';
-import type {
-	AtcBooking,
-	BookingType,
-	BookingsClient,
-	CmsPosition,
-	NewBooking
-} from '$lib/types/bookings';
+import { readKept, type ReadStore } from '$lib/server/keptReads';
+import type { AtcBooking, BookingType, BookingsClient, NewBooking } from '$lib/types/bookings';
 import { formatBookingTime } from '$lib/utils/bookings';
 
 /**
- * The booking system (a VATSIM ATC booking calendar) and the CMS's bookable positions, the only
- * place that talks to either. Our organization's bookings are read and written with our API key
+ * The booking system (a VATSIM ATC booking calendar), the only place that talks to it. Our organization's bookings are read and written with our API key
  * (`VATSIM_BOOKING_API_KEY`) at our own base URL (`VATSIM_BOOKING_API_URL`, including `/api`).
  *
  * Reads are kept for a short while (`FRESH_MS`) so pages don't spend the booking system's rate
@@ -35,27 +28,12 @@ export const KEEP_MS = 60 * 60_000;
 /** How long one request may take. */
 export const TIMEOUT_MS = 10_000;
 
-/** Where the CMS serves its public positions feed (no token needed). */
-export const POSITIONS_PATH = '/api/public/v1/positions';
-
 const ORG_BOOKINGS = '/org/bookings';
-
-/** A read as it was fetched, and when. */
-export type KeptRead = { fetchedAt: number; body: unknown };
-
-/** Where reads are kept. The Workers Cache API on Cloudflare, memory in tests and `vite dev`. */
-export type ReadStore = {
-	get(key: string): Promise<KeptRead | undefined>;
-	put(key: string, read: KeptRead): Promise<void>;
-	delete(key: string): Promise<void>;
-};
 
 export type BookingsApiOptions = {
 	/** The booking system's base URL, including `/api`. */
 	baseUrl: string;
 	apiKey: string;
-	/** The CMS's origin, for the positions feed. */
-	cmsUrl: string;
 	store: ReadStore;
 	fetch?: typeof fetch;
 	now?: () => number;
@@ -93,33 +71,6 @@ function fromWire(w: Wire): AtcBooking {
 		start: formatBookingTime(new Date(String(w.start))),
 		end: formatBookingTime(new Date(String(w.end)))
 	};
-}
-
-/** The CMS feed (a bare array) as bookable positions, retired ones left out. */
-export function fromCmsPositions(feed: unknown): CmsPosition[] {
-	if (!Array.isArray(feed)) throw new Error('The CMS positions feed was not a list');
-	return (feed as Wire[])
-		.filter((p) => p.retired !== true)
-		.map((p) => {
-			const facility = (p.facility ?? {}) as Wire;
-			const parent = facility.parent as Wire | null | undefined;
-			return {
-				callsign: String(p.callsign),
-				name: String(p.name),
-				radioName: String(p.radioName),
-				frequency: Number(p.frequency),
-				starred: p.starred === true,
-				facility: {
-					id: String(facility.id),
-					name: String(facility.name),
-					parent: parent ? { id: String(parent.id), name: String(parent.name) } : null
-				},
-				requiredCredentials: (Array.isArray(p.requiredCredentials)
-					? (p.requiredCredentials as Wire[])
-					: []
-				).map((c) => ({ anyOf: Array.isArray(c.anyOf) ? c.anyOf.map(String) : [] }))
-			};
-		});
 }
 
 export function createBookingsApi(options: BookingsApiOptions): BookingsClient {
@@ -160,52 +111,20 @@ export function createBookingsApi(options: BookingsApiOptions): BookingsClient {
 		throw new BookingRefusedError(message);
 	}
 
-	/** A kept read while fresh; else a new one, or the last good one while the source is failing. */
-	async function kept<T>(key: string, load: () => Promise<unknown>, parse: (body: unknown) => T) {
-		const copy = await store.get(key).catch(() => undefined);
-		const age = copy ? now() - copy.fetchedAt : Infinity;
-		if (copy && age < FRESH_MS) return parse(copy.body);
-
-		try {
-			const body = await load();
-			const parsed = parse(body);
-			await store.put(key, { fetchedAt: now(), body }).catch((error) => {
-				logger.error(`Keeping a copy of ${key} failed`, error);
-			});
-			return parsed;
-		} catch (error) {
-			if (copy && age < KEEP_MS) {
-				logger.warn(`Reading ${key} failed; serving the kept copy`, error);
-				return parse(copy.body);
-			}
-			throw error;
-		}
-	}
-
 	// After a write the kept list is stale; the next read asks again
 	const written = () => store.delete(ORG_BOOKINGS).catch(() => {});
 
 	return {
 		listOrgBookings: () =>
-			kept(
-				ORG_BOOKINGS,
-				() => call('GET', ORG_BOOKINGS),
-				(body) => (Array.isArray(body) ? (body as Wire[]).map(fromWire) : [])
-			),
-
-		getPositions: () =>
-			kept(
-				POSITIONS_PATH,
-				async () => {
-					const response = await fetchImpl(new URL(POSITIONS_PATH, options.cmsUrl), {
-						headers: { Accept: 'application/json' },
-						signal: AbortSignal.timeout(TIMEOUT_MS)
-					});
-					if (!response.ok) throw new Error(`The CMS answered ${response.status}`);
-					return response.json();
-				},
-				fromCmsPositions
-			),
+			readKept({
+				store,
+				key: ORG_BOOKINGS,
+				now,
+				freshMs: FRESH_MS,
+				keepMs: KEEP_MS,
+				load: () => call('GET', ORG_BOOKINGS),
+				parse: (body) => (Array.isArray(body) ? (body as Wire[]).map(fromWire) : [])
+			}),
 
 		async createBooking(booking: NewBooking) {
 			await call('POST', '/bookings/external', {
@@ -298,55 +217,8 @@ export function bookingsApiFromEnv(
 	const baseUrl = env.VATSIM_BOOKING_API_URL;
 	const apiKey = env.VATSIM_BOOKING_API_KEY;
 	if (!baseUrl || !apiKey) return undefined;
-	return createBookingsApi({
-		baseUrl,
-		apiKey,
-		cmsUrl: env.CMS_URL ?? 'https://cms.flyindycenter.com',
-		store
-	});
+	return createBookingsApi({ baseUrl, apiKey, store });
 }
 
-/** Reads kept in memory: for tests, and for `vite dev`, whose Cache API keeps nothing. */
-export function memoryReadStore(): ReadStore {
-	const reads = new Map<string, KeptRead>();
-	return {
-		async get(key) {
-			return reads.get(key);
-		},
-		async put(key, read) {
-			reads.set(key, read);
-		},
-		async delete(key) {
-			reads.delete(key);
-		}
-	};
-}
-
-/**
- * Reads kept in the Workers Cache API, so every isolate in a data centre shares them. The host is
- * invented, so no request from outside can ever be served one. Whether a read is fresh is decided
- * from its own `fetchedAt`, which is what lets a stale one be served while the source is failing.
- */
-export function cacheApiReadStore(cache: Cache): ReadStore {
-	const keyFor = (key: string) => `https://community-website-bookings.internal${key}`;
-	return {
-		async get(key) {
-			const response = await cache.match(keyFor(key));
-			return response ? ((await response.json()) as KeptRead) : undefined;
-		},
-		async put(key, read) {
-			await cache.put(
-				keyFor(key),
-				new Response(JSON.stringify(read), {
-					headers: {
-						'Content-Type': 'application/json',
-						'Cache-Control': `max-age=${KEEP_MS / 1000}`
-					}
-				})
-			);
-		},
-		async delete(key) {
-			await cache.delete(keyFor(key));
-		}
-	};
-}
+// The stores moved to keptReads; re-exported for the callers that build a client
+export { cacheApiReadStore, memoryReadStore, type ReadStore } from '$lib/server/keptReads';

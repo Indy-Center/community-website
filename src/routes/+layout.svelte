@@ -2,10 +2,12 @@
 	import '../app.css';
 	import Header from '$lib/components/header/Header.svelte';
 	import { page } from '$app/state';
-	import { setColorScheme, Toaster } from '@indy-center/centerline-svelte';
+	import { setColorScheme, setPositions, Toaster } from '@indy-center/centerline-svelte';
 
 	let { children, data } = $props();
 	setColorScheme({ fallback: 'dark' });
+	// Every <Position callsign> below names itself from the CMS catalogue's positions
+	setPositions(() => data.positions);
 
 	// Check if current page is home
 	let isHomePage = $derived(page.url.pathname === '/');
