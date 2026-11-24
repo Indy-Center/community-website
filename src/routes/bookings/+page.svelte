@@ -15,6 +15,7 @@
 	import { getPositions, Position } from '@indy-center/centerline-svelte';
 	import {
 		formatZuluRange,
+		findControllerConflict,
 		getBookedPositions,
 		groupEventBookings,
 		parseBookingTime
@@ -98,15 +99,25 @@
 		data.canBook && data.bookingEnabled && data.bookablePositions.length > 0
 	);
 
-	// The form holds the UTC ISO strings that DateTimeInput writes
-	const bookedPositions = $derived.by(() => {
+	// The chosen times, once both are set and in order. DateTimeInput holds the moment entered.
+	const chosenTimes = $derived.by(() => {
 		const start = new Date($createForm.start as unknown as string);
 		const end = new Date($createForm.end as unknown as string);
-		const valid = !isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start;
-
-		return valid ? getBookedPositions(data.bookings, start, end) : new Map<string, AtcBooking>();
+		return !isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start ? { start, end } : null;
 	});
+	const bookedPositions = $derived(
+		chosenTimes
+			? getBookedPositions(data.bookings, chosenTimes.start, chosenTimes.end)
+			: new Map<string, AtcBooking>()
+	);
 	const selectedConflict = $derived(bookedPositions.get($createForm.callsign));
+	// The booker (the student, for a mentor's training booking) already booked elsewhere then
+	const bookerConflict = $derived.by(() => {
+		const cid = $createForm.forCid || data.user?.cid;
+		return chosenTimes && cid
+			? findControllerConflict(data.bookings, cid, chosenTimes.start, chosenTimes.end)
+			: undefined;
+	});
 
 	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
 
@@ -445,6 +456,14 @@
 				another position or change your times.
 			</p>
 		{/if}
+		{#if bookerConflict}
+			<p class="text-sm text-amber-300">
+				{$createForm.forCid ? 'That member is' : "You're"} already booked on {positionOf(
+					bookerConflict
+				)}
+				{formatZuluRange(bookerConflict)}. Change the times, or cancel that booking first.
+			</p>
+		{/if}
 		<div class="flex justify-end gap-3">
 			<button type="button" onclick={() => createModal?.close()} class={cancelButton}>
 				Cancel
@@ -452,7 +471,7 @@
 			<button
 				type="submit"
 				class="{primaryButton} disabled:cursor-not-allowed disabled:opacity-50"
-				disabled={!!selectedConflict}
+				disabled={!!selectedConflict || !!bookerConflict}
 			>
 				<IconPlus class="h-4 w-4" />
 				Book
