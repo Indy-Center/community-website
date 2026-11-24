@@ -198,6 +198,17 @@
 	</div>
 </div>
 
+<!-- One controller on an event's position, as the event page lists them: the radio name with the
+     sector beneath, and who holds it on one line beside -->
+{#snippet eventMember(member: AtcBooking)}
+	<li class="flex items-center justify-between gap-4 py-2.5">
+		<Position class="min-w-0" callsign={member.callsign} show={['radioName', 'name']} />
+		<span class="shrink-0 text-right font-medium whitespace-nowrap text-slate-200">
+			{data.names[member.cid] ?? member.cid}
+		</span>
+	</li>
+{/snippet}
+
 {#if !data.loggedIn}
 	<div class="mx-auto flex w-fit items-center justify-center">
 		<div
@@ -264,10 +275,7 @@
 										</summary>
 										<ul class="mt-3 divide-y divide-slate-700/40 text-sm">
 											{#each booking.group.members as member (member.externalId)}
-												<li class="flex items-center justify-between gap-4 py-1.5">
-													<Position class="min-w-0" callsign={member.callsign} layout="inline" />
-													<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
-												</li>
+												{@render eventMember(member)}
 											{/each}
 										</ul>
 										<a
@@ -355,10 +363,7 @@
 			</p>
 			<ul class="divide-y divide-slate-700/60 text-sm">
 				{#each openedGroup.group.members as member (member.externalId)}
-					<li class="flex items-center justify-between gap-4 py-2">
-						<Position class="min-w-0" callsign={member.callsign} layout="inline" />
-						<span class="text-slate-400">{data.names[member.cid] ?? member.cid}</span>
-					</li>
+					{@render eventMember(member)}
 				{/each}
 			</ul>
 			<a
