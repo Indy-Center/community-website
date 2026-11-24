@@ -50,7 +50,7 @@
 	);
 	// A day with bookings side by side gets a wider column, so each keeps room to be read
 	const MIN_LANE_PX = 100;
-	// From this many side by side, a booking shows its position's short name and time only
+	// From this many side by side, a booking puts its time before the booker's name
 	const COMPACT_LANES = 3;
 	const gridColumns = $derived(
 		`3rem ${days
@@ -174,8 +174,7 @@
 						{@const height = ((segment.endMinute - segment.startMinute) / 60) * hourHeight}
 						{@const group = booking.group}
 						{@const compact = segment.lanes >= COMPACT_LANES}
-						{@const nameLines = group || compact ? 1 : 2}
-						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - nameLines)}
+						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - 1)}
 						{@const lines = (
 							group
 								? [
@@ -206,14 +205,9 @@
 						{#snippet content()}
 							{#if group}
 								<div class="truncate font-semibold">{group.name}</div>
-							{:else if compact}
-								<Position class="block truncate" callsign={booking.callsign} show={['shortName']} />
 							{:else}
-								<Position
-									class="block truncate"
-									callsign={booking.callsign}
-									show={['radioName', 'shortName', 'name']}
-								/>
+								<!-- The radio name alone; the tooltip gives the sector -->
+								<Position class="block truncate" callsign={booking.callsign} show={['radioName']} />
 							{/if}
 							{#each lines as line, i (i)}
 								<div class="truncate opacity-80">{line}</div>
