@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { AtcBooking } from '$lib/types/bookings';
 import {
+	bookingDay,
+	bookingsOnDay,
 	comparePositions,
 	eventIdOf,
 	findBookingConflict,
 	findControllerConflict,
 	getBookablePositions,
+	getCalendarMonth,
+	getCalendarWeek,
 	getSopRequirements,
 	formatPosition,
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
 	isListed,
+	layoutCalendarDay,
 	meetsRequirements,
 	withSopRequirements,
 	type BookablePosition
@@ -457,5 +462,53 @@ describe('findControllerConflict', () => {
 			)
 		).toBeUndefined();
 		expect(findControllerConflict([tower], 1000001, ...times, 1)).toBeUndefined();
+	});
+});
+
+describe("calendar in the member's time zone", () => {
+	const now = new Date('2026-11-24T03:30:00Z'); // Mon 23 Nov, 10:30 PM in Indianapolis
+
+	it("starts the week on the member's today, or the Zulu day in Zulu", () => {
+		expect(getCalendarWeek(now, 0, 'America/Indiana/Indianapolis')[0].start.getTime()).toBe(
+			Date.parse('2026-11-23T05:00:00.000Z')
+		);
+		expect(getCalendarWeek(now, 0)[0].start.getTime()).toBe(Date.parse('2026-11-24T00:00:00.000Z'));
+		expect(getCalendarWeek(now, 1)[0].start.getTime()).toBe(Date.parse('2026-12-01T00:00:00.000Z'));
+	});
+
+	it("lays bookings out on the wall clock, cut at the member's midnight", () => {
+		const zone = 'America/Indiana/Indianapolis';
+		const [monday] = getCalendarWeek(now, 0, zone);
+		const late = booking({ start: '2026-11-24 03:00:00', end: '2026-11-24 06:00:00' });
+
+		expect(layoutCalendarDay([late], monday, zone)).toMatchObject([
+			{ startMinute: 22 * 60, endMinute: 24 * 60 }
+		]);
+		expect(bookingDay(late, zone)).toBe('2026-11-23');
+		expect(bookingDay(late)).toBe('2026-11-24');
+	});
+
+	it('keeps hours under their labels on the day the clocks go back', () => {
+		const zone = 'America/New_York';
+		// Sun 1 Nov 2026 is 25 hours long in New York
+		const [day] = getCalendarWeek(new Date('2026-11-01T16:00:00Z'), 0, zone);
+		const evening = booking({ start: '2026-11-01 23:00:00', end: '2026-11-02 01:00:00' });
+
+		expect(day.end.getTime() - day.start.getTime()).toBe(25 * 3600000);
+		expect(layoutCalendarDay([evening], day, zone)).toMatchObject([
+			{ startMinute: 18 * 60, endMinute: 20 * 60 }
+		]);
+	});
+
+	it('builds a month of whole weeks, Sunday first, with the day a booking touches', () => {
+		const { month, weeks } = getCalendarMonth(now, 0, 'America/Chicago');
+		const days = weeks.flat();
+
+		expect(month.getTime()).toBe(Date.parse('2026-11-01T05:00:00.000Z'));
+		expect(weeks).toHaveLength(5);
+		expect(days[0].inMonth).toBe(true); // 1 Nov is a Sunday
+		expect(days.at(-1)!.inMonth).toBe(false); // into December
+		const overnight = booking({ start: '2026-11-24 04:00:00', end: '2026-11-24 07:00:00' });
+		expect(days.filter((day) => bookingsOnDay([overnight], day).length).length).toBe(2);
 	});
 });

@@ -5,13 +5,13 @@
 		plainFacilityName,
 		groupPositions,
 		isListed,
-		formatZuluRange,
+		parseBookingTime,
 		searchPositions,
 		type BookablePosition,
 		type PositionType
 	} from '$lib/utils/bookings';
 	import type { AtcBooking } from '$lib/types/bookings';
-	import { Position } from '@indy-center/centerline-svelte';
+	import { Position, Time } from '@indy-center/centerline-svelte';
 	import IconMagnify from '~icons/mdi/magnify';
 
 	type Props = {
@@ -248,7 +248,10 @@
 								<span
 									class="ml-auto shrink-0 rounded-full border border-slate-600 px-2 py-0.5 text-xs font-medium text-slate-400"
 								>
-									Booked {formatZuluRange(conflict)}
+									Booked <Time
+										value={parseBookingTime(conflict.start)}
+										end={parseBookingTime(conflict.end)}
+									/>
 								</span>
 							{:else if position.primary && activeType === 'ARTCC'}
 								<!-- TRACON and ATCT facilities are small enough that a badge would only add noise -->
