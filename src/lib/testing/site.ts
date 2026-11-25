@@ -113,10 +113,11 @@ export function site(opts: { cms?: ReturnType<typeof fakeCms> } = {}) {
 
 export type Site = ReturnType<typeof site>;
 
-/** Calls a page's server load with a hand-built event. */
+/** Calls a page's server load with a hand-built event: no cookies and headers ignored, unless given. */
 export function callLoad<L extends (event: never) => unknown>(
 	load: L,
-	event: unknown
+	event: object
 ): ReturnType<L> {
-	return load(event as Parameters<L>[0]) as ReturnType<L>;
+	const defaults = { cookies: { get: () => undefined }, setHeaders: () => {} };
+	return load({ ...defaults, ...event } as Parameters<L>[0]) as ReturnType<L>;
 }

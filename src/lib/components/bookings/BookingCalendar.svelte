@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { format } from 'date-fns';
-	import { utc } from '@date-fns/utc';
-	import { getPositions, Position } from '@indy-center/centerline-svelte';
+	import { getPositions, Position, Time } from '@indy-center/centerline-svelte';
 	import {
-		getWeekDays,
+		getCalendarWeek,
+		inZone,
 		layoutCalendarDay,
-		parseBookingTime,
-		startOfUtcDay
+		parseBookingTime
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
@@ -23,9 +22,11 @@
 		onEdit?: (booking: AtcBooking) => void;
 		// Opens an event's block to list its positions
 		onOpenGroup?: (booking: AtcBooking) => void;
+		// The member's time zone from Centerline's setTimeZone; undefined draws the week in Zulu
+		zone?: string;
 	};
 
-	let { bookings, names, manageable, onEdit, onOpenGroup }: Props = $props();
+	let { bookings, names, manageable, onEdit, onOpenGroup, zone }: Props = $props();
 
 	// The root layout's catalogue, for tooltips in words; blocks show <Position> itself
 	const positions = getPositions<CmsPosition>();
@@ -38,16 +39,15 @@
 	// A booking shows as many lines as fit under its position's name
 	const LINE_PX = 14;
 	const PADDING_PX = 5;
-	const DAY_MS = 86400000;
-
-	// A rolling week starting today, so upcoming bookings are always in view
-	const today = startOfUtcDay(new Date());
+	// A rolling week starting today in the member's zone, so upcoming bookings are always in view
+	const now = new Date();
 	let weekOffset = $state(0);
 
-	const weekStart = $derived(new Date(today.getTime() + weekOffset * 7 * DAY_MS));
+	const week = $derived(getCalendarWeek(now, weekOffset, zone));
 	const days = $derived(
-		getWeekDays(weekStart).map((day) => ({ day, segments: layoutCalendarDay(bookings, day) }))
+		week.map((day) => ({ day, segments: layoutCalendarDay(bookings, day, zone) }))
 	);
+	const today = $derived(getCalendarWeek(now, 0, zone)[0]);
 	// A day with bookings side by side gets a wider column, so each keeps room to be read
 	const MIN_LANE_PX = 100;
 	// From this many side by side, a booking puts its time before the booker's name
@@ -63,7 +63,7 @@
 	const lastBookingEnd = $derived(
 		Math.max(0, ...bookings.map((booking) => parseBookingTime(booking.end).getTime()))
 	);
-	const hasLaterWeeks = $derived(weekStart.getTime() + 7 * DAY_MS < lastBookingEnd);
+	const hasLaterWeeks = $derived(week[6].end.getTime() < lastBookingEnd);
 
 	const typeClasses: Record<BookingType, string> = {
 		booking: 'border-sky-400/60 bg-sky-500/25 text-sky-100',
@@ -72,8 +72,17 @@
 		training: 'border-green-400/60 bg-green-500/25 text-green-100'
 	};
 
-	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
-	const isToday = (day: Date) => day.getTime() === today.getTime();
+	// Labels in the member's zone: "Tue", "Nov 24", and hours as "2 PM", or "14z" in Zulu
+	const dayLabel = (day: Date, pattern: string) => format(inZone(day, zone), pattern);
+	const hourLabel = (hour: number) =>
+		zone ? format(new Date(2000, 0, 1, hour), 'h a') : `${String(hour).padStart(2, '0')}z`;
+	// A booking's times in words, for the tooltip, which can't hold <Time>
+	const clock = (time: string) =>
+		zone
+			? format(inZone(parseBookingTime(time), zone), 'h:mm a')
+			: format(inZone(parseBookingTime(time)), 'HHmm') + 'z';
+	const timeRange = (booking: AtcBooking) => `${clock(booking.start)}–${clock(booking.end)}`;
+	const isToday = (day: Date) => day.getTime() === today.start.getTime();
 
 	const navButton =
 		'cursor-pointer rounded-lg border border-slate-600 p-1.5 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40';
@@ -91,11 +100,7 @@
 			<IconChevronLeft class="h-5 w-5" />
 		</button>
 		<h2 class="text-sm font-semibold tracking-wide text-white uppercase">
-			{format(utc(weekStart), 'MMM d')} – {format(
-				utc(new Date(weekStart.getTime() + 6 * DAY_MS)),
-				'MMM d'
-			)}
-			<span class="ml-1 font-normal text-slate-400 normal-case">(Zulu)</span>
+			{dayLabel(week[0].start, 'MMM d')} – {dayLabel(week[6].start, 'MMM d')}
 		</h2>
 		<div class="flex items-center gap-2">
 			<div class="flex items-center gap-1" role="group" aria-label="Zoom">
@@ -136,14 +141,16 @@
 		<div class="grid min-w-[760px]" style="grid-template-columns: {gridColumns}">
 			<!-- Day headers -->
 			<div class="border-b border-slate-700/60"></div>
-			{#each days as { day } (day.getTime())}
+			{#each days as { day } (day.start.getTime())}
 				<div
-					class="border-b border-l border-slate-700/60 px-2 py-2 text-center text-xs {isToday(day)
+					class="border-b border-l border-slate-700/60 px-2 py-2 text-center text-xs {isToday(
+						day.start
+					)
 						? 'bg-sky-600/20 text-white'
 						: 'text-slate-300'}"
 				>
-					<div class="font-semibold uppercase">{format(utc(day), 'EEE')}</div>
-					<div class="text-slate-400">{format(utc(day), 'MMM d')}</div>
+					<div class="font-semibold uppercase">{dayLabel(day.start, 'EEE')}</div>
+					<div class="text-slate-400">{dayLabel(day.start, 'MMM d')}</div>
 				</div>
 			{/each}
 
@@ -154,13 +161,13 @@
 						class="absolute right-1 -translate-y-1/2 font-mono text-[10px] text-slate-500"
 						style="top: {i * 2 * hourHeight}px"
 					>
-						{#if i > 0}{String(i * 2).padStart(2, '0')}z{/if}
+						{#if i > 0}{hourLabel(i * 2)}{/if}
 					</div>
 				{/each}
 			</div>
 
 			<!-- Day columns -->
-			{#each days as { day, segments } (day.getTime())}
+			{#each days as { day, segments } (day.start.getTime())}
 				<div
 					class="relative border-l border-slate-700/60"
 					style="height: {24 *
@@ -175,25 +182,17 @@
 						{@const group = booking.group}
 						{@const compact = segment.lanes >= COMPACT_LANES}
 						{@const fit = Math.max(0, Math.floor((height - 1 - PADDING_PX) / LINE_PX) - 1)}
+						<!-- null stands for the booking's times, drawn by <Time> in the member's zone -->
 						{@const lines = (
 							group
-								? [
-										`${group.members.length} positions`,
-										`${zulu(booking.start)}–${zulu(booking.end)}`
-									]
+								? [`${group.members.length} positions`, null]
 								: compact
-									? [
-											`${zulu(booking.start)}–${zulu(booking.end)}`,
-											names[booking.cid] ?? String(booking.cid)
-										]
-									: [
-											names[booking.cid] ?? String(booking.cid),
-											`${zulu(booking.start)}–${zulu(booking.end)}`
-										]
+									? [null, names[booking.cid] ?? String(booking.cid)]
+									: [names[booking.cid] ?? String(booking.cid), null]
 						).slice(0, fit)}
 						{@const title = group
-							? `${group.name} · ${group.members.length} positions · ${zulu(booking.start)}–${zulu(booking.end)}`
-							: `${positionText(booking.callsign, positions())} · ${zulu(booking.start)}–${zulu(booking.end)} · ${
+							? `${group.name} · ${group.members.length} positions · ${timeRange(booking)}`
+							: `${positionText(booking.callsign, positions())} · ${timeRange(booking)} · ${
 									names[booking.cid] ?? booking.cid
 								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}`}
 						{@const classes = `absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${typeClasses[booking.type]}`}
@@ -210,7 +209,16 @@
 								<Position class="block truncate" callsign={booking.callsign} show={['radioName']} />
 							{/if}
 							{#each lines as line, i (i)}
-								<div class="truncate opacity-80">{line}</div>
+								<div class="truncate opacity-80">
+									{#if line === null}
+										<Time
+											value={parseBookingTime(booking.start)}
+											end={parseBookingTime(booking.end)}
+										/>
+									{:else}
+										{line}
+									{/if}
+								</div>
 							{/each}
 						{/snippet}
 						{#if group}

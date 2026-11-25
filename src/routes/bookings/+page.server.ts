@@ -1,3 +1,4 @@
+import { readTimeZone } from '@indy-center/centerline-svelte/server';
 import { eq, inArray } from 'drizzle-orm';
 import { fail, message, superValidate, setError } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
@@ -115,8 +116,12 @@ function writeFailure(error: unknown) {
 // Only controllers on the ZID roster (home or visiting) can book
 const isRostered = (user: App.Locals['user']) => user?.membership === 'controller';
 
-export const load = async ({ locals }) => {
+export const load = async ({ locals, cookies, setHeaders }) => {
 	const client = locals.bookings;
+	// The member's time zone from Centerline's shared cookie, which only this page reads for now.
+	// What it draws differs per member, so no cache may share it.
+	const timeZone = readTimeZone(cookies);
+	setHeaders({ 'cache-control': 'private' });
 	const [createForm, updateForm] = await Promise.all([
 		superValidate(zod4(bookingSchema), { id: 'create-booking' }),
 		superValidate(zod4(bookingUpdateSchema), { id: 'update-booking' })
@@ -134,6 +139,7 @@ export const load = async ({ locals }) => {
 			students: [] as PickableShownMember[],
 			canBook: false,
 			bookingEnabled: false,
+			timeZone,
 			createForm,
 			updateForm
 		};
@@ -193,6 +199,7 @@ export const load = async ({ locals }) => {
 		students,
 		canBook: isRostered(locals.user),
 		bookingEnabled: listed !== null,
+		timeZone,
 		createForm,
 		updateForm
 	};

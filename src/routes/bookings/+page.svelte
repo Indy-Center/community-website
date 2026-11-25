@@ -1,23 +1,32 @@
 <script lang="ts">
 	import { enhance as formEnhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { format } from 'date-fns';
-	import { utc } from '@date-fns/utc';
 	import { superForm } from 'sveltekit-superforms';
 	import Badge from '$lib/components/Badge.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import Panel from '$lib/components/Panel.svelte';
 	import BookingCalendar from '$lib/components/bookings/BookingCalendar.svelte';
+	import BookingMonth from '$lib/components/bookings/BookingMonth.svelte';
 	import PositionPicker from '$lib/components/bookings/PositionPicker.svelte';
 	import ControllerSearch from '$lib/components/feedback/ControllerSearch.svelte';
-	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
-	import { getPositions, Position } from '@indy-center/centerline-svelte';
 	import {
-		formatZuluRange,
+		DateTimeInput,
+		Field,
+		getPositions,
+		Position,
+		setTimeZone,
+		Time,
+		TimeZoneLine
+	} from '@indy-center/centerline-svelte';
+	import {
+		bookingDay,
 		findControllerConflict,
 		getBookedPositions,
 		groupEventBookings,
+		inZone,
 		parseBookingTime
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
@@ -28,9 +37,21 @@
 	import IconTrash from '~icons/mdi/trash-can-outline';
 	import IconCalendarWeek from '~icons/mdi/calendar-week';
 	import IconListBox from '~icons/mdi/format-list-bulleted';
+	import IconCalendarMonth from '~icons/mdi/calendar-month';
 	import IconAccount from '~icons/mdi/account';
 
 	let { data } = $props();
+
+	// Centerline's shared time-zone setting, for this page only until community moves onto
+	// Centerline's app shell: every <Time> below follows the member's choice, and the calendars
+	// are laid out in the same zone. Undefined means Zulu.
+	const timeZone = setTimeZone(() => data.timeZone);
+	let mounted = $state(false);
+	onMount(() => {
+		timeZone.mount();
+		mounted = true;
+	});
+	const zone = $derived(timeZone.zone(mounted));
 
 	let createModal: Modal | undefined = $state();
 	// Starts off each time the form opens, so people see the primary positions first
@@ -45,12 +66,11 @@
 	let deleteError: string | undefined = $state();
 	// What the last change did, as the server worded it
 	let notice: string | undefined = $state();
-	let view: 'calendar' | 'list' = $state('calendar');
+	let view: 'calendar' | 'month' | 'list' = $state('calendar');
 
 	const {
 		form: createForm,
 		errors: createErrors,
-		constraints: createConstraints,
 		enhance: createEnhance
 	} = superForm(data.createForm, {
 		resetForm: true,
@@ -65,7 +85,6 @@
 	const {
 		form: updateForm,
 		errors: updateErrors,
-		constraints: updateConstraints,
 		enhance: updateEnhance
 	} = superForm(data.updateForm, {
 		onUpdated: ({ form }) => {
@@ -86,10 +105,10 @@
 	// An event with many positions shows as one block, opened to list them
 	const displayBookings = $derived(groupEventBookings(data.bookings, data.eventNames));
 
-	// Bookings arrive sorted by start, so days come out in order
+	// Bookings arrive sorted by start, so days (the member's) come out in order
 	const days = $derived(
 		displayBookings.reduce<Map<string, AtcBooking[]>>((groups, booking) => {
-			const day = booking.start.slice(0, 10);
+			const day = bookingDay(booking, zone);
 			groups.set(day, [...(groups.get(day) ?? []), booking]);
 			return groups;
 		}, new Map())
@@ -119,7 +138,9 @@
 			: undefined;
 	});
 
-	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
+	// The list's day headings, in the member's zone
+	const dayTitle = (bookings: AtcBooking[]) =>
+		format(inZone(parseBookingTime(bookings[0].start), zone), 'EEEE, MMMM d');
 
 	let groupModal: Modal | undefined = $state();
 	let openedGroup: AtcBooking | undefined = $state();
@@ -193,7 +214,16 @@
 					onclick={() => (view = 'calendar')}
 				>
 					<IconCalendarWeek class="h-4 w-4" />
-					Calendar
+					Week
+				</button>
+				<button
+					type="button"
+					class={viewButton(view === 'month')}
+					aria-pressed={view === 'month'}
+					onclick={() => (view = 'month')}
+				>
+					<IconCalendarMonth class="h-4 w-4" />
+					Month
 				</button>
 				<button
 					type="button"
@@ -252,6 +282,8 @@
 		</div>
 	{/if}
 
+	<TimeZoneLine class="mb-2" />
+
 	{#if view === 'calendar'}
 		<BookingCalendar
 			bookings={displayBookings}
@@ -259,14 +291,21 @@
 			names={data.names}
 			manageable={data.manageable}
 			onEdit={data.bookingEnabled ? openEdit : undefined}
+			{zone}
+		/>
+	{:else if view === 'month'}
+		<BookingMonth
+			bookings={displayBookings}
+			onOpenGroup={openGroup}
+			names={data.names}
+			manageable={data.manageable}
+			onEdit={data.bookingEnabled ? openEdit : undefined}
+			{zone}
 		/>
 	{:else}
 		<div class="mx-auto max-w-4xl space-y-6">
 			{#each days as [day, bookings] (day)}
-				<Panel
-					title={format(utc(parseBookingTime(`${day} 00:00:00`)), 'EEEE, MMMM d')}
-					icon={IconCalendarClock}
-				>
+				<Panel title={dayTitle(bookings)} icon={IconCalendarClock}>
 					<ul class="divide-y divide-slate-700/60">
 						{#each bookings as booking (booking.externalId ?? booking.id)}
 							{#if booking.group}
@@ -280,9 +319,12 @@
 													{booking.group.members.length} positions
 												</span>
 											</span>
-											<span class="shrink-0 font-mono text-white">
-												{zulu(booking.start)} – {zulu(booking.end)}
-											</span>
+											<Time
+												class="shrink-0 text-white"
+												value={parseBookingTime(booking.start)}
+												end={parseBookingTime(booking.end)}
+												zone="both"
+											/>
 										</summary>
 										<ul class="mt-3 divide-y divide-slate-700/40 text-sm">
 											{#each booking.group.members as member (member.externalId)}
@@ -319,9 +361,12 @@
 										<span class="text-right text-sm text-slate-400 sm:text-left">{booking.cid}</span
 										>
 									{/if}
-									<span class="font-mono text-sm text-white">
-										{zulu(booking.start)} – {zulu(booking.end)}
-									</span>
+									<Time
+										class="text-sm text-white"
+										value={parseBookingTime(booking.start)}
+										end={parseBookingTime(booking.end)}
+										zone="both"
+									/>
 									<div class="flex items-center justify-end gap-3">
 										{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
 											<button
@@ -364,13 +409,42 @@
 	{/if}
 {/if}
 
+<!-- A booking's start or end, entered in the member's zone and sent as UTC by Centerline's
+     DateTimeInput, into the form field of that name -->
+{#snippet timeField(
+	// Either booking form's store (method syntax, so both fit)
+	form: { update(change: (values: Record<string, unknown>) => Record<string, unknown>): void },
+	// The form's values, as the store holds them (a snippet can't subscribe itself)
+	values: { start: unknown; end: unknown },
+	errors: { start?: string[]; end?: string[] },
+	name: 'start' | 'end',
+	label: string
+)}
+	<Field {label} error={errors[name]?.join(' ')} required>
+		{#snippet children(control)}
+			<DateTimeInput
+				{...control}
+				{name}
+				bind:value={
+					() => (values[name] as string) || undefined,
+					(value) => form.update(($f) => ({ ...$f, [name]: value ?? '' }))
+				}
+			/>
+		{/snippet}
+	</Field>
+{/snippet}
+
 <Modal title={openedGroup?.group?.name ?? 'Event'} bind:this={groupModal}>
 	{#if openedGroup?.group}
 		<div class="max-h-[70vh] w-[480px] max-w-[90vw] overflow-y-auto p-2">
 			<p class="mb-3 text-sm text-slate-400">
-				{openedGroup.group.members.length} positions, {zulu(openedGroup.start)} – {zulu(
-					openedGroup.end
-				)}
+				{openedGroup.group.members.length} positions,
+				<Time
+					value={parseBookingTime(openedGroup.start)}
+					end={parseBookingTime(openedGroup.end)}
+					show="datetime"
+					zone="both"
+				/>
 			</p>
 			<ul class="divide-y divide-slate-700/60 text-sm">
 				{#each openedGroup.group.members as member (member.externalId)}
@@ -429,20 +503,8 @@
 			</div>
 		{/if}
 		<!-- Times come first so the picker can grey out positions already booked then -->
-		<DateTimeInput
-			form={createForm}
-			errors={$createErrors}
-			constraints={$createConstraints}
-			fieldName="start"
-			label="Start"
-		/>
-		<DateTimeInput
-			form={createForm}
-			errors={$createErrors}
-			constraints={$createConstraints}
-			fieldName="end"
-			label="End"
-		/>
+		{@render timeField(createForm, $createForm, $createErrors, 'start', 'Start')}
+		{@render timeField(createForm, $createForm, $createErrors, 'end', 'End')}
 		<PositionPicker
 			bind:showAll={showAllPositions}
 			positions={data.bookablePositions}
@@ -452,8 +514,12 @@
 		/>
 		{#if selectedConflict}
 			<p class="text-sm text-amber-300">
-				{positionOf(selectedConflict)} is already booked {formatZuluRange(selectedConflict)}. Pick
-				another position or change your times.
+				{positionOf(selectedConflict)} is already booked
+				<Time
+					value={parseBookingTime(selectedConflict.start)}
+					end={parseBookingTime(selectedConflict.end)}
+					zone="both"
+				/>. Pick another position or change your times.
 			</p>
 		{/if}
 		{#if bookerConflict}
@@ -461,7 +527,11 @@
 				{$createForm.forCid ? 'That member is' : "You're"} already booked on {positionOf(
 					bookerConflict
 				)}
-				{formatZuluRange(bookerConflict)}. Change the times, or cancel that booking first.
+				<Time
+					value={parseBookingTime(bookerConflict.start)}
+					end={parseBookingTime(bookerConflict.end)}
+					zone="both"
+				/>. Change the times, or cancel that booking first.
 			</p>
 		{/if}
 		<div class="flex justify-end gap-3">
@@ -491,20 +561,8 @@
 			<p class="text-sm text-red-400">{$updateErrors._errors.join(' ')}</p>
 		{/if}
 		<input type="hidden" name="externalId" value={$updateForm.externalId} />
-		<DateTimeInput
-			form={updateForm}
-			errors={$updateErrors}
-			constraints={$updateConstraints}
-			fieldName="start"
-			label="Start"
-		/>
-		<DateTimeInput
-			form={updateForm}
-			errors={$updateErrors}
-			constraints={$updateConstraints}
-			fieldName="end"
-			label="End"
-		/>
+		{@render timeField(updateForm, $updateForm, $updateErrors, 'start', 'Start')}
+		{@render timeField(updateForm, $updateForm, $updateErrors, 'end', 'End')}
 		<div class="flex justify-end gap-3">
 			<button type="button" onclick={() => updateModal?.close()} class={cancelButton}>
 				Cancel

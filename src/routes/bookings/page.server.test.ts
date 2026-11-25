@@ -108,6 +108,26 @@ describe('/bookings load', () => {
 		expect(data.bookingEnabled).toBe(false);
 	});
 
+	it("hands the page the member's time zone from Centerline's shared cookie, privately", async () => {
+		const headers: Record<string, string>[] = [];
+		const data = await callLoad(load, {
+			locals: asUser('1000001'),
+			cookies: {
+				get: (name: string) => (name === 'indy-time-zone' ? 'America/Chicago' : undefined)
+			},
+			setHeaders: (set: Record<string, string>) => headers.push(set)
+		});
+
+		expect(data.timeZone).toEqual({ kind: 'zone', zone: 'America/Chicago' });
+		expect(headers).toEqual([{ 'cache-control': 'private' }]);
+	});
+
+	it('leaves the time zone unset (Zulu until the browser knows) without the cookie', async () => {
+		const data = await callLoad(load, { locals: asUser('1000001') });
+
+		expect(data.timeZone).toBeUndefined();
+	});
+
 	it("lets a member change their own bookings that have an externalId, and an admin anyone's", async () => {
 		const client = stubClient([
 			listed({ id: 1, externalId: 'mine', cid: 1000001 }),

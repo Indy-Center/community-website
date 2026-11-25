@@ -1,3 +1,5 @@
+import { TZDate } from '@date-fns/tz';
+import { addDays, addMonths, format, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import {
 	CREDENTIAL_LADDER,
 	EXTRA_PRIMARY_POSITIONS,
@@ -318,7 +320,7 @@ export function formatBookingTime(date: Date) {
 
 export type CalendarSegment = {
 	booking: AtcBooking;
-	// Minutes from 00z on this day
+	// Minutes from midnight on this day, on the wall clock of the zone the calendar is drawn in
 	startMinute: number;
 	endMinute: number;
 	// Overlapping segments share the column side by side
@@ -326,20 +328,68 @@ export type CalendarSegment = {
 	lanes: number;
 };
 
-const DAY_MS = 86400000;
+// One day of the calendar: from its midnight to the next, in the zone it is drawn in. A day
+// a clock change falls on is 23 or 25 hours long.
+export type CalendarDay = { start: Date; end: Date };
 
-export function startOfUtcDay(date: Date) {
-	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+// The zone times are drawn in: the member's (Centerline's setTimeZone), or UTC when they show Zulu
+const drawnIn = (zone: string | undefined) => zone ?? 'UTC';
+
+// A rolling week starting today in the member's zone, moved on whole weeks by weekOffset
+export function getCalendarWeek(now: Date, weekOffset: number, zone?: string): CalendarDay[] {
+	const first = addDays(startOfDay(new TZDate(now, drawnIn(zone))), weekOffset * 7);
+	return Array.from({ length: 7 }, (_, i) => ({
+		start: addDays(first, i),
+		end: addDays(first, i + 1)
+	}));
 }
 
-export function getWeekDays(weekStart: Date) {
-	return Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i * DAY_MS));
+// A month at a glance in the member's zone, moved on by monthOffset: whole weeks, Sunday first,
+// from the week its 1st falls in to the week its last day does. inMonth marks the month's own days.
+export function getCalendarMonth(now: Date, monthOffset: number, zone?: string) {
+	const month = addMonths(startOfMonth(new TZDate(now, drawnIn(zone))), monthOffset);
+	const next = addMonths(month, 1);
+	const weeks: (CalendarDay & { inMonth: boolean })[][] = [];
+	for (let day = startOfWeek(month); day < next; day = addDays(day, 7)) {
+		weeks.push(
+			Array.from({ length: 7 }, (_, i) => {
+				const start = addDays(day, i);
+				return { start, end: addDays(start, 1), inMonth: start >= month && start < next };
+			})
+		);
+	}
+	return { month, end: next, weeks };
+}
+
+// The bookings on a calendar day, one running past midnight on both days it touches
+export const bookingsOnDay = (bookings: AtcBooking[], day: CalendarDay) =>
+	bookings.filter(
+		(booking) =>
+			parseBookingTime(booking.start) < day.end && parseBookingTime(booking.end) > day.start
+	);
+
+// An instant in the member's zone, for formatting the calendar's day and hour labels
+export const inZone = (time: Date | number, zone?: string) => new TZDate(+time, drawnIn(zone));
+
+// The member's day a booking starts on, as yyyy-MM-dd, to group the list by day
+export const bookingDay = (booking: AtcBooking, zone?: string) =>
+	format(inZone(parseBookingTime(booking.start), zone), 'yyyy-MM-dd');
+
+// Minutes from midnight on the wall clock, so hours line up with the labels even on a clock change
+function minuteOfDay(time: number, day: CalendarDay, zone?: string) {
+	if (time >= day.end.getTime()) return 24 * 60;
+	const wall = inZone(time, zone);
+	return wall.getHours() * 60 + wall.getMinutes();
 }
 
 // Splits bookings into per-day segments (cutting at midnight) and assigns overlap lanes
-export function layoutCalendarDay(bookings: AtcBooking[], day: Date): CalendarSegment[] {
-	const dayStart = day.getTime();
-	const dayEnd = dayStart + DAY_MS;
+export function layoutCalendarDay(
+	bookings: AtcBooking[],
+	day: CalendarDay,
+	zone?: string
+): CalendarSegment[] {
+	const dayStart = day.start.getTime();
+	const dayEnd = day.end.getTime();
 
 	const segments = bookings
 		.map((booking) => ({
@@ -369,10 +419,12 @@ export function layoutCalendarDay(bookings: AtcBooking[], day: Date): CalendarSe
 		laneEnds[lane] = end;
 		clusterEnd = Math.max(clusterEnd, end);
 
+		const startMinute = minuteOfDay(start, day, zone);
 		const segment = {
 			booking,
-			startMinute: (start - dayStart) / 60000,
-			endMinute: (end - dayStart) / 60000,
+			startMinute,
+			// The hour a clock goes back repeats; never draw a segment upside down
+			endMinute: Math.max(startMinute, minuteOfDay(end, day, zone)),
 			lane,
 			lanes: 1
 		};
