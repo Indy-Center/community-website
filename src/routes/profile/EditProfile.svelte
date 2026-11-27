@@ -144,7 +144,6 @@
 							pronouns={$form.pronounsChoice === 'custom'
 								? $form.customPronouns
 								: $form.pronounsChoice}
-							membership={data.membership}
 							hasDiscord={data.hasDiscord}
 						/>
 						<p class="mt-3 text-xs text-muted-foreground">

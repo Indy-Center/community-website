@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button, Card, PageHeader } from '@indy-center/centerline-svelte';
+	import { Button, Card, Heading, Icon, PageHeader } from '@indy-center/centerline-svelte';
+	import { mdiHeadset, mdiLockOutline } from '@mdi/js';
+	import { brandDiscord } from '$lib/brandIcons';
 	import { FACILITY_ID } from '$lib/config';
 	import {
 		DISCORD_INVITE_URL,
@@ -8,9 +10,6 @@
 		TEAMSPEAK_CONNECT_URL
 	} from '$lib/profile/linkedAccounts';
 	import { signInHref } from '$lib/utils/signIn';
-	import IconDiscord from '~icons/mdi/discord';
-	import IconTeamSpeak from '~icons/mdi/headset';
-	import IconLock from '~icons/mdi/lock-outline';
 
 	let { data } = $props();
 	const { discord, teamspeak } = $derived(data.steps);
@@ -28,8 +27,8 @@
 	<Card as="section">
 		<div class="flex h-full flex-col gap-4">
 			<div class="flex items-center gap-3">
-				<IconDiscord class="h-8 w-8 shrink-0 text-[#5865F2]" aria-hidden="true" />
-				<h2 class="text-xl font-semibold text-foreground">Discord</h2>
+				<Icon path={brandDiscord} size={32} class="shrink-0 text-muted-foreground" />
+				<Heading level={2} look={3}>Discord</Heading>
 			</div>
 			<p class="text-muted-foreground">
 				Join the conversations, keep track of community events, and share screenshots.
@@ -37,7 +36,7 @@
 			<div class="mt-auto flex flex-col items-start gap-3">
 				{#if discord === 'sign-in'}
 					<p class="flex items-center gap-2 text-sm text-muted-foreground">
-						<IconLock class="h-4 w-4 shrink-0" aria-hidden="true" /> Sign in with VATSIM to join.
+						<Icon path={mdiLockOutline} class="shrink-0" /> Sign in with VATSIM to join.
 					</p>
 					<!-- A full page load: it leaves the site for sign-in, then Discord -->
 					<Button href={joinDiscordHref(page.url.pathname)} data-sveltekit-reload
@@ -56,7 +55,7 @@
 						href={DISCORD_INVITE_URL}
 						variant="secondary"
 						target="_blank"
-						rel="noopener noreferrer">Open Discord</Button
+						rel="noopener noreferrer">Open Discord (new tab)</Button
 					>
 				{/if}
 			</div>
@@ -66,8 +65,8 @@
 	<Card as="section">
 		<div class="flex h-full flex-col gap-4">
 			<div class="flex items-center gap-3">
-				<IconTeamSpeak class="h-8 w-8 shrink-0 text-muted-foreground" aria-hidden="true" />
-				<h2 class="text-xl font-semibold text-foreground">TeamSpeak</h2>
+				<Icon path={mdiHeadset} size={32} class="shrink-0 text-muted-foreground" />
+				<Heading level={2} look={3}>TeamSpeak</Heading>
 			</div>
 			<p class="text-muted-foreground">
 				Voice chat for controller coordination, group flights, and other games.
@@ -75,7 +74,7 @@
 			<div class="mt-auto flex flex-col items-start gap-3">
 				{#if teamspeak === 'sign-in'}
 					<p class="flex items-center gap-2 text-sm text-muted-foreground">
-						<IconLock class="h-4 w-4 shrink-0" aria-hidden="true" /> Sign in to see how to connect.
+						<Icon path={mdiLockOutline} class="shrink-0" /> Sign in to see how to connect.
 					</p>
 					<Button href={signInHref(page.url.pathname)}>Sign in</Button>
 				{:else}
@@ -86,7 +85,7 @@
 							: "We'll message you a link to connect your account."}
 					</p>
 					<Button href={TEAMSPEAK_CONNECT_URL} target="_blank" rel="noopener noreferrer"
-						>Connect to TeamSpeak</Button
+						>Connect to TeamSpeak (new tab)</Button
 					>
 				{/if}
 			</div>

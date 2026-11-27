@@ -5,7 +5,9 @@
 	// message as a toast. `discord` is the row the load worked out from larry's `getLinks`, or
 	// null when larry can't be asked.
 	import { enhance } from '$app/forms';
-	import { Alert, Button } from '@indy-center/centerline-svelte';
+	import { Alert, Button, Icon } from '@indy-center/centerline-svelte';
+	import { mdiHeadset, mdiSync } from '@mdi/js';
+	import { brandDiscord } from '$lib/brandIcons';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { FACILITY_ID } from '$lib/config';
 	import {
@@ -14,9 +16,6 @@
 		type DiscordRow,
 		type TeamSpeakRow
 	} from '$lib/profile/linkedAccounts';
-	import IconDiscord from '~icons/mdi/discord';
-	import IconTeamSpeak from '~icons/mdi/headset';
-	import IconSync from '~icons/mdi/sync';
 
 	let {
 		discord,
@@ -51,7 +50,7 @@
 		<li class="py-4 first:pt-0">
 			<div class="flex items-center justify-between gap-3">
 				<div class="flex min-w-0 items-center gap-3">
-					<IconDiscord class="h-5 w-5 shrink-0 text-[#5865F2]" aria-hidden="true" />
+					<Icon path={brandDiscord} size={20} class="shrink-0 text-muted-foreground" />
 					<p class="font-medium text-foreground">Discord</p>
 				</div>
 				<div class="shrink-0">
@@ -97,7 +96,7 @@
 			<li class="py-4">
 				<div class="flex items-center justify-between gap-3">
 					<div class="flex min-w-0 items-center gap-3">
-						<IconTeamSpeak class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+						<Icon path={mdiHeadset} size={20} class="shrink-0 text-muted-foreground" />
 						<p class="font-medium text-foreground">TeamSpeak</p>
 					</div>
 					<div class="shrink-0">
@@ -149,7 +148,7 @@
 		class="flex items-center justify-between gap-3 border-t border-border pt-4"
 	>
 		<div class="flex min-w-0 items-center gap-3">
-			<IconSync class="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<Icon path={mdiSync} size={20} class="shrink-0 text-muted-foreground" />
 			<p class="font-medium text-foreground">Sync Roles</p>
 		</div>
 		<div class="shrink-0">

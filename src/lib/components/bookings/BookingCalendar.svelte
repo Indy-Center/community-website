@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { bookingTypeClasses as typeClasses } from './bookingTypes';
 	import { format } from 'date-fns';
-	import { getPositions, Position, Time } from '@indy-center/centerline-svelte';
+	import {
+		Button,
+		Card,
+		getPositions,
+		Heading,
+		Icon,
+		Position,
+		Time
+	} from '@indy-center/centerline-svelte';
 	import {
 		getCalendarWeek,
 		inZone,
@@ -11,10 +19,12 @@
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
-	import IconChevronLeft from '~icons/mdi/chevron-left';
-	import IconChevronRight from '~icons/mdi/chevron-right';
-	import IconMinus from '~icons/mdi/magnify-minus-outline';
-	import IconPlus from '~icons/mdi/magnify-plus-outline';
+	import {
+		mdiChevronLeft,
+		mdiChevronRight,
+		mdiMagnifyMinusOutline,
+		mdiMagnifyPlusOutline
+	} from '@mdi/js';
 
 	type Props = {
 		bookings: AtcBooking[];
@@ -78,74 +88,67 @@
 			: format(inZone(parseBookingTime(time)), 'HHmm') + 'z';
 	const timeRange = (booking: AtcBooking) => `${clock(booking.start)}–${clock(booking.end)}`;
 	const isToday = (day: Date) => day.getTime() === today.start.getTime();
-
-	const navButton =
-		'cursor-pointer rounded-lg border border-slate-600 p-1.5 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40';
 </script>
 
-<div class="rounded-lg border border-slate-700/60 bg-slate-800/60 shadow-sm backdrop-blur-sm">
-	<div class="flex items-center justify-between border-b border-slate-700/60 px-4 py-3">
-		<button
-			type="button"
-			class={navButton}
+<Card flush>
+	<div class="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+		<Button
+			variant="secondary"
+			size="sm"
 			disabled={weekOffset === 0}
 			onclick={() => weekOffset--}
 			aria-label="Previous week"
 		>
-			<IconChevronLeft class="h-5 w-5" />
-		</button>
-		<h2 class="text-sm font-semibold tracking-wide text-white uppercase">
+			<Icon path={mdiChevronLeft} />
+		</Button>
+		<Heading level={2} look={4}>
 			{dayLabel(week[0].start, 'MMM d')} – {dayLabel(week[6].start, 'MMM d')}
-		</h2>
+		</Heading>
 		<div class="flex items-center gap-2">
 			<div class="flex items-center gap-1" role="group" aria-label="Zoom">
-				<button
-					type="button"
-					class={navButton}
+				<Button
+					variant="secondary"
+					size="sm"
 					disabled={zoom === 0}
 					onclick={() => zoom--}
 					aria-label="Zoom out"
-					title="Shorter hours"
 				>
-					<IconMinus class="h-5 w-5" />
-				</button>
-				<button
-					type="button"
-					class={navButton}
+					<Icon path={mdiMagnifyMinusOutline} />
+				</Button>
+				<Button
+					variant="secondary"
+					size="sm"
 					disabled={zoom === ZOOM_LEVELS.length - 1}
 					onclick={() => zoom++}
 					aria-label="Zoom in"
-					title="Taller hours, more text in each booking"
 				>
-					<IconPlus class="h-5 w-5" />
-				</button>
+					<Icon path={mdiMagnifyPlusOutline} />
+				</Button>
 			</div>
-			<button
-				type="button"
-				class={navButton}
+			<Button
+				variant="secondary"
+				size="sm"
 				disabled={!hasLaterWeeks}
 				onclick={() => weekOffset++}
 				aria-label="Next week"
 			>
-				<IconChevronRight class="h-5 w-5" />
-			</button>
+				<Icon path={mdiChevronRight} />
+			</Button>
 		</div>
 	</div>
 
 	<div class="overflow-x-auto">
 		<div class="grid min-w-[760px]" style="grid-template-columns: {gridColumns}">
 			<!-- Day headers -->
-			<div class="border-b border-slate-700/60"></div>
+			<div class="border-b border-border"></div>
 			{#each days as { day } (day.start.getTime())}
 				<div
-					class="border-b border-l border-slate-700/60 px-2 py-2 text-center text-xs {isToday(
-						day.start
-					)
-						? 'bg-sky-600/20 text-white'
-						: 'text-slate-300'}"
+					class="border-b border-l border-border px-2 py-2 text-center text-xs {isToday(day.start)
+						? 'bg-primary/15 text-foreground'
+						: 'text-foreground-soft'}"
 				>
 					<div class="font-semibold uppercase">{dayLabel(day.start, 'EEE')}</div>
-					<div class="text-slate-400">{dayLabel(day.start, 'MMM d')}</div>
+					<div class="text-muted-foreground">{dayLabel(day.start, 'MMM d')}</div>
 				</div>
 			{/each}
 
@@ -153,7 +156,7 @@
 			<div class="relative" style="height: {24 * hourHeight}px">
 				{#each { length: 12 } as _, i}
 					<div
-						class="absolute right-1 -translate-y-1/2 font-mono text-[10px] text-slate-500"
+						class="absolute right-1 -translate-y-1/2 font-mono text-[10px] text-muted-foreground"
 						style="top: {i * 2 * hourHeight}px"
 					>
 						{#if i > 0}{hourLabel(i * 2)}{/if}
@@ -164,9 +167,9 @@
 			<!-- Day columns -->
 			{#each days as { day, segments } (day.start.getTime())}
 				<div
-					class="relative border-l border-slate-700/60"
+					class="relative border-l border-border"
 					style="height: {24 *
-						hourHeight}px; background-image: repeating-linear-gradient(to bottom, rgb(51 65 85 / 0.35) 0 1px, transparent 1px {2 *
+						hourHeight}px; background-image: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 60%, transparent) 0 1px, transparent 1px {2 *
 						hourHeight}px)"
 				>
 					{#each segments as segment (segment.booking.externalId ?? segment.booking.id)}
@@ -221,7 +224,7 @@
 								type="button"
 								onclick={() => onOpenGroup?.(booking)}
 								{title}
-								class="{classes} cursor-pointer hover:brightness-125"
+								class="{classes} cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-ring"
 								{style}
 							>
 								{@render content()}
@@ -231,7 +234,7 @@
 								type="button"
 								onclick={() => onEdit?.(booking)}
 								{title}
-								class="{classes} cursor-pointer hover:brightness-125"
+								class="{classes} cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-ring"
 								{style}
 							>
 								{@render content()}
@@ -244,4 +247,4 @@
 			{/each}
 		</div>
 	</div>
-</div>
+</Card>

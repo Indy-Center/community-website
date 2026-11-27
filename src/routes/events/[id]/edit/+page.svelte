@@ -1,22 +1,16 @@
 <script lang="ts">
+	import { Card, PageHeader } from '@indy-center/centerline-svelte';
 	import EventForm from '$lib/components/events/EventForm.svelte';
 
 	const { data } = $props();
 </script>
 
 <svelte:head>
-	<title>Indy Center | Edit Event</title>
+	<title>Edit event | Indy Center</title>
 </svelte:head>
 
-<div class="mb-8">
-	<h1 class="text-3xl font-bold text-white">Edit Event</h1>
-	<p class="mt-2 text-gray-400">Fill out the form below to edit the event</p>
-</div>
+<PageHeader title="Edit event" class="mb-8" />
 
-<div class="mx-auto">
-	<div class="overflow-hidden rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm">
-		<div class="px-8 py-6">
-			<EventForm data={data.form} />
-		</div>
-	</div>
-</div>
+<Card>
+	<EventForm data={data.form} />
+</Card>

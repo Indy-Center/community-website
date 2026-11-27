@@ -1,10 +1,28 @@
 <script lang="ts">
 	import { parseISO, formatDistanceToNow } from 'date-fns';
-	import IconArrowUp from '~icons/mdi/arrow-up';
-	import IconArrowDown from '~icons/mdi/arrow-down';
-	import IconTransmissionTower from '~icons/mdi/transmission-tower';
-	import IconCog from '~icons/mdi/cog';
-	import Tooltip from '$lib/components/Tooltip.svelte';
+	import {
+		Badge,
+		Button,
+		Card,
+		Chip,
+		Credential,
+		EmptyState,
+		FilterChip,
+		Frequency,
+		Icon,
+		Member,
+		PageHeader,
+		Rating,
+		SearchInput,
+		Text
+	} from '@indy-center/centerline-svelte';
+	import {
+		mdiAccountSearch,
+		mdiArrowDown,
+		mdiArrowUp,
+		mdiCog,
+		mdiTransmissionTower
+	} from '@mdi/js';
 	import StaffBadges from '$lib/components/StaffBadges.svelte';
 	import type { VnasController } from '$lib/types/vnas.js';
 	import { credentialName, credentialOrder } from '$lib/credentials';
@@ -12,10 +30,6 @@
 	let { data } = $props();
 
 	const { controllers, staffBadges, credentials } = data;
-
-	// Same chip shape as StaffBadges so every badge in a row reads as one set
-	const CHIP =
-		'inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs font-semibold text-white';
 
 	let searchTerm = $state('');
 	let sortField = $state<string>('initials');
@@ -66,11 +80,6 @@
 		if (!dateString) return '';
 		const date = parseISO(dateString);
 		return formatDistanceToNow(date, { addSuffix: false });
-	}
-
-	function formatFrequency(frequency: number): string {
-		// Convert frequency from format like 132300000 to 132.300
-		return (frequency / 1000000).toFixed(3);
 	}
 
 	function getOnlineStatus(cid: string) {
@@ -149,170 +158,110 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | Roster</title>
+	<title>Roster | Indy Center</title>
 </svelte:head>
 
-<div class="mb-8">
-	<h1 class="text-3xl font-bold text-white">Controller Roster</h1>
-	<p class="mt-2 text-gray-400">The active home and visiting controllers of Indy Center.</p>
-</div>
+<PageHeader title="Controller roster" class="mb-8">
+	The active home and visiting controllers of Indy Center.
+</PageHeader>
 
-<!-- Search, Filter and Sorting Controls -->
-<div class="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-	<!-- Search and Online Filter -->
-	<div class="flex items-center gap-2">
-		<label for="search-input" class="sr-only">Search members by name or CID</label>
-		<input
-			id="search-input"
-			type="text"
+<div class="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+	<div class="flex flex-wrap items-end gap-2">
+		<SearchInput
+			label="Search the roster"
+			hideLabel
 			bind:value={searchTerm}
-			placeholder="Search by name or CID..."
-			class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-sm text-white placeholder-gray-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none md:w-64 md:py-2"
+			placeholder="Name or CID"
+			class="w-full md:w-64"
 		/>
-		{#if searchTerm}
-			<button
-				type="button"
-				onclick={() => (searchTerm = '')}
-				class="rounded-lg border border-slate-600 bg-slate-700 px-3 py-3 text-sm text-white hover:bg-slate-600 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none md:py-2"
-			>
-				Clear
-			</button>
-		{/if}
-		<button
-			type="button"
-			onclick={() => (showOnlineOnly = !showOnlineOnly)}
-			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all focus:ring-2 focus:ring-sky-500 focus:outline-none md:py-2 {showOnlineOnly
-				? 'border-green-500 bg-green-600 text-white'
-				: 'border-slate-600 bg-slate-700 text-white hover:bg-slate-600'}"
-		>
-			<IconTransmissionTower class="h-4 w-4" />
-			{showOnlineOnly ? 'Online Only' : 'All'}
-		</button>
+		<FilterChip bind:pressed={showOnlineOnly}>Online now</FilterChip>
 	</div>
 
-	<!-- Sort Controls -->
-	<div class="w-full md:w-auto">
-		<div class="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2">
-			{#each SORT_OPTIONS as option}
-				<button
-					onclick={() => handleSort(option.key)}
-					class="flex cursor-pointer items-center justify-center gap-1 rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-xs font-medium text-white transition-all hover:bg-slate-600 md:justify-start md:py-1 {sortField ===
-					option.key
-						? 'border-sky-500 bg-sky-600'
-						: ''}"
-				>
-					{option.label}
-					{#if sortField === option.key}
-						{#if sortDirection === 'asc'}
-							<IconArrowUp class="h-3 w-3" />
-						{:else}
-							<IconArrowDown class="h-3 w-3" />
-						{/if}
-					{/if}
-				</button>
-			{/each}
-		</div>
+	<div class="flex flex-wrap items-center gap-2" role="group" aria-label="Sort by">
+		<Text as="span" size="small">Sort by</Text>
+		{#each SORT_OPTIONS as option (option.key)}
+			{@const active = sortField === option.key}
+			<Button
+				variant="secondary"
+				size="sm"
+				pressed={active}
+				onclick={() => handleSort(option.key)}
+				aria-label={active
+					? `${option.label}, ${sortDirection === 'asc' ? 'ascending' : 'descending'}`
+					: option.label}
+			>
+				{option.label}
+				{#if active}
+					<Icon path={sortDirection === 'asc' ? mdiArrowUp : mdiArrowDown} />
+				{/if}
+			</Button>
+		{/each}
 	</div>
 </div>
 
-<!-- Sleek Card Rows -->
-<div class="space-y-2">
-	{#each filteredAndSortedRoster as member}
+<ul class="flex flex-col gap-2">
+	{#each filteredAndSortedRoster as member (member.cid)}
 		{@const onlineStatus = getOnlineStatus(member.cid)}
-		<div
-			class="group relative rounded-lg bg-slate-800/80 shadow-sm backdrop-blur-sm transition-all hover:bg-slate-700/80 hover:shadow-md {onlineStatus.isOnline
-				? 'bg-green-950/20 ring-1 ring-green-500/30'
-				: ''} min-h-[70px] md:h-[70px]"
-		>
-			<div
-				class="flex h-full flex-col px-4 py-3 md:flex-row md:items-center md:justify-between md:py-0"
-			>
-				<!-- Left Side: Name + All Badges -->
-				<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-					<!-- OI Space (always reserved) -->
-					<div class="flex w-10 flex-shrink-0 justify-start">
-						{#if member.operatingInitials}
-							<Tooltip text="Operating Initials">
-								<div class="{CHIP} bg-indigo-600/80">
-									{member.operatingInitials}
-								</div>
-							</Tooltip>
+		<Card as="li" class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+			<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+				<!-- Operating initials, with their space kept so names line up -->
+				<span class="flex w-12 shrink-0">
+					{#if member.operatingInitials}
+						<Chip variant="initials">{member.operatingInitials}</Chip>
+					{/if}
+				</span>
+				<span class="min-w-0 font-semibold text-foreground">
+					<Member name={member.name} cid={member.cid} href="/profile/{member.cid}" />
+				</span>
+				{#if member.userId}
+					<a
+						href="/admin/users/{member.userId}"
+						aria-label="Manage {member.name}"
+						class="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+					>
+						<Icon path={mdiCog} />
+					</a>
+				{/if}
+				<Rating rating={member.rating} />
+				<StaffBadges badges={staffBadges[member.cid] ?? []} />
+				{#if member.certification}
+					<Credential
+						kind="certification"
+						code={member.certification}
+						name={credentialName(credentials, member.certification)}
+					/>
+				{/if}
+				{#each member.endorsements as endorsement (endorsement)}
+					<Credential
+						kind="endorsement"
+						code={endorsement}
+						name={credentialName(credentials, endorsement)}
+					/>
+				{/each}
+				{#if onlineStatus.isOnline}
+					<Badge variant="green" size="sm" pill>
+						{#snippet icon()}<Icon path={mdiTransmissionTower} />{/snippet}
+						Online{onlineStatus.callsign ? ` on ${onlineStatus.callsign}` : ''}
+						{#if onlineStatus.frequency}
+							· <Frequency value={onlineStatus.frequency} />
 						{/if}
-					</div>
-
-					<!-- Name + Badges Container -->
-					<div class="flex min-w-0 flex-wrap items-center justify-center gap-2">
-						<!-- Name -->
-						<div class="min-w-0 font-semibold text-white">
-							<a href={`/profile/${member.cid}`} class="block hover:text-sky-500 md:inline">
-								{member.name}
-							</a>
-							<span class="ml-1 text-sm font-normal text-gray-400">({member.cid})</span>
-							{#if member.userId}
-								<a
-									href={`/admin/users/${member.userId}`}
-									class="ml-1 inline-flex align-middle text-gray-500 hover:text-sky-500"
-									title="Manage user"
-									aria-label="Manage user"
-								>
-									<IconCog class="h-4 w-4" />
-								</a>
-							{/if}
-						</div>
-
-						<!-- Rating -->
-						<Tooltip text="VATSIM Rating">
-							<div class="{CHIP} bg-sky-600/90">
-								{member.rating}
-							</div>
-						</Tooltip>
-
-						<!-- Staff -->
-						<StaffBadges badges={staffBadges[member.cid] ?? []} />
-
-						<!-- Certification -->
-						{#if member.certification}
-							<Tooltip text={credentialName(credentials, member.certification)}>
-								<div class="{CHIP} bg-emerald-600/80">
-									{member.certification}
-								</div>
-							</Tooltip>
-						{/if}
-
-						<!-- Endorsements -->
-						{#each member.endorsements as endorsement}
-							<Tooltip text={credentialName(credentials, endorsement)}>
-								<div class="{CHIP} bg-purple-600/80">
-									{endorsement}
-								</div>
-							</Tooltip>
-						{/each}
-
-						<!-- Online Status -->
-						{#if onlineStatus.isOnline}
-							<div class="{CHIP} bg-green-600/80">
-								<IconTransmissionTower class="h-3 w-3" />
-								<div>
-									{onlineStatus.callsign} • {onlineStatus.frequency
-										? formatFrequency(onlineStatus.frequency)
-										: 'N/A'}
-								</div>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Right Side: Join Date Only -->
-				<div
-					class="mt-2 flex-shrink-0 text-left text-right text-xs text-gray-400 md:mt-0 md:ml-4 md:text-right"
-				>
-					{formatSince(member.joined)}
-				</div>
+					</Badge>
+				{/if}
 			</div>
-		</div>
+			{#if member.joined}
+				<Text as="span" size="small" class="shrink-0 md:ml-4 md:text-right">
+					Joined {formatSince(member.joined)} ago
+				</Text>
+			{/if}
+		</Card>
 	{:else}
-		<div class="rounded-lg bg-slate-800/80 p-8 text-center text-gray-400">
-			No controllers found matching your search.
-		</div>
+		<li>
+			<EmptyState title="No controllers found" level={2}>
+				{#snippet icon()}<Icon path={mdiAccountSearch} />{/snippet}
+				{showOnlineOnly
+					? 'Nobody on the roster matches that while online. Turn off "Online now" to see everyone.'
+					: 'Nobody on the roster matches that search.'}
+			</EmptyState>
+		</li>
 	{/each}
-</div>
+</ul>

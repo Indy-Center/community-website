@@ -1,292 +1,153 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import IconToolbox from '~icons/mdi/toolbox';
-	import IconClock from '~icons/mdi/clock-outline';
-	import IconAccount from '~icons/mdi/account';
-	import IconAccountPlus from '~icons/mdi/account-plus';
-	import IconSchool from '~icons/mdi/school';
-	import IconEye from '~icons/mdi/eye';
-	import IconLogin from '~icons/mdi/login';
-	import IconAccountSwitch from '~icons/mdi/account-switch';
-	import Panel from '$lib/components/Panel.svelte';
+	import {
+		Alert,
+		Button,
+		Card,
+		DescriptionList,
+		Heading,
+		Icon,
+		PageHeader,
+		Panel,
+		Text
+	} from '@indy-center/centerline-svelte';
+	import { mdiAccount, mdiClockOutline, mdiEye, mdiSchool, mdiToolbox } from '@mdi/js';
 	import EligibilityChecklist from '$lib/components/EligibilityChecklist.svelte';
 	import { isAdmin } from '$lib/utils/permissions';
 
 	const { data } = $props();
 	const { user } = data;
 
-	// Admin preview state
-	let adminPreviewMode: string | null = $state(null);
+	type Status = 'not-controller' | 'qualified-controller' | 'already-controller';
 
-	// Determine user's controller status
-	const getControllerStatus = () => {
-		// Admin preview override
-		if (isAdmin(data?.roles) && adminPreviewMode) {
-			return adminPreviewMode;
-		}
+	// Admins can preview the page as each kind of visitor sees it
+	let adminPreviewMode: Status | null = $state(null);
 
+	const controllerStatus = $derived.by((): Status => {
+		if (isAdmin(data?.roles) && adminPreviewMode) return adminPreviewMode;
 		if (!user) return 'not-controller';
-
-		// Check if user has controller membership at Indy Center
-		if (user.membership === 'controller') {
-			return 'already-controller';
-		}
-
-		// Check if user has community membership and sufficient VATSIM rating (S1+)
+		if (user.membership === 'controller') return 'already-controller';
+		// Community members rated S1 or higher with a home facility on file can visit or transfer,
+		// whatever their division
 		if (user.membership === 'community' && user.data.vatsim.rating.id >= 2) {
-			// Division doesn't gate this - VATUSA and non-VATUSA controllers alike
-			// can view the checklist as long as they have a home facility on file.
-			if (data.checklist?.hasHome) {
-				return 'qualified-controller';
-			} else {
-				return 'not-controller';
-			}
+			return data.checklist?.hasHome ? 'qualified-controller' : 'not-controller';
 		}
-
-		// User has OBS rating or no membership - needs to join VATUSA first
+		// OBS or no membership: join VATUSA first
 		return 'not-controller';
-	};
+	});
 
-	const controllerStatus = $derived(getControllerStatus());
+	const description = $derived(
+		controllerStatus === 'not-controller'
+			? 'Getting into controlling on VATSIM is one of the best ways to learn more about flying. Learning to control at Indy Center means you get to invest time in yourself as well as your community.'
+			: 'Becoming a controller at Indy Center is easy. We enjoy being able to offer a very nearly completely unrestricted controlling facility. Controllers on roster can control any non-center position immediately.'
+	);
 
-	const getPageConfig = () => {
-		switch (controllerStatus) {
-			case 'already-controller':
-				return {
-					title: 'Become an Indy Center Controller',
-					subtitle: 'Already a controller',
-					description:
-						'Becoming a controller at Indy Center is easy. We enjoy being able to offer a very nearly completely unrestricted controlling facility. Controllers on roster can control any non-center position immediately.'
-				};
-			case 'qualified-controller':
-				return {
-					title: 'Why Control at Indy Center?',
-					subtitle: 'Already a controller',
-					description:
-						'Becoming a controller at Indy Center is easy. We enjoy being able to offer a very nearly completely unrestricted controlling facility. Controllers on roster can control any non-center position immediately.'
-				};
-			default:
-				return {
-					title: 'Why Control at Indy Center?',
-					subtitle: 'Not a controller',
-					description:
-						'Getting into controlling on VATSIM is one of the best ways to learn more about flying. Learning to control at Indy Center means you get to invest time in yourself as well as your community.'
-				};
-		}
-	};
-
-	const pageConfig = $derived(getPageConfig());
-
-	// Dynamic button logic for membership progression
-	const getDynamicButtonConfig = () => {
-		if (!user) {
-			return {
-				text: 'Connect VATSIM Account',
-				href: '/login/connect',
-				icon: IconLogin,
-				external: false,
-				color: 'sky'
-			};
-		}
-
-		switch (user.membership) {
-			case 'controller':
-				return null; // No button for existing controllers
-
-			case 'community':
-				// Check if eligible to transfer
-				if (data.canTransfer) {
-					return {
-						text: 'Transfer to Indy Center',
-						href: 'https://www.vatusa.net/my/profile',
-						icon: IconAccountSwitch,
-						external: true,
-						color: 'green'
-					};
-				}
-				// Otherwise show become controller page
-				return {
-					text: 'Become an Indy Controller',
-					href: '/visit/become-a-controller',
-					icon: IconAccount,
-					external: false,
-					color: 'sky'
-				};
-
-			case 'basic':
-				return {
-					text: 'Become Community Member',
-					href: '/visit/become-community-member',
-					icon: IconAccountPlus,
-					external: false,
-					color: 'sky'
-				};
-
-			default:
-				// User has VATSIM account but no membership
-				return {
-					text: 'Join VATUSA',
-					href: 'https://www.vatusa.net/info/join',
-					icon: IconSchool,
-					external: true,
-					color: 'sky'
-				};
-		}
-	};
-
-	const dynamicButtonConfig = $derived(getDynamicButtonConfig());
+	const PREVIEWS: { mode: Status | null; label: string }[] = [
+		{ mode: null, label: 'Live' },
+		{ mode: 'not-controller', label: 'Not a controller' },
+		{ mode: 'qualified-controller', label: 'Qualified' },
+		{ mode: 'already-controller', label: 'Already a controller' }
+	];
 </script>
 
 <svelte:head>
-	<title>Indy Center | Become a Controller</title>
+	<title>Become a controller | Indy Center</title>
 </svelte:head>
 
-<!-- Page Header -->
-<div class="mb-8">
-	<div class="flex items-center justify-between gap-3">
-		<h1 class="text-3xl font-bold text-white">Become an Indy Center Controller</h1>
+<PageHeader title="Become an Indy Center controller" class="mb-8">
+	{description}
+</PageHeader>
 
-		{#if isAdmin(data?.roles)}
-			<div class="flex items-center gap-2">
-				<span class="text-sm text-slate-400">Admin Preview:</span>
-				<button
-					onclick={() => (adminPreviewMode = null)}
-					class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {adminPreviewMode ===
-					null
-						? 'bg-slate-600 text-white'
-						: 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}"
-				>
-					<IconEye class="mr-1 inline h-4 w-4" />
-					Live
-				</button>
-				<button
-					onclick={() => (adminPreviewMode = 'not-controller')}
-					class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {adminPreviewMode ===
-					'not-controller'
-						? 'bg-slate-600 text-white'
-						: 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}"
-				>
-					Not Controller
-				</button>
-				<button
-					onclick={() => (adminPreviewMode = 'qualified-controller')}
-					class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {adminPreviewMode ===
-					'qualified-controller'
-						? 'bg-slate-600 text-white'
-						: 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}"
-				>
-					Qualified
-				</button>
-				<button
-					onclick={() => (adminPreviewMode = 'already-controller')}
-					class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {adminPreviewMode ===
-					'already-controller'
-						? 'bg-slate-600 text-white'
-						: 'bg-slate-700/50 text-slate-300 hover:bg-slate-600'}"
-				>
-					Already Controller
-				</button>
-			</div>
-		{/if}
+{#if isAdmin(data?.roles)}
+	<div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Admin preview">
+		<Text as="span" size="small" class="flex items-center gap-1">
+			<Icon path={mdiEye} />
+			Admin preview:
+		</Text>
+		{#each PREVIEWS as preview (preview.label)}
+			<Button
+				variant="secondary"
+				size="sm"
+				pressed={adminPreviewMode === preview.mode}
+				onclick={() => (adminPreviewMode = preview.mode)}
+			>
+				{preview.label}
+			</Button>
+		{/each}
 	</div>
-</div>
+{/if}
 
-<!-- Main Content -->
 <div class="mx-auto max-w-4xl">
-	<Panel title="Why Control at Indy Center?" icon={IconAccount} mode="dark">
-		<div class="p-8">
-			<p class="mb-6 leading-relaxed text-slate-300">
-				{pageConfig.description}
-			</p>
-
-			<!-- Actions Section -->
-			{#if controllerStatus === 'already-controller'}
-				<!-- Already a controller - simple message -->
-				<div class="text-center">
-					<div
-						class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-green-500/30 bg-green-500/20"
-					>
-						<IconAccount class="h-8 w-8 text-green-400" />
-					</div>
-					<h3 class="text-xl font-semibold text-white">You're already a controller here!</h3>
-				</div>
-			{:else if controllerStatus === 'qualified-controller'}
-				<!-- Qualified controller - show transfer/visit options in side-by-side layout -->
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-					<!-- Tools Section -->
-					<div>
-						<h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
-							<IconToolbox class="h-5 w-5 text-sky-400" />
-							Our Controllers Use Great Tools
-						</h3>
-						<div class="space-y-3">
+	{#if controllerStatus === 'already-controller'}
+		<Alert level="success" title="You're already a controller here">
+			Thanks for being on the Indy Center roster.
+		</Alert>
+	{:else if controllerStatus === 'qualified-controller' && data.checklist}
+		<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+			<Panel title="Our controllers use great tools" level={2}>
+				{#snippet icon()}<Icon path={mdiToolbox} />{/snippet}
+				<ul class="flex flex-col gap-3">
+					<Card as="li" class="relative">
+						<Heading level={3} look={4}>
 							<a
 								href="https://tools.flyindycenter.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="block rounded-lg bg-slate-700/30 p-4 transition-colors hover:bg-slate-700/50"
+								class="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:outline-2 focus-visible:after:outline-ring"
+								>Controller tools</a
 							>
-								<h4 class="font-medium text-white">Controller Tools</h4>
-								<p class="text-sm text-slate-400">
-									Custom tools for easier controlling and radar restrictions.
-								</p>
-							</a>
+						</Heading>
+						<Text size="small" class="mt-1">
+							Custom tools for easier controlling and radar restrictions.
+						</Text>
+					</Card>
+					<Card as="li" class="relative">
+						<Heading level={3} look={4}>
 							<a
 								href="https://wiki.flyindycenter.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="block rounded-lg bg-slate-700/30 p-4 transition-colors hover:bg-slate-700/50"
+								class="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:outline-2 focus-visible:after:outline-ring"
+								>Indy library</a
 							>
-								<h4 class="font-medium text-white">Indy Library</h4>
-								<p class="text-sm text-slate-400">
-									Rich online document library with easy-to-learn SOPs.
-								</p>
-							</a>
-						</div>
+						</Heading>
+						<Text size="small" class="mt-1">
+							Rich online document library with easy-to-learn SOPs.
+						</Text>
+					</Card>
+				</ul>
 
-						<!-- Hour Requirements within Tools section -->
-						<div class="mt-6">
-							<h4 class="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-								<IconClock class="h-4 w-4 text-green-400" />
-								Hour Requirements
-							</h4>
-							<div class="rounded-lg bg-slate-700/20 p-3">
-								<div class="flex justify-between text-sm text-slate-300">
-									<span>Home Controllers:</span>
-									<span class="font-medium text-white">3 hours per quarter</span>
-								</div>
-								<div class="mt-1 flex justify-between text-sm text-slate-300">
-									<span>Visiting Controllers:</span>
-									<span class="font-medium text-white">1 hour per quarter</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Eligibility Checklist -->
+				<Heading level={3} look={4} class="mt-6 mb-3 flex items-center gap-2">
+					<Icon path={mdiClockOutline} class="text-muted-foreground" />
+					Hour requirements
+				</Heading>
+				<DescriptionList>
 					<div>
-						<EligibilityChecklist
-							checklist={data.checklist}
-							canVisit={data.canVisit}
-							canTransfer={data.canTransfer}
-							user={data.user}
-						/>
+						<dt>Home controllers</dt>
+						<dd>3 hours per quarter</dd>
 					</div>
-				</div>
-			{:else}
-				<!-- Not qualified - Join VATUSA -->
-				<div class="text-center">
-					<a
-						href="https://www.vatusa.net/info/join"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="inline-flex items-center justify-center space-x-2 rounded-lg border border-sky-500/30 bg-sky-600/40 px-4 py-3 text-sm font-medium text-white transition-colors duration-200 hover:border-sky-400/50 hover:bg-sky-500/50"
-					>
-						<IconSchool class="h-5 w-5" />
-						<span>Join VATUSA</span>
-					</a>
-				</div>
-			{/if}
+					<div>
+						<dt>Visiting controllers</dt>
+						<dd>1 hour per quarter</dd>
+					</div>
+				</DescriptionList>
+			</Panel>
+
+			<Panel title="Your eligibility" level={2}>
+				{#snippet icon()}<Icon path={mdiAccount} />{/snippet}
+				<EligibilityChecklist
+					checklist={data.checklist}
+					canVisit={data.canVisit}
+					canTransfer={data.canTransfer}
+				/>
+			</Panel>
 		</div>
-	</Panel>
+	{:else}
+		<Panel title="Start with VATUSA" level={2}>
+			{#snippet icon()}<Icon path={mdiSchool} />{/snippet}
+			<Text class="mb-4">
+				Your first step is joining VATUSA, VATSIM's US division. Then come back here to see whether
+				you can visit or transfer.
+			</Text>
+			<Button href="https://www.vatusa.net/info/join" target="_blank" rel="noopener noreferrer">
+				<Icon path={mdiSchool} />
+				Join VATUSA (new tab)
+			</Button>
+		</Panel>
+	{/if}
 </div>

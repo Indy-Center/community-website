@@ -1,11 +1,9 @@
 <script lang="ts">
-	// "How others see you": the name choice as it stands in the form, drawn as the site's header,
+	// "How others see you": the name choice as it stands in the form, drawn as the user menu,
 	// roster, profile and Discord would show it.
 	import { Member } from '@indy-center/centerline-svelte';
-	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import { memberName } from '$lib/members';
 	import { preferredNameFor, type NameChoice, type VatsimName } from '$lib/profile/nameChoice';
-	import IconChevronDown from '~icons/mdi/chevron-down';
 
 	let {
 		vatsimName,
@@ -13,7 +11,6 @@
 		choice,
 		customName,
 		pronouns,
-		membership,
 		hasDiscord
 	}: {
 		vatsimName: VatsimName;
@@ -21,7 +18,6 @@
 		choice: NameChoice;
 		customName: string;
 		pronouns: string;
-		membership: 'basic' | 'community' | 'controller';
 		/** A Discord account linked, or known from VATUSA. */
 		hasDiscord: boolean;
 	} = $props();
@@ -41,17 +37,9 @@
 		How others see you
 	</p>
 	<dl class="grid grid-cols-1 gap-y-1 text-sm [&_dd]:mb-2 [&_dd]:min-w-0">
-		<dt class="text-muted-foreground">Site header</dt>
-		<dd>
-			<!-- A copy of the header's user chip (UserProfileDropdown) -->
-			<span
-				class="inline-flex items-center space-x-3 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-gray-300"
-			>
-				<MembershipBadge size="sm" {membership} />
-				<span class="font-medium">{name}</span>
-				<IconChevronDown class="h-4 w-4" aria-hidden="true" />
-			</span>
-		</dd>
+		<!-- The header's user menu shows the name above the CID -->
+		<dt class="text-muted-foreground">Your user menu</dt>
+		<dd class="font-semibold text-foreground">{name}</dd>
 
 		<dt class="text-muted-foreground">Roster, events</dt>
 		<dd>

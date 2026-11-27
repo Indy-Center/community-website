@@ -2,7 +2,6 @@ import { sentrySvelteKit } from '@sentry/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import Icons from 'unplugin-icons/vite';
 
 export default defineConfig(({ command, mode }) => ({
 	plugins: [
@@ -13,10 +12,7 @@ export default defineConfig(({ command, mode }) => ({
 			adapter: 'cloudflare'
 		}),
 		tailwindcss(),
-		sveltekit(),
-		Icons({
-			compiler: 'svelte'
-		})
+		sveltekit()
 	],
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}']

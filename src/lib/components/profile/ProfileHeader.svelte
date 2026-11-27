@@ -1,11 +1,9 @@
 <script lang="ts">
+	import { Chip, Credential, Heading, Rating } from '@indy-center/centerline-svelte';
 	import MembershipBadge from '$lib/components/MembershipBadge.svelte';
 	import StaffBadges from '$lib/components/StaffBadges.svelte';
-	import Tooltip from '$lib/components/Tooltip.svelte';
 	import type { StaffBadgeKey } from '$lib/config/staffBadges';
 	import { credentialName, type AvailableCredential } from '$lib/credentials';
-	import IconAirplane from '~icons/mdi/airplane';
-	import IconRating from '~icons/mdi/radar';
 
 	let {
 		name,
@@ -33,55 +31,42 @@
 		/** The available credentials, to give each chip its full name. */
 		credentials?: Pick<AvailableCredential, 'code' | 'name'>[];
 	} = $props();
-
-	const CHIP =
-		'inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs font-semibold text-white';
 </script>
 
-<div class="flex flex-wrap items-center gap-4">
-	<MembershipBadge {membership} />
-	<div>
-		<h1 class="flex flex-wrap items-baseline gap-x-3 text-3xl font-bold text-white">
-			{name}
-			{#if pronouns}
-				<span class="text-base font-normal text-gray-400">({pronouns})</span>
-			{/if}
-		</h1>
-		<div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-400">
-			<span class="font-mono">CID {cid}</span>
-			{#if operatingInitials}
-				<span
-					class="rounded-md bg-indigo-600/80 px-2 py-0.5 font-mono text-xs font-semibold text-white"
-					title="Operating initials">{operatingInitials}</span
-				>
-			{/if}
-			{#if atcRating}
-				<span
-					class="flex items-center gap-1 rounded-md bg-sky-600/90 px-2 py-0.5 font-mono text-xs font-semibold text-white"
-				>
-					<IconRating class="h-3 w-3" />
-					{atcRating}
-				</span>
-			{/if}
-			{#if pilotRating}
-				<span
-					class="flex items-center gap-1 rounded-md bg-pink-600/80 px-2 py-0.5 font-mono text-xs font-semibold text-white"
-				>
-					<IconAirplane class="h-3 w-3" />
-					{pilotRating}
-				</span>
-			{/if}
-			<StaffBadges badges={staffBadges} />
-			{#each certifications as certification (certification)}
-				<Tooltip text={credentialName(credentials, certification)}>
-					<span class="{CHIP} bg-emerald-600/80">{certification}</span>
-				</Tooltip>
-			{/each}
-			{#each endorsements as endorsement (endorsement)}
-				<Tooltip text={credentialName(credentials, endorsement)}>
-					<span class="{CHIP} bg-purple-600/80">{endorsement}</span>
-				</Tooltip>
-			{/each}
-		</div>
+<!-- The profile's h1: the member's name, then their badges -->
+<div class="flex flex-col gap-2">
+	<Heading level={1} class="flex flex-wrap items-baseline gap-x-3">
+		{name}
+		{#if pronouns}
+			<span class="text-base font-normal text-muted-foreground">({pronouns})</span>
+		{/if}
+	</Heading>
+	<div class="flex flex-wrap items-center gap-2 text-sm">
+		<MembershipBadge {membership} size="sm" />
+		<span class="font-mono text-muted-foreground">CID {cid}</span>
+		{#if operatingInitials}
+			<Chip variant="initials">{operatingInitials}</Chip>
+		{/if}
+		{#if atcRating}
+			<Rating rating={atcRating} />
+		{/if}
+		{#if pilotRating}
+			<Rating rating={pilotRating} kind="pilot" />
+		{/if}
+		<StaffBadges badges={staffBadges} />
+		{#each certifications as certification (certification)}
+			<Credential
+				kind="certification"
+				code={certification}
+				name={credentialName(credentials, certification)}
+			/>
+		{/each}
+		{#each endorsements as endorsement (endorsement)}
+			<Credential
+				kind="endorsement"
+				code={endorsement}
+				name={credentialName(credentials, endorsement)}
+			/>
+		{/each}
 	</div>
 </div>

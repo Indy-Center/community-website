@@ -1,36 +1,46 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import IconClock from '~icons/mdi/clock-outline';
-	import IconPublish from '~icons/mdi/publish';
-	import IconDraft from '~icons/mdi/publish-off';
-	import IconEdit from '~icons/mdi/pencil';
-	import IconTextLong from '~icons/mdi/text-long';
-	import IconAccountGroup from '~icons/mdi/account-group';
-	import IconPlus from '~icons/mdi/plus';
-	import IconCheck from '~icons/mdi/check';
+	import {
+		Alert,
+		Badge,
+		Button,
+		EmptyState,
+		ErrorPage,
+		Field,
+		Heading,
+		Icon,
+		Modal,
+		Panel,
+		Position,
+		Text,
+		Textarea,
+		Time
+	} from '@indy-center/centerline-svelte';
+	import {
+		mdiAccountGroup,
+		mdiBullhornOutline,
+		mdiClose,
+		mdiPencil,
+		mdiPlus,
+		mdiPublish,
+		mdiPublishOff,
+		mdiTextLong
+	} from '@mdi/js';
 	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
-	import IconClose from '~icons/mdi/close';
-	import Panel from '$lib/components/Panel.svelte';
-	import Modal from '$lib/components/Modal.svelte';
 	import EventDetailsPanel from '$lib/components/events/EventDetailsPanel.svelte';
 	import AddToCalendarDropdown from '$lib/components/events/AddToCalendarDropdown.svelte';
 	import DeleteButton from '$lib/components/forms/DeleteButton.svelte';
-	import { canManageEvents, isEventSignupProhibited } from '$lib/utils/permissions.js';
-	import ActionToggle from '$lib/components/ActionToggle.svelte';
-	import { isSignUpClosed } from '$lib/utils/events.js';
-	import { supportsRosters } from '$lib/config/events';
-	import type { VnasFacilityPosition } from '$lib/types/vnas.js';
-	import { Button } from '@indy-center/centerline-svelte';
-	import IconBullhorn from '~icons/mdi/bullhorn-outline';
 	import BriefingModal from '$lib/components/events/BriefingModal.svelte';
 	import BookingProblems from '$lib/components/events/BookingProblems.svelte';
-	import { Alert } from '@indy-center/centerline-svelte';
-	import { LONG_EVENT_HOURS, longEventHours } from '$lib/config/events';
+	import { canManageEvents, isEventSignupProhibited } from '$lib/utils/permissions.js';
+	import { isSignUpClosed } from '$lib/utils/events.js';
+	import { LONG_EVENT_HOURS, longEventHours, supportsRosters } from '$lib/config/events';
+	import type { VnasFacilityPosition } from '$lib/types/vnas.js';
 
 	const { data } = $props();
 	const { event, artccInformation, user, userId } = data;
 
-	let positionRequestModal: Modal | null = $state(null);
+	let requestOpen = $state(false);
 	let briefingOpen = $state(false);
 	// Managers are warned of an event so long its times may be mistyped
 	const longHours = $derived(longEventHours(event.startTime, event.endTime));
@@ -186,59 +196,50 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | {event?.name || 'Event'}</title>
+	<title>{event?.name || 'Event'} | Indy Center</title>
 </svelte:head>
 
 {#if event}
-	<!-- Event Header -->
-	<div class="mb-8">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="flex-1">
-				<h1 class="mb-3 text-3xl font-bold text-white">{event.name}</h1>
-			</div>
-
-			<div class="flex flex-shrink-0 flex-wrap gap-3">
-				<AddToCalendarDropdown {event} />
-
-				<!-- Action Buttons (if user has permissions) -->
-				{#if canManageEvents(data?.roles)}
-					<ActionToggle
-						action="?/togglePublish"
-						currentState={event.isPublished}
-						label={event.isPublished ? 'Published' : 'Draft'}
-						icon={event.isPublished ? IconPublish : IconDraft}
-						color="green"
-					/>
-
-					{#if supportsRosters(event.type) && event.rosterType !== 'none'}
-						<a
-							href="/events/{event.id}/positions"
-							class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
-						>
-							<IconAccountGroup class="h-4 w-4" />
-							Edit Positions
-						</a>
-
-						<!-- An ended event's post stays as it was, and its role is deleted -->
-						{#if data.briefing && event.endTime > new Date()}
-							<Button variant="secondary" onclick={() => (briefingOpen = true)}>
-								<IconBullhorn class="h-4 w-4" aria-hidden="true" />
-								{data.briefing.sent ? 'Update briefing' : 'Send briefing'}
-							</Button>
-						{/if}
+	{@const hasRoster = supportsRosters(event.type) && event.rosterType !== 'none'}
+	<!-- The title and its status on one line, the actions on their own below, so many actions never squeeze the title -->
+	<div class="mb-8 flex flex-col gap-4">
+		<div class="flex flex-wrap items-center gap-3">
+			<Heading level={1}>{event.name}</Heading>
+			{#if canManageEvents(data?.roles)}
+				<!-- The event's state for staff, in words and colour; the button beside changes it -->
+				<Badge variant={event.isPublished ? 'green' : 'yellow'} pill>
+					{event.isPublished ? 'Published' : 'Draft'}
+				</Badge>
+			{/if}
+		</div>
+		<div class="flex shrink-0 flex-wrap gap-2">
+			<AddToCalendarDropdown {event} />
+			{#if canManageEvents(data?.roles)}
+				<form method="POST" action="?/togglePublish">
+					<Button type="submit" variant="secondary">
+						<Icon path={event.isPublished ? mdiPublishOff : mdiPublish} />
+						{event.isPublished ? 'Move to draft' : 'Publish'}
+					</Button>
+				</form>
+				{#if hasRoster}
+					<Button variant="secondary" href="/events/{event.id}/positions">
+						<Icon path={mdiAccountGroup} />
+						Edit positions
+					</Button>
+					<!-- An ended event's post stays as it was, and its role is deleted -->
+					{#if data.briefing && event.endTime > new Date()}
+						<Button variant="secondary" onclick={() => (briefingOpen = true)}>
+							<Icon path={mdiBullhornOutline} />
+							{data.briefing.sent ? 'Update briefing' : 'Send briefing'}
+						</Button>
 					{/if}
-
-					<a
-						href="/events/{event.id}/edit"
-						class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
-					>
-						<IconEdit class="h-4 w-4" />
-						Edit Event
-					</a>
-
-					<DeleteButton />
 				{/if}
-			</div>
+				<Button variant="secondary" href="/events/{event.id}/edit">
+					<Icon path={mdiPencil} />
+					Edit event
+				</Button>
+				<DeleteButton what="this event" />
+			{/if}
 		</div>
 	</div>
 
@@ -253,274 +254,196 @@
 		</div>
 	{/if}
 
-	<!-- Banner and Event Information -->
-	<div class="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-		<!-- Event Banner -->
-		<div
-			class="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/60 backdrop-blur-sm"
-		>
+	<div class="mb-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
+		<div class="overflow-hidden rounded-lg border border-border bg-card">
 			<ImageWithFallback
 				src={event.bannerUrl}
 				alt="{event.name} banner"
 				class="h-64 w-full object-cover sm:h-80 lg:h-full"
-				fallbackClass="h-64 w-full sm:h-80 lg:h-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
+				fallbackClass="h-64 w-full sm:h-80 lg:h-full"
 			/>
 		</div>
-
-		<!-- Event Information -->
 		<EventDetailsPanel {event} />
 	</div>
 
-	<!-- Description and Positions -->
-	<div
-		class="grid grid-cols-1 gap-8 {supportsRosters(event.type) && event.rosterType !== 'none'
-			? 'lg:grid-cols-2'
-			: ''}"
-	>
-		<!-- Event Description -->
-		<Panel title="Event Details" icon={IconTextLong} mode="dark">
-			<div class="p-8">
-				<div class="prose max-w-none prose-invert">
-					<p class="leading-relaxed whitespace-pre-line text-slate-300">{event.description}</p>
-				</div>
-			</div>
+	<div class="grid grid-cols-1 items-start gap-8 {hasRoster ? 'lg:grid-cols-2' : ''}">
+		<Panel title="Event details" level={2}>
+			{#snippet icon()}<Icon path={mdiTextLong} />{/snippet}
+			<p class="whitespace-pre-line">{event.description}</p>
 		</Panel>
 
-		<!-- Event Positions -->
-		{#if supportsRosters(event.type) && event.rosterType !== 'none'}
-			<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
-				<!-- Roster is Released! or the event is still in draft -->
+		{#if hasRoster}
+			<Panel title="Event positions" level={2} flush>
+				{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
 				{#if event.isRosterPublished}
-					<!-- Published Roster -->
 					{#if event.positions && event.positions.length > 0}
-						<div class="p-6">
-							{#each groupPositionsByFacility(event.positions) as facilityGroup}
-								<div class="mb-6 last:mb-0">
-									<!-- Facility Header -->
-									<div class="mb-4 border-b border-slate-600 pb-2">
-										<h3 class="text-sm font-semibold tracking-wider text-slate-300 uppercase">
-											{facilityGroup.facilityName}
-										</h3>
-									</div>
-
-									<!-- Positions in this facility -->
-									<div class="grid gap-3">
-										{#each facilityGroup.positions as position}
-											<div class="flex items-center justify-between rounded-lg bg-slate-700/30 p-4">
-												<div class="flex-1">
-													<div class="font-semibold text-white">
-														{getPositionInfo(position.position)?.radioName}
-													</div>
-													<div class="text-sm text-slate-400">
-														{getPositionInfo(position.position)?.name}
-													</div>
-												</div>
-
-												<div class="flex items-center gap-3">
+						<div class="flex flex-col gap-6 p-4">
+							{#each groupPositionsByFacility(event.positions) as facilityGroup (facilityGroup.facilityName)}
+								<section>
+									<Heading level={3} look="label" class="mb-2 border-b border-border pb-2">
+										{facilityGroup.facilityName}
+									</Heading>
+									<ul class="flex flex-col gap-2">
+										{#each facilityGroup.positions as position (position.position)}
+											{@const info = getPositionInfo(position.position)}
+											<li
+												class="flex items-center justify-between gap-3 rounded-lg bg-muted px-4 py-3"
+											>
+												<!-- The radio name and sector, as the old page had them: members signing
+												     up don't need the short name or frequency here -->
+												<Position
+													class="min-w-0"
+													callsign={info?.defaultCallsign || info?.callsign || position.position}
+													positionId={position.position}
+													show={['radioName', 'name']}
+												/>
+												<div class="flex shrink-0 items-center gap-2">
 													{#if position.user}
-														<!-- Position is assigned -->
-														<div class="text-right">
-															<div class="font-medium text-white">
-																{getUserDisplayName(position.user)}
-															</div>
-														</div>
+														<span class="font-medium text-foreground">
+															{getUserDisplayName(position.user)}
+														</span>
 														{#if !isSignUpClosed(event) && hasControllerAccess && event.rosterType === 'open' && position.userId === userId}
-															<!-- User can unassign themselves -->
 															<form
 																method="POST"
 																action="?/unassignFromPosition"
-																use:enhance={() => {
-																	return async ({ result }) => {
-																		if (result.type === 'success') {
-																			window.location.reload();
-																		}
-																	};
-																}}
+																use:enhance={() =>
+																	async ({ result }) => {
+																		if (result.type === 'success') window.location.reload();
+																	}}
 															>
 																<input type="hidden" name="position" value={position.position} />
-																<button
+																<Button
 																	type="submit"
-																	class="rounded border border-red-500/30 bg-red-500/20 px-3 py-1 text-xs text-red-300 hover:bg-red-500/30"
+																	variant="danger"
+																	size="sm"
+																	aria-label="Leave this position"
 																>
-																	<IconClose class="h-3 w-3" />
-																</button>
+																	<Icon path={mdiClose} />
+																</Button>
 															</form>
 														{/if}
 													{:else if hasControllerAccess && !isSignupProhibited && event.rosterType === 'open' && !isSignUpClosed(event) && !userAlreadyAssignedToPosition(user?.id)}
-														<!-- Open position for sign-up -->
 														<form
 															method="POST"
 															action="?/signUpForPosition"
-															use:enhance={() => {
-																return async ({ result }) => {
-																	if (result.type === 'success') {
-																		window.location.reload();
-																	}
-																};
-															}}
+															use:enhance={() =>
+																async ({ result }) => {
+																	if (result.type === 'success') window.location.reload();
+																}}
 														>
 															<input type="hidden" name="position" value={position.position} />
-															<button
-																type="submit"
-																class="rounded border border-sky-500/30 bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-300 hover:bg-sky-500/30"
-															>
-																<IconPlus class="mr-1 inline h-4 w-4" />
-																Sign Up
-															</button>
+															<Button type="submit" size="sm">
+																<Icon path={mdiPlus} />
+																Sign up
+															</Button>
 														</form>
 													{:else}
-														<!-- Position unassigned, no access or assigned roster -->
-														<div class="text-sm text-slate-500">Unassigned</div>
+														<Text as="span" tone="muted">Unassigned</Text>
 													{/if}
 												</div>
-											</div>
+											</li>
 										{/each}
-									</div>
-								</div>
+									</ul>
+								</section>
 							{/each}
 						</div>
 					{:else}
-						<div class="p-8 text-center">
-							<div class="text-slate-400">No positions configured for this event.</div>
-						</div>
+						<EmptyState size="inline" class="p-4">
+							No positions are set up for this event.
+						</EmptyState>
 					{/if}
-					<!-- Assigned Roster (not released yet) -->
 				{:else if event.rosterType === 'assigned'}
 					{#if hasControllerAccess}
-						<!-- Request submission section for controllers -->
-						<div class="p-8 text-center">
+						<div class="p-4">
 							{#if event.positionRequests && event.positionRequests.some((req) => req.userId === userId)}
-								<!-- User already has a request -->
-								<div class="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-									<div class="font-medium text-yellow-300">Request Submitted</div>
-									<div class="mt-1 text-sm text-slate-400">
-										You have already submitted a position request for this event.
-									</div>
-								</div>
+								<Alert level="info" title="Request submitted">
+									You've asked for a position at this event. Event staff will assign the roster.
+								</Alert>
 							{:else}
-								<!-- User can submit a request -->
-								<div class="mb-4">
-									<h3 class="text-lg font-medium text-white">Position Requests</h3>
-									<p class="text-slate-400">Request to be assigned a position for this event.</p>
-								</div>
-								<button
-									onclick={() => positionRequestModal?.open()}
-									class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700"
-								>
-									<IconPlus class="h-4 w-4" />
-									Request Position
-								</button>
+								<Heading level={3} look={4}>Position requests</Heading>
+								<Text class="mt-1 mb-4">Ask to be assigned a position for this event.</Text>
+								<Button onclick={() => (requestOpen = true)}>
+									<Icon path={mdiPlus} />
+									Request a position
+								</Button>
 							{/if}
 						</div>
 
 						{#if event.positionRequests && event.positionRequests.length > 0}
-							<!-- Show existing position requests below submission section -->
-							<div class="border-t border-slate-700/60">
-								<div class="px-6 pt-3 pb-1">
-									<h4 class="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-										Current Requests
-									</h4>
-								</div>
-								<div class="divide-y divide-slate-700/60">
-									{#each event.positionRequests as request}
-										<div class="px-6 py-4 transition-colors hover:bg-slate-700/30">
-											<div class="flex items-start justify-between">
-												<div>
-													<div class="font-medium text-white">
-														{getUserDisplayName(request.user)} ({request.user.operatingInitials})
-													</div>
-													<div class="mt-1 text-sm text-slate-400">
-														{request.comments || 'No comments provided'}
-													</div>
-												</div>
-												<div class="text-xs text-slate-500">
-													{request.createdAt?.toLocaleDateString()}
-												</div>
+							<div class="border-t border-border">
+								<Heading level={3} look="label" class="px-4 pt-3 pb-1">Current requests</Heading>
+								<ul class="divide-y divide-border">
+									{#each event.positionRequests as request (request.userId)}
+										<li class="flex items-start justify-between gap-3 px-4 py-3">
+											<div>
+												<span class="font-medium text-foreground">
+													{getUserDisplayName(request.user)}
+												</span>
+												{#if request.user.operatingInitials}
+													<span class="font-mono text-muted-foreground">
+														({request.user.operatingInitials})
+													</span>
+												{/if}
+												<Text size="small" class="mt-1">
+													{request.comments || 'No comments'}
+												</Text>
 											</div>
-										</div>
+											{#if request.createdAt}
+												<Text as="span" size="small" class="shrink-0">
+													<Time value={request.createdAt} show="datetime" />
+												</Text>
+											{/if}
+										</li>
 									{/each}
-								</div>
+								</ul>
 							</div>
 						{/if}
 					{:else}
-						<!-- No controller access -->
-						<div class="p-8 text-center">
-							<div class="text-slate-400">
-								Position requests are available for controllers only.
-							</div>
-						</div>
+						<EmptyState size="inline" class="p-4">
+							Position requests are for controllers only.
+						</EmptyState>
 					{/if}
 				{:else}
-					<div class="p-8 text-center">
-						<div class="text-slate-400">The roster is not yet released.</div>
-					</div>
+					<EmptyState size="inline" class="p-4">The roster isn't released yet.</EmptyState>
 				{/if}
 			</Panel>
 		{/if}
 	</div>
 {:else}
-	<!-- Event Not Found -->
-	<div class="py-12 text-center">
-		<div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-700">
-			<IconClock class="h-8 w-8 text-gray-400" />
-		</div>
-		<h1 class="mb-2 text-2xl font-bold text-white">Event Not Found</h1>
-		<p class="mb-6 text-gray-400">
-			The event you're looking for doesn't exist or has been removed.
-		</p>
-	</div>
+	<ErrorPage status={404} message="Event not found" path="/events" home="/events" />
 {/if}
 
 {#if data.briefing}
 	<BriefingModal briefing={data.briefing} bind:open={briefingOpen} />
 {/if}
 
-<!-- Position Request Modal -->
-<Modal title="Request Position" bind:this={positionRequestModal}>
-	<div class="w-[500px] max-w-[90vw]">
-		<form
-			method="POST"
-			action="?/requestPosition"
-			use:enhance={() => {
-				return async ({ result }) => {
-					if (result.type === 'success') {
-						positionRequestModal?.close();
-						window.location.reload();
-					}
-				};
+<Modal title="Request a position" bind:open={requestOpen}>
+	<form
+		id="request-position"
+		method="POST"
+		action="?/requestPosition"
+		use:enhance={() =>
+			async ({ result }) => {
+				if (result.type === 'success') {
+					requestOpen = false;
+					window.location.reload();
+				}
 			}}
+	>
+		<Field
+			label="Comments"
+			hint="Your experience, the positions you'd like, or when you're available."
 		>
-			<div class="px-6 py-4">
-				<div>
-					<label for="comments" class="mb-3 block text-sm font-semibold text-white">
-						Comments <span class="font-normal text-slate-400">(Optional)</span>
-					</label>
-					<textarea
-						name="comments"
-						id="comments"
-						rows="4"
-						placeholder="Let the event coordinators know about your experience, preferences, or availability..."
-						class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 text-sm text-white placeholder-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-					></textarea>
-				</div>
-			</div>
-
-			<div class="flex justify-end gap-3 px-6 pb-4">
-				<button
-					type="button"
-					onclick={() => positionRequestModal?.close()}
-					class="cursor-pointer rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700"
-				>
-					Cancel
-				</button>
-				<button
-					type="submit"
-					class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sky-700"
-				>
-					<IconPlus class="h-4 w-4" />
-					Submit Request
-				</button>
-			</div>
-		</form>
-	</div>
+			{#snippet children(control)}
+				<Textarea {...control} name="comments" rows={4} />
+			{/snippet}
+		</Field>
+	</form>
+	{#snippet actions()}
+		<Button variant="secondary" onclick={() => (requestOpen = false)}>Cancel</Button>
+		<Button type="submit" form="request-position">
+			<Icon path={mdiPlus} />
+			Submit request
+		</Button>
+	{/snippet}
 </Modal>

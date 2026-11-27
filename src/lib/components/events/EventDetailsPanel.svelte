@@ -1,63 +1,36 @@
 <script lang="ts">
-	import { format } from 'date-fns';
-	import { utc } from '@date-fns/utc';
-	import IconGlobe from '~icons/mdi/earth';
-	import IconClock from '~icons/mdi/clock';
-	import IconInformation from '~icons/mdi/information';
-	import Panel from '$lib/components/Panel.svelte';
+	import { Icon, Panel, Time } from '@indy-center/centerline-svelte';
+	import { mdiClockOutline, mdiEarth, mdiInformation } from '@mdi/js';
 	import type { Event } from '$lib/db/schema/events';
 	import RosterTypeBadge from './RosterTypeBadge.svelte';
 	import EventTypeBadge from './EventTypeBadge.svelte';
 	import { supportsRosters } from '$lib/config/events';
 
-	let { event }: { event: Event } = $props();
+	let { event, class: className = '' }: { event: Event; class?: string } = $props();
 </script>
 
-<Panel title="Event Information" icon={IconInformation} mode="dark">
-	<div class="p-6">
-		<div class="space-y-4">
-			<!-- Badges -->
-			<div class="flex items-center gap-2">
-				<EventTypeBadge eventType={event.type} />
-				{#if supportsRosters(event.type)}
-					<RosterTypeBadge rosterType={event.rosterType} />
-				{/if}
-			</div>
-
-			<!-- Event Times -->
-			{#if event.startTime && event.endTime}
-				<div class="space-y-3">
-					<!-- UTC -->
-					<div class="flex items-center">
-						<div class="flex w-36 items-center gap-3">
-							<IconGlobe class="h-4 w-4 flex-shrink-0 text-sky-400" />
-							<div class="text-sm font-medium text-sky-300">
-								{format(utc(event.startTime), 'MMM d, yyyy')}
-							</div>
-						</div>
-						<div class="ml-6 text-sm text-white tabular-nums">
-							{format(utc(event.startTime), 'HH:mm')} - {format(utc(event.endTime), 'HH:mm')}
-							<span class="ml-2 text-xs font-medium text-sky-400/70 uppercase">UTC</span>
-						</div>
-					</div>
-
-					<!-- Local -->
-					<div class="flex items-center">
-						<div class="flex w-36 items-center gap-3">
-							<IconClock class="h-4 w-4 flex-shrink-0 text-gray-400" />
-							<div class="text-sm font-medium text-gray-300">
-								{format(event.startTime, 'MMM d, yyyy')}
-							</div>
-						</div>
-						<div class="ml-6 text-sm text-white tabular-nums">
-							{format(event.startTime, 'HH:mm')} - {format(event.endTime, 'HH:mm')}
-							<span class="ml-2 text-xs font-medium text-gray-400/70 uppercase">
-								{format(event.startTime, 'zzz')}
-							</span>
-						</div>
-					</div>
-				</div>
+<Panel title="Event information" level={2} class={className}>
+	{#snippet icon()}<Icon path={mdiInformation} />{/snippet}
+	<div class="flex flex-col gap-4">
+		<div class="flex flex-wrap gap-2">
+			<EventTypeBadge eventType={event.type} />
+			{#if supportsRosters(event.type)}
+				<RosterTypeBadge rosterType={event.rosterType} />
 			{/if}
 		</div>
+		{#if event.startTime && event.endTime}
+			<!-- The member's own time first, then Zulu for matching what controllers say. Each on its
+			     own line, so neither is lost at the end of a long one. -->
+			<ul class="flex flex-col gap-2 text-sm">
+				<li class="flex items-center gap-3 font-medium text-foreground">
+					<Icon path={mdiClockOutline} label="Your time" class="shrink-0 text-muted-foreground" />
+					<Time value={event.startTime} end={event.endTime} show="datetime" />
+				</li>
+				<li class="flex items-center gap-3 text-foreground-soft">
+					<Icon path={mdiEarth} label="Zulu" class="shrink-0 text-muted-foreground" />
+					<Time value={event.startTime} end={event.endTime} show="datetime" zone="zulu" />
+				</li>
+			</ul>
+		{/if}
 	</div>
 </Panel>

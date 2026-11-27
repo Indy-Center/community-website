@@ -1,8 +1,17 @@
 <script lang="ts">
 	import { bookingTypeClasses as typeClasses } from './bookingTypes';
 	import { format } from 'date-fns';
-	import { getPositions, Position, Time } from '@indy-center/centerline-svelte';
-	import Modal from '$lib/components/Modal.svelte';
+	import {
+		Button,
+		Card,
+		getPositions,
+		Heading,
+		Icon,
+		Modal,
+		Position,
+		Time
+	} from '@indy-center/centerline-svelte';
+	import { mdiChevronLeft, mdiChevronRight } from '@mdi/js';
 	import {
 		bookingsOnDay,
 		getCalendarMonth,
@@ -14,8 +23,6 @@
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
-	import IconChevronLeft from '~icons/mdi/chevron-left';
-	import IconChevronRight from '~icons/mdi/chevron-right';
 
 	type Props = {
 		bookings: AtcBooking[];
@@ -60,22 +67,19 @@
 				}`;
 
 	// A day with more bookings than fit opens them all here
-	let dayModal: Modal | undefined = $state();
+	let dayOpen = $state(false);
 	let openedDay: { day: CalendarDay; bookings: AtcBooking[] } | undefined = $state();
 
 	function openDay(day: CalendarDay, dayBookings: AtcBooking[]) {
 		openedDay = { day, bookings: dayBookings };
-		dayModal?.open();
+		dayOpen = true;
 	}
 
 	function choose(booking: AtcBooking) {
-		dayModal?.close();
+		dayOpen = false;
 		if (booking.group) onOpenGroup?.(booking);
 		else onEdit?.(booking);
 	}
-
-	const navButton =
-		'cursor-pointer rounded-lg border border-slate-600 p-1.5 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40';
 </script>
 
 <!-- One booking on a day: its start in the member's zone and its position (or event) -->
@@ -94,7 +98,7 @@
 			type="button"
 			onclick={() => choose(booking)}
 			title={describe(booking)}
-			class="{classes} cursor-pointer hover:brightness-125"
+			class="{classes} cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-ring"
 		>
 			{@render content()}
 		</button>
@@ -103,36 +107,36 @@
 	{/if}
 {/snippet}
 
-<div class="rounded-lg border border-slate-700/60 bg-slate-800/60 shadow-sm backdrop-blur-sm">
-	<div class="flex items-center justify-between border-b border-slate-700/60 px-4 py-3">
-		<button
-			type="button"
-			class={navButton}
+<Card flush>
+	<div class="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+		<Button
+			variant="secondary"
+			size="sm"
 			disabled={monthOffset === 0}
 			onclick={() => monthOffset--}
 			aria-label="Previous month"
 		>
-			<IconChevronLeft class="h-5 w-5" />
-		</button>
-		<h2 class="text-sm font-semibold tracking-wide text-white uppercase">
+			<Icon path={mdiChevronLeft} />
+		</Button>
+		<Heading level={2} look={4}>
 			{label(calendar.month, 'MMMM yyyy')}
-		</h2>
-		<button
-			type="button"
-			class={navButton}
+		</Heading>
+		<Button
+			variant="secondary"
+			size="sm"
 			disabled={!hasLaterMonths}
 			onclick={() => monthOffset++}
 			aria-label="Next month"
 		>
-			<IconChevronRight class="h-5 w-5" />
-		</button>
+			<Icon path={mdiChevronRight} />
+		</Button>
 	</div>
 
 	<div class="overflow-x-auto">
 		<div class="grid min-w-[760px] grid-cols-7">
 			{#each calendar.weeks[0] as day (day.start.getTime())}
 				<div
-					class="border-b border-slate-700/60 px-2 py-2 text-center text-xs font-semibold text-slate-300 uppercase not-first:border-l"
+					class="border-b border-border px-2 py-2 text-center text-xs font-semibold text-foreground-soft uppercase not-first:border-l"
 				>
 					{label(day.start, 'EEE')}
 				</div>
@@ -142,17 +146,17 @@
 				{@const dayBookings = bookingsOnDay(bookings, day)}
 				{@const past = day.end.getTime() <= now.getTime()}
 				<div
-					class="flex min-h-28 flex-col gap-1 border-slate-700/60 p-1.5 {i % 7
-						? 'border-l'
-						: ''} {i >= 7 ? 'border-t' : ''} {day.inMonth && !past ? '' : 'bg-slate-900/30'}"
+					class="flex min-h-28 flex-col gap-1 border-border p-1.5 {i % 7 ? 'border-l' : ''} {i >= 7
+						? 'border-t'
+						: ''} {day.inMonth && !past ? '' : 'bg-muted/40'}"
 				>
 					<div
 						class="flex size-6 items-center justify-center self-end rounded-full text-xs {day.start.getTime() ===
 						todayStart
-							? 'bg-sky-600 font-semibold text-white'
+							? 'bg-primary font-semibold text-primary-foreground'
 							: day.inMonth
-								? 'text-slate-300'
-								: 'text-slate-500'}"
+								? 'text-foreground-soft'
+								: 'text-muted-foreground'}"
 					>
 						{label(day.start, 'd')}
 					</div>
@@ -163,7 +167,7 @@
 						<button
 							type="button"
 							onclick={() => openDay(day, dayBookings)}
-							class="cursor-pointer px-1 text-left text-[11px] font-medium text-sky-400 hover:text-sky-300"
+							class="cursor-pointer rounded px-1 text-left text-[11px] font-medium text-link underline hover:no-underline focus-visible:outline-2 focus-visible:outline-ring"
 						>
 							+{dayBookings.length - SHOWN_PER_DAY} more
 						</button>
@@ -172,16 +176,18 @@
 			{/each}
 		</div>
 	</div>
-</div>
+</Card>
 
-<Modal title={openedDay ? label(openedDay.day.start, 'EEEE, MMMM d') : ''} bind:this={dayModal}>
+<Modal title={openedDay ? label(openedDay.day.start, 'EEEE, MMMM d') : ''} bind:open={dayOpen}>
 	{#if openedDay}
-		<ul class="max-h-[70vh] w-[420px] max-w-[90vw] space-y-1.5 overflow-y-auto p-2">
+		<ul class="flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto">
 			{#each openedDay.bookings as booking (booking.externalId ?? booking.id)}
 				<li class="flex items-center gap-3">
 					<div class="min-w-0 flex-1">{@render entry(booking)}</div>
 					{#if !booking.group}
-						<span class="shrink-0 text-xs text-slate-400">{names[booking.cid] ?? booking.cid}</span>
+						<span class="shrink-0 text-xs text-muted-foreground"
+							>{names[booking.cid] ?? booking.cid}</span
+						>
 					{/if}
 				</li>
 			{/each}
