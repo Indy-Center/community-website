@@ -24,20 +24,18 @@
 
 	const { form, errors, enhance, constraints } = superForm(data);
 
-	// DateTimeInput takes and sends UTC ISO strings; the form keeps Dates for the long-event check
-	const toIso = (value: unknown) => {
-		const date = value ? new Date(value as string | Date) : null;
-		return date && !isNaN(date.getTime()) ? date.toISOString() : undefined;
+	// The times stay the UTC ISO strings DateTimeInput takes and sends, as the schema reads them
+	// (its Date type is what they become on the server). Putting a Date in the form instead fails
+	// Superforms' check against the data's types, as "Invalid input".
+	const startTime = $derived(($form.startTime as unknown as string) || undefined);
+	const endTime = $derived(($form.endTime as unknown as string) || undefined);
+	const toDate = (value: string | undefined) => {
+		const date = value ? new Date(value) : null;
+		return date && !isNaN(date.getTime()) ? date : null;
 	};
-	let start = $state(toIso($form.startTime));
-	let end = $state(toIso($form.endTime));
-	$effect(() => {
-		if (start) $form.startTime = new Date(start);
-		if (end) $form.endTime = new Date(end);
-	});
 
 	// A warning, not an error: a long event is allowed, but often a mistyped date
-	const longHours = $derived(longEventHours($form.startTime, $form.endTime));
+	const longHours = $derived(longEventHours(toDate(startTime), toDate(endTime)));
 
 	const eventTypeConfig = $derived.by(
 		() =>
@@ -61,14 +59,23 @@
 	</Field>
 
 	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-		<Field label="Start" hint="In your time zone." error={$errors.startTime?.[0]} required>
+		<Field label="Start" error={$errors.startTime?.[0]} required>
 			{#snippet children(control)}
-				<DateTimeInput {...control} name="startTime" bind:value={start} />
+				<DateTimeInput
+					{...control}
+					name="startTime"
+					bind:value={() => startTime, (value) => ($form.startTime = (value ?? '') as never)}
+				/>
 			{/snippet}
 		</Field>
-		<Field label="End" hint="In your time zone." error={$errors.endTime?.[0]} required>
+		<Field label="End" error={$errors.endTime?.[0]} required>
 			{#snippet children(control)}
-				<DateTimeInput {...control} name="endTime" bind:value={end} min={start} />
+				<DateTimeInput
+					{...control}
+					name="endTime"
+					min={startTime}
+					bind:value={() => endTime, (value) => ($form.endTime = (value ?? '') as never)}
+				/>
 			{/snippet}
 		</Field>
 	</div>
