@@ -1,8 +1,7 @@
 <script lang="ts">
+	import { Button, Icon, Link, Panel, Text } from '@indy-center/centerline-svelte';
+	import { mdiAccountCircle, mdiMessageText, mdiPencil } from '@mdi/js';
 	import ProfileHeader from '$lib/components/profile/ProfileHeader.svelte';
-	import IconMessage from '~icons/mdi/message-text';
-	import IconAccount from '~icons/mdi/account-circle';
-	import IconPencil from '~icons/mdi/pencil';
 
 	const { data } = $props();
 
@@ -10,7 +9,7 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | {profile.name}</title>
+	<title>{profile.name} | Indy Center</title>
 </svelte:head>
 
 <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -28,52 +27,30 @@
 		credentials={profile.credentials}
 	/>
 	{#if data.isOwnProfile}
-		<a
-			href="/profile"
-			class="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-slate-700/50 hover:text-white"
-		>
-			<IconPencil class="h-4 w-4" />
+		<Button variant="secondary" href="/profile">
+			<Icon path={mdiPencil} />
 			Edit profile
-		</a>
+		</Button>
 	{/if}
 </div>
 
 <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
-	<!-- Bio -->
-	<div class="h-fit rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm lg:col-span-3">
-		<h2
-			class="flex items-center gap-2 border-b border-slate-700/60 px-6 py-4 text-lg font-semibold text-white"
-		>
-			<IconAccount class="h-5 w-5" />
-			About
-		</h2>
+	<Panel title="About" level={2} class="h-fit lg:col-span-3">
+		{#snippet icon()}<Icon path={mdiAccountCircle} />{/snippet}
 		{#if profile.bio}
-			<p class="px-6 py-4 whitespace-pre-line text-gray-300">{profile.bio}</p>
+			<p class="whitespace-pre-line">{profile.bio}</p>
 		{:else}
-			<p class="px-6 py-4 text-sm text-gray-400">
+			<Text tone="muted">
 				{data.isOwnProfile ? "You haven't written a bio yet." : 'No bio yet.'}
-			</p>
+			</Text>
 		{/if}
-	</div>
+	</Panel>
 
-	<!-- Feedback -->
-	<div class="h-fit rounded-lg bg-slate-800/80 shadow-xl backdrop-blur-sm lg:col-span-2">
-		<h2
-			class="flex items-center gap-2 border-b border-slate-700/60 px-6 py-4 text-lg font-semibold text-white"
-		>
-			<IconMessage class="h-5 w-5" />
-			Pilot Feedback
-		</h2>
-		<div class="px-6 py-5">
-			<p class="text-sm text-gray-400">
-				Flew with {profile.name} recently? Let us know how it went.
-			</p>
-			<a
-				href="/feedback"
-				class="mt-4 inline-flex text-sm font-medium text-sky-400 transition-colors hover:text-sky-300"
-			>
-				Leave feedback →
-			</a>
-		</div>
-	</div>
+	<Panel title="Pilot feedback" level={2} class="h-fit lg:col-span-2">
+		{#snippet icon()}<Icon path={mdiMessageText} />{/snippet}
+		<Text>Flew with {profile.name} recently? Let us know how it went.</Text>
+		<p class="mt-4 text-sm">
+			<Link href="/feedback/{profile.cid}">Leave feedback for {profile.name}</Link>
+		</p>
+	</Panel>
 </div>

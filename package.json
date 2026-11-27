@@ -30,7 +30,6 @@
 	"devDependencies": {
 		"@date-fns/tz": "^1.4.1",
 		"@date-fns/utc": "^2.1.1",
-		"@iconify/json": "^2.2.379",
 		"@indy-center/adapter-cloudflare": "^7.2.8-indy.3",
 		"@indy-center/centerline-svelte": "^0.3.1",
 		"@indy-center/centerline-tokens": "^0.2.0",
@@ -57,7 +56,6 @@
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.0.0",
 		"ulid": "^3.0.1",
-		"unplugin-icons": "^22.2.0",
 		"vite": "^7.0.4",
 		"vitest": "^3.2.7",
 		"winston": "^3.17.0",

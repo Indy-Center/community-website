@@ -1,187 +1,86 @@
 <script lang="ts">
-	import IconAccountGroup from '~icons/mdi/account-group';
-	import IconCalendar from '~icons/mdi/calendar';
-	import IconMessage from '~icons/mdi/message';
-	import IconArrowRight from '~icons/mdi/arrow-right';
-	import IconAccount from '~icons/mdi/account';
-	import IconShield from '~icons/mdi/shield';
-	import IconChartLine from '~icons/mdi/chart-line';
+	import {
+		Badge,
+		Card,
+		Heading,
+		Icon,
+		PageHeader,
+		StatCard,
+		Text
+	} from '@indy-center/centerline-svelte';
+	import { mdiAccount, mdiAccountGroup, mdiCalendar, mdiChartLine, mdiMessage } from '@mdi/js';
 
 	let { data } = $props();
 
-	const { stats } = data;
-
-	const adminSections = [
-		{
-			title: 'User Management',
-			description:
-				'Manage user accounts and roles. Certifications and endorsements are edited in the training app.',
-			href: '/admin/users',
-			icon: IconAccountGroup,
-			badge: stats.users.total,
-			color: 'sky'
-		},
-		{
-			title: 'Feedback Management',
-			description: 'Review and moderate controller feedback submissions.',
-			href: '/admin/feedback',
-			icon: IconMessage,
-			badge:
-				stats.feedback.pending > 0
-					? `${stats.feedback.pending} new`
-					: `${stats.feedback.total} total`,
-			color: 'purple'
-		}
-	];
-
-	function getColorClasses(color: string) {
-		const colors = {
-			sky: 'bg-sky-600/20 text-sky-400 group-hover:bg-sky-500/20 group-hover:text-sky-300',
-			purple:
-				'bg-purple-600/20 text-purple-400 group-hover:bg-purple-500/20 group-hover:text-purple-300'
-		};
-		return colors[color as keyof typeof colors] || colors.sky;
-	}
+	const stats = $derived(data.stats);
+	const name = $derived(data.user?.preferredName || data.user?.firstName);
 </script>
 
 <svelte:head>
-	<title>Admin Dashboard - Indy Center</title>
+	<title>Admin | Indy Center</title>
 </svelte:head>
 
-<div class="space-y-6">
-	<div>
-		<h2 class="mb-2 text-2xl font-semibold text-white">Admin Dashboard</h2>
-		<p class="text-gray-400">
-			Welcome back, {data.user?.preferredName || data.user?.firstName}! Here's an overview of your
-			system.
-		</p>
-	</div>
+<PageHeader title="Admin" class="mb-6">
+	Welcome back{name ? `, ${name}` : ''}. Here's how the site stands.
+</PageHeader>
 
-	<!-- Stats Grid -->
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<!-- Users Stat -->
-		<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<p class="text-sm text-gray-400">Total Users</p>
-					<p class="mt-1 text-2xl font-semibold text-white">{stats.users.total}</p>
-					<p class="mt-1 text-xs text-slate-500">{stats.users.controllers} controllers</p>
-				</div>
-				<div class="rounded-lg bg-sky-600/20 p-3">
-					<IconAccount class="h-6 w-6 text-sky-400" />
-				</div>
-			</div>
-		</div>
-
-		<!-- Events Stat -->
-		<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<p class="text-sm text-gray-400">Events</p>
-					<p class="mt-1 text-2xl font-semibold text-white">{stats.events.total}</p>
-					<p class="mt-1 text-xs text-slate-500">{stats.events.published} published</p>
-				</div>
-				<div class="rounded-lg bg-purple-600/20 p-3">
-					<IconCalendar class="h-6 w-6 text-purple-400" />
-				</div>
-			</div>
-		</div>
-
-		<!-- Positions Stat -->
-		<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<p class="text-sm text-gray-400">Event Positions</p>
-					<p class="mt-1 text-2xl font-semibold text-white">{stats.positions.total}</p>
-					<p class="mt-1 text-xs text-slate-500">{stats.positions.assigned} assigned</p>
-				</div>
-				<div class="rounded-lg bg-cyan-600/20 p-3">
-					<IconChartLine class="h-6 w-6 text-cyan-400" />
-				</div>
-			</div>
-		</div>
-
-		<!-- Feedback Stat -->
-		<div class="rounded-lg border border-slate-700/50 bg-slate-800/50 p-4">
-			<div class="flex items-center justify-between">
-				<div>
-					<p class="text-sm text-gray-400">Feedback</p>
-					<p class="mt-1 text-2xl font-semibold text-white">{stats.feedback.total}</p>
-					<p
-						class="text-xs {stats.feedback.pending > 0 ? 'text-yellow-400' : 'text-slate-500'} mt-1"
-					>
-						{stats.feedback.pending} pending
-					</p>
-				</div>
-				<div class="rounded-lg bg-amber-600/20 p-3">
-					<IconMessage class="h-6 w-6 text-amber-400" />
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Admin Sections -->
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		{#each adminSections as section}
-			{@const Icon = section.icon}
-			<a
-				href={section.href}
-				class="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/50 p-6 transition-all duration-200 hover:border-slate-600/50 hover:bg-slate-700/50 hover:shadow-lg"
-			>
-				<div class="flex items-start justify-between">
-					<div class="flex flex-1 items-start space-x-4">
-						<div
-							class="rounded-lg p-3 transition-colors duration-200 {getColorClasses(section.color)}"
-						>
-							<Icon class="h-8 w-8" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="mb-2 flex items-center gap-2">
-								<h3
-									class="text-lg font-semibold text-white transition-colors duration-200 group-hover:text-sky-100"
-								>
-									{section.title}
-								</h3>
-								{#if section.badge}
-									<span
-										class="rounded-full px-2 py-0.5 text-xs font-medium {typeof section.badge ===
-											'string' && section.badge.includes('pending')
-											? 'bg-yellow-600/20 text-yellow-300'
-											: 'bg-sky-600/20 text-sky-300'}"
-									>
-										{section.badge}
-									</span>
-								{/if}
-							</div>
-							<p
-								class="text-sm leading-relaxed text-gray-400 transition-colors duration-200 group-hover:text-gray-300"
-							>
-								{section.description}
-							</p>
-						</div>
-					</div>
-					<IconArrowRight
-						class="ml-4 h-5 w-5 flex-shrink-0 text-gray-500 transition-all duration-200 group-hover:translate-x-1 group-hover:text-sky-400"
-					/>
-				</div>
-			</a>
-		{/each}
-	</div>
-
-	<!-- User Info -->
-	<div class="rounded-xl border border-slate-700/50 bg-slate-800/30 p-6">
-		<div class="flex items-center gap-4">
-			<div class="rounded-lg bg-slate-700/50 p-3">
-				<IconShield class="h-6 w-6 text-sky-400" />
-			</div>
-			<div>
-				<h3 class="text-sm font-semibold text-white">Admin Access</h3>
-				<p class="mt-1 text-sm text-gray-400">
-					Logged in as <span class="font-medium text-white"
-						>{data.user?.preferredName || data.user?.firstName} {data.user?.lastName}</span
-					>
-				</p>
-			</div>
-		</div>
-	</div>
+<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+	<StatCard label="Users" value={stats.users.total} detail="{stats.users.controllers} controllers">
+		{#snippet icon()}<Icon path={mdiAccount} />{/snippet}
+	</StatCard>
+	<StatCard label="Events" value={stats.events.total} detail="{stats.events.published} published">
+		{#snippet icon()}<Icon path={mdiCalendar} />{/snippet}
+	</StatCard>
+	<StatCard
+		label="Event positions"
+		value={stats.positions.total}
+		detail="{stats.positions.assigned} assigned"
+	>
+		{#snippet icon()}<Icon path={mdiChartLine} />{/snippet}
+	</StatCard>
+	<StatCard
+		label="Feedback"
+		value={stats.feedback.total}
+		detail="{stats.feedback.pending} waiting for review"
+	>
+		{#snippet icon()}<Icon path={mdiMessage} />{/snippet}
+	</StatCard>
 </div>
+
+{#snippet section(title: string, href: string, icon: string, description: string, count: string)}
+	<Card as="li" class="relative flex items-start gap-4">
+		<Icon path={icon} size={28} class="shrink-0 text-muted-foreground" />
+		<div class="min-w-0 flex-1">
+			<div class="flex flex-wrap items-center gap-2">
+				<Heading level={2} look={4}>
+					<a
+						{href}
+						class="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:outline-2 focus-visible:after:outline-ring"
+						>{title}</a
+					>
+				</Heading>
+				<Badge size="sm" variant="gray" pill>{count}</Badge>
+			</div>
+			<Text size="small" class="mt-1">{description}</Text>
+		</div>
+	</Card>
+{/snippet}
+
+<ul class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+	{@render section(
+		'Users',
+		'/admin/users',
+		mdiAccountGroup,
+		'Manage user accounts and roles. Certifications and endorsements are edited in the training app.',
+		`${stats.users.total} users`
+	)}
+	{@render section(
+		'Feedback',
+		'/admin/feedback',
+		mdiMessage,
+		'Review and moderate controller feedback.',
+		stats.feedback.pending > 0
+			? `${stats.feedback.pending} waiting`
+			: `${stats.feedback.total} total`
+	)}
+</ul>

@@ -7,30 +7,29 @@
 	on a phone.
 -->
 <script lang="ts" module>
-	import type { Component } from 'svelte';
 	import type { SocialPlatform } from '$lib/cms/types';
 	import type { SocialLink } from '$lib/partners';
-	import IconTwitch from '~icons/simple-icons/twitch';
-	import IconYoutube from '~icons/simple-icons/youtube';
-	import IconDiscord from '~icons/simple-icons/discord';
-	import IconX from '~icons/simple-icons/x';
-	import IconInstagram from '~icons/simple-icons/instagram';
-	import IconTiktok from '~icons/simple-icons/tiktok';
-	import IconFacebook from '~icons/simple-icons/facebook';
-	import IconGithub from '~icons/simple-icons/github';
-	import IconWeb from '~icons/mdi/web';
-	import IconLink from '~icons/mdi/link-variant';
+	import { mdiGithub, mdiLinkVariant, mdiWeb } from '@mdi/js';
+	import {
+		brandDiscord,
+		brandFacebook,
+		brandInstagram,
+		brandTiktok,
+		brandTwitch,
+		brandX,
+		brandYoutube
+	} from '$lib/brandIcons';
 
-	const platforms: Record<SocialPlatform, { name: string; icon: Component }> = {
-		twitch: { name: 'Twitch', icon: IconTwitch },
-		youtube: { name: 'YouTube', icon: IconYoutube },
-		discord: { name: 'Discord', icon: IconDiscord },
-		x: { name: 'X', icon: IconX },
-		instagram: { name: 'Instagram', icon: IconInstagram },
-		tiktok: { name: 'TikTok', icon: IconTiktok },
-		facebook: { name: 'Facebook', icon: IconFacebook },
-		github: { name: 'GitHub', icon: IconGithub },
-		web: { name: 'Website', icon: IconWeb }
+	const platforms: Record<SocialPlatform, { name: string; icon: string }> = {
+		twitch: { name: 'Twitch', icon: brandTwitch },
+		youtube: { name: 'YouTube', icon: brandYoutube },
+		discord: { name: 'Discord', icon: brandDiscord },
+		x: { name: 'X', icon: brandX },
+		instagram: { name: 'Instagram', icon: brandInstagram },
+		tiktok: { name: 'TikTok', icon: brandTiktok },
+		facebook: { name: 'Facebook', icon: brandFacebook },
+		github: { name: 'GitHub', icon: mdiGithub },
+		web: { name: 'Website', icon: mdiWeb }
 	};
 
 	/** The site a link on an `other` platform goes to, such as "example.com". */
@@ -42,19 +41,16 @@
 		}
 	}
 
+	// Both 44px square, so they can be tapped on a phone
 	const variants = {
-		card: {
-			link: 'flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-slate-700/60 hover:text-white',
-			icon: 'h-4 w-4'
-		},
-		bar: {
-			link: 'flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/60 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white',
-			icon: 'h-5 w-5'
-		}
+		card: { link: 'text-muted-foreground hover:bg-muted hover:text-foreground', size: 16 },
+		bar: { link: 'bg-muted text-foreground-soft hover:text-foreground', size: 20 }
 	};
 </script>
 
 <script lang="ts">
+	import { Icon } from '@indy-center/centerline-svelte';
+
 	let {
 		partnerName,
 		link,
@@ -67,17 +63,17 @@
 
 	const platform = $derived(
 		link.platform === 'other'
-			? { name: siteName(link.url), icon: IconLink }
+			? { name: siteName(link.url), icon: mdiLinkVariant }
 			: platforms[link.platform]
 	);
-	const Icon = $derived(platform.icon);
 </script>
 
 <a
 	href={link.url}
 	aria-label="{partnerName} on {platform.name}"
-	title={platform.name}
-	class={variants[variant].link}
+	class="flex size-11 items-center justify-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-ring {variants[
+		variant
+	].link}"
 >
-	<Icon class={variants[variant].icon} aria-hidden="true" />
+	<Icon path={platform.icon} size={variants[variant].size} />
 </a>

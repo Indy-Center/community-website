@@ -10,6 +10,7 @@
 		Callout,
 		ConfirmDialog,
 		EmptyState,
+		Icon,
 		Link,
 		Pagination,
 		Panel,
@@ -18,8 +19,7 @@
 	} from '@indy-center/centerline-svelte';
 	import { RATING_STARS, ratingLabel } from '$lib/utils/feedbackRatings';
 	import { RATING_BADGES } from '$lib/utils/feedbackReview';
-	import IconEye from '~icons/mdi/eye';
-	import IconPencil from '~icons/mdi/pencil';
+	import { mdiEye, mdiPencil } from '@mdi/js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import EditProfile from './EditProfile.svelte';
@@ -97,11 +97,11 @@
 				/>
 				<div class="flex flex-wrap gap-2">
 					<Button variant="secondary" href="/profile?edit">
-						<IconPencil class="h-4 w-4" aria-hidden="true" /> Edit profile
+						<Icon path={mdiPencil} /> Edit profile
 					</Button>
 					{#if data.hasPublicProfile}
 						<Button variant="secondary" href="/profile/{user.cid}">
-							<IconEye class="h-4 w-4" aria-hidden="true" /> View public profile
+							<Icon path={mdiEye} /> View public profile
 						</Button>
 					{/if}
 				</div>

@@ -7,6 +7,9 @@ import { logger } from '$lib/server/logger';
 export const load = async ({ locals }) => {
 	const { user } = locals;
 
+	// Signed out, there's no one to check: the page offers joining VATUSA instead
+	if (!user) return { checklist: null, canVisit: false, canTransfer: false };
+
 	const { checklist, canVisit, canTransfer } = await checkTransferChecklist(user.cid);
 
 	return {

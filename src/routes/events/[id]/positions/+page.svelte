@@ -336,14 +336,15 @@
 	{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
 	{#key eventPositions.length}
 		{#if eventPositions.length > 0}
-			<Table>
+			<Table hideCaption>
 				{#snippet caption()}The event's positions{/snippet}
 				<thead>
 					<tr>
 						<Th scope="col">Position</Th>
 						<Th scope="col">Requirements</Th>
 						<Th scope="col">Assigned to</Th>
-						<Th scope="col"><span class="sr-only">Actions</span></Th>
+						<!-- relative keeps the hidden label inside the scroll region on phones -->
+						<Th scope="col" class="relative"><span class="sr-only">Actions</span></Th>
 					</tr>
 				</thead>
 				<tbody>

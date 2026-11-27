@@ -1,12 +1,18 @@
 <script lang="ts">
-	import Panel from '$lib/components/Panel.svelte';
-	import Badge from '$lib/components/Badge.svelte';
+	import {
+		Badge,
+		Button,
+		Card,
+		EmptyState,
+		Heading,
+		Icon,
+		PageHeader,
+		Text
+	} from '@indy-center/centerline-svelte';
+	import { mdiHandshake, mdiImageMultiple, mdiStarFourPoints } from '@mdi/js';
 	import SocialLink from '$lib/components/partners/SocialLink.svelte';
 	import PartnerImage from '$lib/components/partners/PartnerImage.svelte';
-	import IconHandshake from '~icons/mdi/handshake';
 	import PartnersUnavailable from '$lib/components/partners/PartnersUnavailable.svelte';
-	import IconImages from '~icons/mdi/image-multiple';
-	import IconStar from '~icons/mdi/star-four-points';
 
 	let { data } = $props();
 
@@ -25,49 +31,41 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | Partners</title>
+	<title>Partners | Indy Center</title>
 </svelte:head>
 
-<!-- Page Header -->
-<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-	<div>
-		<h1 class="text-3xl font-bold text-white">Partners</h1>
-		{#if data.state === 'listed'}
-			<p class="mt-2 text-gray-400">
-				The developers, creators, and communities we're proud to work with.
-			</p>
-		{/if}
-	</div>
+<PageHeader title="Partners" class="mb-8">
 	{#if data.state === 'listed'}
-		<div class="flex flex-wrap gap-2" role="group" aria-label="Filter by partner category">
-			{#each [{ id: null, name: 'All' }, ...data.categories] as chip (chip.id)}
-				<button
-					type="button"
-					aria-pressed={activeCategoryId === chip.id}
-					onclick={() => (chosenCategoryId = chip.id)}
-					class="rounded-full border px-4 py-1.5 text-sm font-medium {activeCategoryId === chip.id
-						? 'border-sky-500 bg-sky-500/20 text-sky-200'
-						: 'border-slate-600 text-slate-300 hover:bg-slate-700'}">{chip.name}</button
-				>
-			{/each}
-		</div>
+		The developers, creators, and communities we're proud to work with.
 	{/if}
-</div>
+	{#snippet actions()}
+		{#if data.state === 'listed'}
+			<div class="flex flex-wrap gap-2" role="group" aria-label="Filter by partner category">
+				{#each [{ id: null, name: 'All' }, ...data.categories] as chip (chip.id)}
+					<Button
+						variant="secondary"
+						size="sm"
+						pressed={activeCategoryId === chip.id}
+						onclick={() => (chosenCategoryId = chip.id)}
+					>
+						{chip.name}
+					</Button>
+				{/each}
+			</div>
+		{/if}
+	{/snippet}
+</PageHeader>
 
 {#if data.state === 'listed'}
 	{#each shownCategories as category (category.id)}
-		<section class="mb-10">
-			<h2 class="mb-1 text-sm font-semibold tracking-widest text-sky-400 uppercase">
-				{category.name}
-			</h2>
-			<p class="mb-4 text-sm text-gray-400">{category.blurb}</p>
-			<div class="grid gap-4 md:grid-cols-2">
+		<section class="mb-10" aria-labelledby="category-{category.id}">
+			<Heading level={2} look={3} id="category-{category.id}">{category.name}</Heading>
+			<Text size="small" class="mt-1 mb-4">{category.blurb}</Text>
+			<ul class="grid gap-4 md:grid-cols-2">
 				{#each category.partners as partner (partner.slug)}
-					<article
-						class="flex flex-col rounded-xl border border-slate-700/60 bg-slate-800/60 p-5 shadow-sm"
-					>
+					<Card as="li" class="flex flex-col">
 						<div class="flex items-center gap-4">
-							<div class="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-900/60">
+							<div class="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
 								<PartnerImage
 									image={partner.logo}
 									loading="lazy"
@@ -75,58 +73,54 @@
 								/>
 							</div>
 							<div class="min-w-0">
-								<h3 class="truncate text-lg font-bold text-white">
-									<a href="/partners/{partner.slug}" class="hover:text-sky-300">{partner.name}</a>
-								</h3>
+								<Heading level={3} look={4} class="truncate">
+									<a
+										href="/partners/{partner.slug}"
+										class="hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-ring"
+										>{partner.name}</a
+									>
+								</Heading>
 								{#if partner.socialLinks.length}
-									<div class="-ml-3.5 flex flex-wrap text-slate-400">
-										{#each partner.socialLinks as link}
+									<div class="-ml-3.5 flex flex-wrap">
+										{#each partner.socialLinks as link, i (i)}
 											<SocialLink partnerName={partner.name} {link} variant="card" />
 										{/each}
 									</div>
 								{/if}
 							</div>
 						</div>
-						<p class="mt-4 line-clamp-3 flex-1 text-sm leading-relaxed text-slate-300">
-							{partner.tagline}
-						</p>
+						<p class="mt-4 line-clamp-3 flex-1 text-sm">{partner.tagline}</p>
 						{#if partner.hasMemberPerk}
 							<div class="mt-3">
-								<Badge size="sm" color="yellow" icon={IconStar} label="Member perk" />
+								<Badge size="sm" variant="yellow">
+									{#snippet icon()}<Icon path={mdiStarFourPoints} />{/snippet}
+									Member perk
+								</Badge>
 							</div>
 						{/if}
 						<div class="mt-4 flex flex-wrap items-center gap-3">
 							{#if partner.callToAction}
-								<a
-									href={partner.callToAction.url}
-									class="inline-flex min-h-11 items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-									>{partner.callToAction.label}</a
-								>
+								<Button href={partner.callToAction.url}>{partner.callToAction.label}</Button>
 							{/if}
 							{#if partner.photoCount > 0}
-								<span class="ml-auto flex items-center gap-1 text-xs text-slate-500">
-									<IconImages class="h-4 w-4" aria-hidden="true" />
+								<Text as="span" size="small" class="ml-auto flex items-center gap-1">
+									<Icon path={mdiImageMultiple} />
 									{partner.photoCount}
 									<span class="sr-only">{partner.photoCount === 1 ? 'photo' : 'photos'}</span>
-								</span>
+								</Text>
 							{/if}
 						</div>
-					</article>
+					</Card>
 				{/each}
-			</div>
+			</ul>
 		</section>
 	{/each}
 {:else if data.state === 'coming-soon'}
-	<div class="mx-auto max-w-4xl">
-		<Panel title="Coming Soon" icon={IconHandshake} mode="dark">
-			<div class="p-8">
-				<p class="leading-relaxed text-slate-300">
-					We're putting together a page to highlight the groups and organizations we partner with.
-					Check back soon!
-				</p>
-			</div>
-		</Panel>
-	</div>
+	<EmptyState title="Coming soon" level={2}>
+		{#snippet icon()}<Icon path={mdiHandshake} />{/snippet}
+		We're putting together a page to highlight the groups and organizations we partner with. Check back
+		soon.
+	</EmptyState>
 {:else}
 	<PartnersUnavailable />
 {/if}
