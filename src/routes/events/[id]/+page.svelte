@@ -254,7 +254,7 @@
 		</div>
 	{/if}
 
-	<div class="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+	<div class="mb-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
 		<div class="overflow-hidden rounded-lg border border-border bg-card">
 			<ImageWithFallback
 				src={event.bannerUrl}

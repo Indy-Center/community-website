@@ -313,12 +313,13 @@
 														{positionCount(booking.group?.members.length ?? 0)}
 													</span>
 												</span>
-												<Time
-													class="shrink-0 text-foreground"
-													value={parseBookingTime(booking.start)}
-													end={parseBookingTime(booking.end)}
-													zone="both"
-												/>
+												<span class="shrink-0 text-foreground">
+													<Time
+														value={parseBookingTime(booking.start)}
+														end={parseBookingTime(booking.end)}
+														zone="both"
+													/>
+												</span>
 											</span>
 										{/snippet}
 										<ul class="divide-y divide-border text-sm">
@@ -351,12 +352,13 @@
 											<span class="font-mono text-muted-foreground">{booking.cid}</span>
 										{/if}
 									</span>
-									<Time
-										class="text-sm text-foreground"
-										value={parseBookingTime(booking.start)}
-										end={parseBookingTime(booking.end)}
-										zone="both"
-									/>
+									<span class="text-sm text-foreground">
+										<Time
+											value={parseBookingTime(booking.start)}
+											end={parseBookingTime(booking.end)}
+											zone="both"
+										/>
+									</span>
 									<div class="flex items-center justify-end gap-1">
 										{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
 											<Button

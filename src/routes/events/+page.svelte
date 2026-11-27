@@ -94,13 +94,9 @@
 					<p class="mt-4 line-clamp-3">{nextEvent.description}</p>
 				{/if}
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-					<Time
-						value={nextEvent.startTime}
-						end={nextEvent.endTime}
-						show="datetime"
-						zone="both"
-						class="font-medium text-foreground"
-					/>
+					<span class="font-medium text-foreground">
+						<Time value={nextEvent.startTime} end={nextEvent.endTime} show="datetime" zone="both" />
+					</span>
 					<div class="relative z-10">
 						<AddToCalendarDropdown event={nextEvent} />
 					</div>

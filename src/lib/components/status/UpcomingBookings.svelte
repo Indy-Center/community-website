@@ -32,8 +32,8 @@
 					<Position class="min-w-0" callsign={booking.callsign} layout="inline" />
 				{/if}
 				<span class="shrink-0 text-right">
-					<Time value={start} zone="zulu" class="font-mono text-foreground" />
-					<Time value={start} show="relative" class="ml-2 text-muted-foreground" />
+					<span class="text-foreground"><Time value={start} zone="zulu" /></span>
+					<span class="ml-2 text-muted-foreground"><Time value={start} show="relative" /></span>
 				</span>
 			</li>
 		{/each}
