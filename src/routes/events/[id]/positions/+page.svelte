@@ -3,10 +3,11 @@
 	import {
 		Badge,
 		Button,
-		Checkbox,
 		Chip,
+		ChoiceCard,
 		EmptyState,
 		Field,
+		Fieldset,
 		Heading,
 		Icon,
 		Modal,
@@ -442,20 +443,23 @@
 	{/key}
 </Panel>
 
+<!-- One position as a card, as the old dialog had them: its radio name, then its sector, and a
+     star for the facility's starred ones. A tick in the card picks it. -->
 {#snippet positionChoice(position: any)}
 	{@const positionId = getPositionId(position)}
-	<Checkbox
-		label="{position.radioName} · {position.name}"
+	<ChoiceCard
+		type="checkbox"
+		label={position.radioName}
 		checked={selectedPositions.has(positionId)}
 		onchange={() => togglePosition(positionId)}
 	>
-		{#if position.starred}
-			<span class="inline-flex items-center gap-1">
-				<Icon path={mdiStar} />
-				Starred
-			</span>
-		{/if}
-	</Checkbox>
+		<span class="inline-flex items-center gap-1">
+			{position.name}
+			{#if position.starred}
+				<Icon path={mdiStar} label="Starred" />
+			{/if}
+		</span>
+	</ChoiceCard>
 {/snippet}
 
 <Modal title="Add positions" size="lg" bind:open={addOpen}>
@@ -490,26 +494,24 @@
 			{#if facility}
 				{@const groups = getPositionsGroupedByFacility(facility)}
 				{#each groups as group (group.facility.id)}
-					<section class="mb-4 last:mb-0">
-						{#if !facility.isMainFacility}
-							<div class="mb-2 flex items-center justify-between gap-2 border-b border-border pb-2">
-								<Heading level={3} look="label">{group.facility.name}</Heading>
-								{#if group.positions.some((pos) => pos.starred)}
-									<Button
-										variant="secondary"
-										size="sm"
-										onclick={() => addStarredPositionsForFacility(group.facility)}
-									>
-										Choose starred
-									</Button>
-								{/if}
+					<section class="mb-6 last:mb-0">
+						{#if !facility.isMainFacility && group.positions.some((pos) => pos.starred)}
+							<div class="mb-1 flex justify-end">
+								<Button
+									variant="secondary"
+									size="sm"
+									onclick={() => addStarredPositionsForFacility(group.facility)}
+								>
+									<Icon path={mdiStar} />
+									Choose starred in {group.facility.name}
+								</Button>
 							</div>
 						{/if}
-						<div class="flex flex-col gap-2">
+						<Fieldset legend={group.facility.name}>
 							{#each group.positions as position (getPositionId(position))}
 								{@render positionChoice(position)}
 							{/each}
-						</div>
+						</Fieldset>
 					</section>
 				{:else}
 					<EmptyState size="inline">Every position here is already on the event.</EmptyState>
