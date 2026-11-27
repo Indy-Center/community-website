@@ -20,11 +20,20 @@
 	import { isSignUpClosed } from '$lib/utils/events.js';
 	import { supportsRosters } from '$lib/config/events';
 	import type { VnasFacilityPosition } from '$lib/types/vnas.js';
+	import { Button } from '@indy-center/centerline-svelte';
+	import IconBullhorn from '~icons/mdi/bullhorn-outline';
+	import BriefingModal from '$lib/components/events/BriefingModal.svelte';
+	import BookingProblems from '$lib/components/events/BookingProblems.svelte';
+	import { Alert } from '@indy-center/centerline-svelte';
+	import { LONG_EVENT_HOURS, longEventHours } from '$lib/config/events';
 
 	const { data } = $props();
 	const { event, artccInformation, user, userId } = data;
 
 	let positionRequestModal: Modal | null = $state(null);
+	let briefingOpen = $state(false);
+	// Managers are warned of an event so long its times may be mistyped
+	const longHours = $derived(longEventHours(event.startTime, event.endTime));
 
 	// Check if user has controller membership (for position sign-ups)
 	const hasControllerAccess = $derived(user?.membership === 'controller');
@@ -209,6 +218,13 @@
 							<IconAccountGroup class="h-4 w-4" />
 							Edit Positions
 						</a>
+
+						{#if data.briefing}
+							<Button variant="secondary" onclick={() => (briefingOpen = true)}>
+								<IconBullhorn class="h-4 w-4" aria-hidden="true" />
+								{data.briefing.sent ? 'Update briefing' : 'Send briefing'}
+							</Button>
+						{/if}
 					{/if}
 
 					<a
@@ -224,6 +240,17 @@
 			</div>
 		</div>
 	</div>
+
+	{#if canManageEvents(data?.roles) && (longHours || data.bookingProblems.length > 0)}
+		<div class="mb-8 flex flex-col gap-4">
+			{#if longHours}
+				<Alert level="caution" title="This event runs {longHours} hours">
+					That's more than {LONG_EVENT_HOURS} hours. Check its start and end times.
+				</Alert>
+			{/if}
+			<BookingProblems problems={data.bookingProblems} dismissAction="?/dismissBookingProblems" />
+		</div>
+	{/if}
 
 	<!-- Banner and Event Information -->
 	<div class="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -441,6 +468,10 @@
 			The event you're looking for doesn't exist or has been removed.
 		</p>
 	</div>
+{/if}
+
+{#if data.briefing}
+	<BriefingModal briefing={data.briefing} bind:open={briefingOpen} />
 {/if}
 
 <!-- Position Request Modal -->

@@ -6,10 +6,13 @@ import { stubBookingsClient } from '$lib/testing/bookings';
 import { seedMember, testDb } from '$lib/testing/db';
 import type { BookingsClient } from '$lib/types/bookings';
 import { eventIdOf } from '$lib/utils/bookings';
+import { BookingRefusedError } from '$lib/server/bookingsApi';
 import {
 	cancelEvent,
+	clearBookingProblems,
 	eventBookingId,
 	holdsBookings,
+	readBookingProblems,
 	syncAssignment,
 	syncEvent
 } from './eventBookings';
@@ -195,13 +198,16 @@ describe('syncAssignment', () => {
 		expect(client.cancelBooking).not.toHaveBeenCalled();
 	});
 
-	it('skips a position vNAS has no callsign for, without failing', async () => {
+	it('skips a position vNAS has no callsign for, without failing, and keeps that as a problem', async () => {
 		const client = stubClient();
 		const event = await makeEvent({}, { 'pos-gone': 'user-jane' });
 
 		await syncAssignment(client, db, event, 'pos-gone', { userId: 'user-jane' });
 
 		expect(client.createBooking).not.toHaveBeenCalled();
+		expect(await readBookingProblems(db, EVENT_ID)).toMatchObject([
+			{ positionId: 'pos-gone', callsign: null, cid: '1000001', action: 'book' }
+		]);
 	});
 
 	it('does not fail the caller when the booking system does, and works without one', async () => {
@@ -215,6 +221,80 @@ describe('syncAssignment', () => {
 		await expect(
 			syncAssignment(undefined, db, event, 'pos-twr', { userId: 'user-jane' })
 		).resolves.toBeUndefined();
+	});
+});
+
+describe('booking problems', () => {
+	it("keeps the booking system's reason, with the position and controller", async () => {
+		const client = stubClient();
+		client.createBooking.mockRejectedValue(
+			new BookingRefusedError('The controller already has a booking at this time')
+		);
+		const event = await makeEvent({}, { 'pos-twr': 'user-jane' });
+
+		await syncAssignment(client, db, event, 'pos-twr', { userId: 'user-jane' });
+
+		expect(await readBookingProblems(db, EVENT_ID)).toMatchObject([
+			{
+				positionId: 'pos-twr',
+				callsign: 'IND_TWR',
+				cid: '1000001',
+				action: 'book',
+				message: 'The controller already has a booking at this time'
+			}
+		]);
+	});
+
+	it('clears a problem once that position books, and keeps one per position and controller', async () => {
+		const client = stubClient();
+		client.createBooking.mockRejectedValueOnce(new Error('booking system down'));
+		const event = await makeEvent({}, { 'pos-twr': 'user-jane' });
+
+		await syncAssignment(client, db, event, 'pos-twr', { userId: 'user-jane' });
+		await syncAssignment(client, db, event, 'pos-twr', { userId: 'user-jane' });
+
+		expect(await readBookingProblems(db, EVENT_ID)).toEqual([]);
+	});
+
+	it("doesn't let the next controller's booking hide a failed cancel of the last one", async () => {
+		const client = stubClient();
+		client.cancelBooking.mockRejectedValue(new Error('booking system down'));
+		const event = await makeEvent({}, { 'pos-twr': 'user-alex' });
+
+		await syncAssignment(client, db, event, 'pos-twr', {
+			previousUserId: 'user-jane',
+			userId: 'user-alex'
+		});
+
+		expect(client.createBooking).toHaveBeenCalled();
+		expect(await readBookingProblems(db, EVENT_ID)).toMatchObject([
+			{ cid: '1000001', action: 'cancel' }
+		]);
+	});
+
+	it('books the rest of the roster when one position is refused', async () => {
+		const client = stubClient();
+		client.createBooking.mockRejectedValueOnce(new BookingRefusedError('Position is not bookable'));
+		const before = await makeEvent(
+			{ rosterType: 'assigned', isRosterPublished: false },
+			{ 'pos-twr': 'user-jane', 'pos-gnd': 'user-alex' }
+		);
+
+		await syncEvent(client, db, before, { ...before, isRosterPublished: true });
+
+		expect(client.createBooking).toHaveBeenCalledTimes(2);
+		expect(await readBookingProblems(db, EVENT_ID)).toHaveLength(1);
+	});
+
+	it('are cleared when a manager dismisses them', async () => {
+		const client = stubClient();
+		client.createBooking.mockRejectedValue(new Error('booking system down'));
+		const event = await makeEvent({}, { 'pos-twr': 'user-jane' });
+		await syncAssignment(client, db, event, 'pos-twr', { userId: 'user-jane' });
+
+		await clearBookingProblems(db, EVENT_ID);
+
+		expect(await readBookingProblems(db, EVENT_ID)).toEqual([]);
 	});
 });
 

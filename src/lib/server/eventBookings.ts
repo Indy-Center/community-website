@@ -1,5 +1,10 @@
-import { eq } from 'drizzle-orm';
-import { eventPositionsTable, type Event } from '$lib/db/schema/events';
+import { and, eq } from 'drizzle-orm';
+import {
+	eventBookingProblemsTable,
+	eventPositionsTable,
+	type Event,
+	type EventBookingProblem
+} from '$lib/db/schema/events';
 import type { Database } from '$lib/server/db';
 import { logger } from '$lib/server/logger';
 import { fetchArtccInformation } from '$lib/server/vatsim/vnasDataClient';
@@ -9,8 +14,9 @@ import { EVENT_BOOKING_PREFIX, getPositionCallsigns } from '$lib/utils/bookings'
 // Keeps event rosters on the booking calendar: a controller who holds an event position is booked
 // on its callsign, as an event booking, for the event's hours. A roster only holds positions once
 // it is out: an open roster when the event is published, an assigned one when its manager
-// publishes the roster. A booking the booking system refuses or can't take is logged without
-// failing the event action that triggered it.
+// publishes the roster. A booking the booking system refuses or can't take never fails the event
+// action that triggered it: it's logged, and kept as a problem the events team sees on the event
+// (see readBookingProblems) to pass on to the tech team.
 
 type Held = Pick<Event, 'isPublished' | 'isRosterPublished' | 'rosterType' | 'endTime'>;
 
@@ -62,16 +68,61 @@ async function safely(what: string, work: () => Promise<unknown>) {
 	}
 }
 
-async function callsignOf(positionId: string) {
+async function callsignOf(positionId: string): Promise<string | undefined> {
 	const { facility } = await fetchArtccInformation();
-	const callsign = getPositionCallsigns(facility)[positionId];
-	if (!callsign) logger.warn(`No callsign for event position ${positionId}; not booking it`);
-	return callsign;
+	return getPositionCallsigns(facility)[positionId];
+}
+
+type Action = EventBookingProblem['action'];
+
+/**
+ * Runs one position's booking work. Success clears any problem kept for that position and
+ * controller; failure is logged and kept as a problem. Never throws.
+ */
+async function attempt(
+	db: Database,
+	eventId: string,
+	{ positionId, cid }: Assigned,
+	action: Action,
+	work: () => Promise<unknown>
+) {
+	const thisOne = and(
+		eq(eventBookingProblemsTable.eventId, eventId),
+		eq(eventBookingProblemsTable.positionId, positionId),
+		eq(eventBookingProblemsTable.cid, cid)
+	);
+	try {
+		await work();
+		await db.delete(eventBookingProblemsTable).where(thisOne);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error(`Could not ${action} event booking ${positionId} for ${cid} on ${eventId}`, {
+			error
+		});
+		try {
+			const callsign = (await callsignOf(positionId).catch(() => undefined)) ?? null;
+			await db.delete(eventBookingProblemsTable).where(thisOne);
+			await db.insert(eventBookingProblemsTable).values({
+				id: crypto.randomUUID(),
+				eventId,
+				positionId,
+				callsign,
+				cid,
+				action,
+				message,
+				createdAt: new Date()
+			});
+		} catch (saveError) {
+			logger.error(`Could not keep the booking problem for ${positionId} on ${eventId}`, {
+				error: saveError
+			});
+		}
+	}
 }
 
 async function book(client: BookingsClient, event: Event, { positionId, cid }: Assigned) {
 	const callsign = await callsignOf(positionId);
-	if (!callsign) return;
+	if (!callsign) throw new Error("vNAS lists no callsign for this position, so it can't be booked");
 
 	await client.createBooking({
 		externalId: await eventBookingId(event.id, positionId, cid),
@@ -108,8 +159,14 @@ export async function syncAssignment(
 
 	await safely(`position ${positionId} of ${event.id}`, async () => {
 		const [previous, next] = await Promise.all([cidOf(db, previousUserId), cidOf(db, userId)]);
-		if (previous) await cancel(client, event.id, { positionId, cid: previous });
-		if (next) await book(client, event, { positionId, cid: next });
+		if (previous) {
+			const held = { positionId, cid: previous };
+			await attempt(db, event.id, held, 'cancel', () => cancel(client, event.id, held));
+		}
+		if (next) {
+			const held = { positionId, cid: next };
+			await attempt(db, event.id, held, 'book', () => book(client, event, held));
+		}
 	});
 }
 
@@ -136,10 +193,15 @@ export async function syncEvent(
 	await safely(`event ${after.id}`, async () => {
 		const assigned = await assignedPositions(db, after.id);
 
+		// Each position on its own, so one refusal doesn't stop the rest
 		for (const position of assigned) {
-			if (!nowHolding) await cancel(client, after.id, position);
-			else if (!wasHolding) await book(client, after, position);
-			else await reschedule(client, after, position);
+			if (!nowHolding) {
+				await attempt(db, after.id, position, 'cancel', () => cancel(client, after.id, position));
+			} else if (!wasHolding) {
+				await attempt(db, after.id, position, 'book', () => book(client, after, position));
+			} else {
+				await attempt(db, after.id, position, 'move', () => reschedule(client, after, position));
+			}
 		}
 	});
 }
@@ -150,7 +212,18 @@ export async function cancelEvent(client: BookingsClient | undefined, db: Databa
 
 	await safely(`deleting event ${event.id}`, async () => {
 		for (const position of await assignedPositions(db, event.id)) {
-			await cancel(client, event.id, position);
+			await attempt(db, event.id, position, 'cancel', () => cancel(client, event.id, position));
 		}
 	});
 }
+
+/** The booking problems kept for an event, oldest first, for its managers to see. */
+export const readBookingProblems = (db: Database, eventId: string) =>
+	db.query.eventBookingProblemsTable.findMany({
+		where: eq(eventBookingProblemsTable.eventId, eventId),
+		orderBy: (problems, { asc }) => [asc(problems.createdAt)]
+	});
+
+/** Clears an event's booking problems: a manager dismissed them, or the event is gone. */
+export const clearBookingProblems = (db: Database, eventId: string) =>
+	db.delete(eventBookingProblemsTable).where(eq(eventBookingProblemsTable.eventId, eventId));

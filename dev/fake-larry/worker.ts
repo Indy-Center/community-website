@@ -4,15 +4,29 @@
 // doesn't know.
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import type {
+	ChannelEdit,
 	ChannelSend,
+	DeleteRequest,
+	DeleteResult,
 	LarryRpc,
 	Links,
+	MessageRef,
+	RolesResult,
+	RolesSync,
 	Sent,
 	SyncMembersResult
 } from '@indy-center/indy-larry-worker';
 
 // The SEND_CHANNELS names the site uses
-const CHANNELS = ['events-team', 'senior-staff-alerts', 'controller-feedback'];
+const CHANNELS = [
+	'events-team',
+	'senior-staff-alerts',
+	'controller-feedback',
+	'controller-announcements'
+];
+
+// Roles made here, by name, until the fake restarts
+const roles = new Map<string, string>();
 
 const SYNC_COOLDOWN_MS = 2 * 60 * 1000;
 const lastSynced = new Map<number, number>();
@@ -33,7 +47,19 @@ function check(request: ChannelSend) {
 // The methods the site calls, with the installed package's types
 type CalledBySite = Pick<
 	LarryRpc,
-	'send' | 'enqueue' | 'getLinks' | 'syncMembers' | 'linkDiscord' | 'confirmTsLink' | 'unlink'
+	| 'send'
+	| 'enqueue'
+	| 'editMessage'
+	| 'enqueueEdit'
+	| 'deleteMessage'
+	| 'enqueueDelete'
+	| 'syncRoles'
+	| 'deleteRoles'
+	| 'getLinks'
+	| 'syncMembers'
+	| 'linkDiscord'
+	| 'confirmTsLink'
+	| 'unlink'
 >;
 
 export default class FakeLarry extends WorkerEntrypoint implements CalledBySite {
@@ -47,6 +73,55 @@ export default class FakeLarry extends WorkerEntrypoint implements CalledBySite 
 	async enqueue(request: ChannelSend): Promise<void> {
 		check(request);
 		console.log(`Larry would queue for #${request.channel}:\n${JSON.stringify(request, null, 2)}`);
+	}
+
+	async editMessage(request: ChannelEdit): Promise<Sent> {
+		check(request);
+		console.log(`Larry would edit ${request.messageId}:\n${JSON.stringify(request, null, 2)}`);
+		return { channelId: '0', messageId: request.messageId };
+	}
+
+	async enqueueEdit(request: ChannelEdit): Promise<void> {
+		check(request);
+		console.log(
+			`Larry would queue an edit of ${request.messageId}:\n${JSON.stringify(request, null, 2)}`
+		);
+	}
+
+	async deleteMessage(request: MessageRef): Promise<void> {
+		console.log(`Larry would delete ${request.messageId} in #${request.channel}`);
+	}
+
+	async enqueueDelete(request: MessageRef): Promise<void> {
+		console.log(`Larry would queue deleting ${request.messageId} in #${request.channel}`);
+	}
+
+	// Finds a role by ID or name, or makes one, and reports everyone listed as added
+	async syncRoles(request: RolesSync): Promise<RolesResult> {
+		console.log(`Larry would sync roles:\n${JSON.stringify(request, null, 2)}`);
+		return {
+			dryRun: false,
+			canSeeMembers: true,
+			roles: request.roles.map((role) => {
+				const found = role.id ?? roles.get(role.name);
+				const roleId = found ?? String(Date.now());
+				roles.set(role.name, roleId);
+				return {
+					key: role.key,
+					roleId,
+					role: found ? 'found' : 'created',
+					added: role.members,
+					removed: [],
+					notInServer: []
+				};
+			})
+		};
+	}
+
+	async deleteRoles(request: DeleteRequest): Promise<DeleteResult> {
+		console.log(`Larry would delete roles ${request.ids.join(', ')}`);
+		for (const [name, id] of roles) if (request.ids.includes(id)) roles.delete(name);
+		return { dryRun: false, deleted: request.ids.map((id) => ({ id, outcome: 'deleted' })) };
 	}
 
 	// A member's own link if they made one here, else a Discord account known from VATUSA

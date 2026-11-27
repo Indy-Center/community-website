@@ -7,13 +7,19 @@
 		EVENT_ROSTER_TYPES,
 		EVENT_TYPES,
 		getEventTypeConfig,
-		isRosterTypeAllowed
+		isRosterTypeAllowed,
+		LONG_EVENT_HOURS,
+		longEventHours
 	} from '$lib/config/events';
+	import { Alert } from '@indy-center/centerline-svelte';
 	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
 
 	const { data }: { data: SuperValidated<Infer<EventSchema>> } = $props();
 
 	const { form, errors, enhance, constraints } = superForm(data);
+
+	// A warning, not an error: a long event is allowed, but often a mistyped date
+	const longHours = $derived(longEventHours($form.startTime, $form.endTime));
 
 	const eventTypeConfig = $derived.by(
 		() =>
@@ -58,6 +64,12 @@
 					<DateTimeInput {form} {errors} {constraints} fieldName="startTime" label="Start Time" />
 					<DateTimeInput {form} {errors} {constraints} fieldName="endTime" label="End Time" />
 				</div>
+
+				{#if longHours}
+					<Alert level="caution" title="This event runs {longHours} hours">
+						That's more than {LONG_EVENT_HOURS} hours. Check the start and end times before saving.
+					</Alert>
+				{/if}
 
 				<!-- Event Classification -->
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

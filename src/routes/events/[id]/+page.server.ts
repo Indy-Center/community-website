@@ -1,4 +1,5 @@
 import {
+	eventBriefingsTable,
 	eventsTable,
 	eventPositionsTable,
 	eventPositionRequestsTable
@@ -13,22 +14,47 @@ import { logger } from '$lib/server/logger';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
+import { DISCORD_LIMIT } from '$lib/utils/briefing';
 import { shownMember, shownMemberQuery } from '$lib/members';
-import { cancelEvent, syncAssignment, syncEvent } from '$lib/server/eventBookings';
+import {
+	cancelEvent,
+	clearBookingProblems,
+	readBookingProblems,
+	syncAssignment,
+	syncEvent
+} from '$lib/server/eventBookings';
+import {
+	briefingDraft,
+	refreshBriefing,
+	removeEventRole,
+	sendBriefing
+} from '$lib/server/eventBriefing';
 
-export const load = async ({ locals, params }) => {
-	const found = await locals.db.query.eventsTable.findFirst({
-		where: eq(eventsTable.id, params.id),
-		with: {
-			positions: {
-				with: { user: shownMemberQuery }
-			},
-			positionRequests: {
-				columns: { userId: true, comments: true, createdAt: true },
-				with: { user: shownMemberQuery }
+export const load = async ({ locals, params, url }) => {
+	const manager = canManageEvents(locals.roles);
+	const [found, sentBriefing, catalogue, bookingProblems] = await Promise.all([
+		locals.db.query.eventsTable.findFirst({
+			where: eq(eventsTable.id, params.id),
+			with: {
+				positions: {
+					with: { user: shownMemberQuery }
+				},
+				positionRequests: {
+					columns: { userId: true, comments: true, createdAt: true },
+					with: { user: shownMemberQuery }
+				}
 			}
-		}
-	});
+		}),
+		// Only event managers send briefings
+		manager
+			? locals.db.query.eventBriefingsTable.findFirst({
+					where: eq(eventBriefingsTable.eventId, params.id)
+				})
+			: undefined,
+		manager ? locals.positions() : [],
+		// What the booking system refused, for managers to pass on to the tech team
+		manager ? readBookingProblems(locals.db, params.id) : []
+	]);
 
 	if (!found) {
 		return redirect(302, '/events');
@@ -57,8 +83,28 @@ export const load = async ({ locals, params }) => {
 		}
 	}
 
+	// What the briefing modal starts from, and how long the post is before anything is typed
+	const briefing = manager
+		? {
+				sent: !!sentBriefing,
+				text: sentBriefing?.text ?? '',
+				briefUrl: sentBriefing?.briefUrl ?? '',
+				fixedLength: briefingDraft(
+					found,
+					event.positions.map(({ position, user }) => ({
+						positionId: position,
+						holder: user && { cid: user.cid, name: user.name }
+					})),
+					catalogue,
+					url.origin
+				).fixed
+			}
+		: null;
+
 	return {
 		event,
+		briefing,
+		bookingProblems,
 		artccInformation,
 		userRoles: locals.roles,
 		userId: locals.session?.userId
@@ -77,8 +123,47 @@ const requestPositionSchema = z.object({
 	comments: z.string().optional()
 });
 
+const briefingSchema = z.object({
+	text: z.string().max(DISCORD_LIMIT).default(''),
+	// Larry's link buttons take http(s) addresses of up to 512 characters
+	briefUrl: z
+		.string()
+		.trim()
+		.max(512, 'Use a link of 512 characters or fewer.')
+		.refine((value) => !value || /^https?:\/\/\S+$/.test(value), {
+			message: 'Enter a full web address, starting with https://.'
+		})
+		.default('')
+});
+
 export const actions = {
-	delete: async ({ locals, params }) => {
+	sendBriefing: async ({ locals, request, params, platform, url }) => {
+		if (!canManageEvents(locals.roles)) {
+			return redirect(302, '/');
+		}
+
+		const form = await superValidate(request, zod4(briefingSchema));
+		if (!form.valid) {
+			return fail(400, { form, briefing: { message: 'Check the briefing and try again.' } });
+		}
+
+		const result = await sendBriefing(
+			platform?.env.LARRY,
+			locals.db,
+			await locals.positions(),
+			params.id,
+			{ text: form.data.text, briefUrl: form.data.briefUrl || null },
+			url.origin
+		);
+		if (!result.ok) {
+			return fail(result.status, { form, briefing: { message: result.message } });
+		}
+
+		logger.info(`User ${locals.user?.id} sent the briefing for event ${params.id}`);
+		return { form, briefing: { sent: true, missed: result.missed } };
+	},
+
+	delete: async ({ locals, params, platform }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -88,11 +173,24 @@ export const actions = {
 			where: eq(eventsTable.id, params.id)
 		});
 		if (doomed) await cancelEvent(locals.bookings, locals.db, doomed);
+		// The briefing post stays in Discord; the event's role goes
+		await removeEventRole(platform?.env.LARRY, locals.db, params.id);
+		await clearBookingProblems(locals.db, params.id);
 
 		await locals.db.delete(eventsTable).where(eq(eventsTable.id, params.id));
 
 		return redirect(302, '/events');
 	},
+	dismissBookingProblems: async ({ locals, params }) => {
+		if (!canManageEvents(locals.roles)) {
+			return redirect(302, '/');
+		}
+
+		await clearBookingProblems(locals.db, params.id);
+		logger.info(`User ${locals.user?.id} dismissed the booking problems of event ${params.id}`);
+		return { success: true };
+	},
+
 	togglePublish: async ({ locals, params }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
@@ -129,7 +227,7 @@ export const actions = {
 		return redirect(302, `/events/${params.id}`);
 	},
 
-	signUpForPosition: async ({ locals, request, params }) => {
+	signUpForPosition: async ({ locals, request, params, platform, url }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -184,10 +282,12 @@ export const actions = {
 			});
 		}
 
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
+
 		return { success: true };
 	},
 
-	unassignFromPosition: async ({ locals, request, params }) => {
+	unassignFromPosition: async ({ locals, request, params, platform, url }) => {
 		if (!locals.session?.userId) {
 			return redirect(302, '/auth/login');
 		}
@@ -229,6 +329,8 @@ export const actions = {
 				userId: null
 			});
 		}
+
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
 
 		return { success: true };
 	},

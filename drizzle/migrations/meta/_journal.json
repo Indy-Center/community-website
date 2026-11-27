@@ -113,6 +113,13 @@
 			"when": 1795493760848,
 			"tag": "0015_remove_beta_tester_role",
 			"breakpoints": true
+		},
+		{
+			"idx": 16,
+			"version": "6",
+			"when": 1795743475002,
+			"tag": "0016_event_briefings",
+			"breakpoints": true
 		}
 	]
 }

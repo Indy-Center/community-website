@@ -1,4 +1,5 @@
 import { syncEvent } from '$lib/server/eventBookings';
+import { refreshBriefing } from '$lib/server/eventBriefing';
 import { eventsTable } from '$lib/db/schema/events';
 import { eventSchema } from '$lib/forms/events';
 import { fetchEvents } from '$lib/server/vatsim/vatsimDataClient';
@@ -48,7 +49,7 @@ export const load = async ({ locals, params }) => {
 };
 
 export const actions = {
-	default: async ({ request, locals, params }) => {
+	default: async ({ request, locals, params, platform, url }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -84,6 +85,8 @@ export const actions = {
 		if (before && savedEvent) {
 			await syncEvent(locals.bookings, locals.db, before, savedEvent);
 		}
+		// A posted briefing names the event and its start
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
 
 		return redirect(302, `/events/${params.id}`);
 	}

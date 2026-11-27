@@ -8,7 +8,8 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 import { readAvailableCredentials } from '$lib/server/roster';
 import { memberNameColumns, memberPickerColumns } from '$lib/members';
-import { syncAssignment, syncEvent } from '$lib/server/eventBookings';
+import { readBookingProblems, syncAssignment, syncEvent } from '$lib/server/eventBookings';
+import { refreshBriefing } from '$lib/server/eventBriefing';
 
 export const load = async ({ locals, params, depends }) => {
 	if (!canManageEvents(locals.roles)) {
@@ -40,14 +41,18 @@ export const load = async ({ locals, params, depends }) => {
 		orderBy: (users, { asc }) => [asc(users.firstName), asc(users.lastName)]
 	});
 
-	const artccInformation = await fetchArtccInformation();
-	const credentials = await readAvailableCredentials(locals.db);
+	const [artccInformation, credentials, bookingProblems] = await Promise.all([
+		fetchArtccInformation(),
+		readAvailableCredentials(locals.db),
+		readBookingProblems(locals.db, params.id)
+	]);
 
 	return {
 		event,
 		users,
 		credentials,
-		artccInformation
+		artccInformation,
+		bookingProblems
 	};
 };
 
@@ -65,7 +70,7 @@ const removePositionSchema = z.object({
 });
 
 export const actions = {
-	updateAssignment: async ({ locals, request, params }) => {
+	updateAssignment: async ({ locals, request, params, platform, url }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -108,10 +113,12 @@ export const actions = {
 			});
 		}
 
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
+
 		return { success: true };
 	},
 
-	addPosition: async ({ locals, request, params }) => {
+	addPosition: async ({ locals, request, params, platform, url }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -148,10 +155,12 @@ export const actions = {
 			}))
 		);
 
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
+
 		return { success: true };
 	},
 
-	removePosition: async ({ locals, request, params }) => {
+	removePosition: async ({ locals, request, params, platform, url }) => {
 		if (!canManageEvents(locals.roles)) {
 			return redirect(302, '/');
 		}
@@ -188,6 +197,8 @@ export const actions = {
 				userId: null
 			});
 		}
+
+		await refreshBriefing(platform?.env.LARRY, locals.db, locals.positions, params.id, url.origin);
 
 		return { success: true };
 	},

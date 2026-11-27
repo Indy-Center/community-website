@@ -218,6 +218,39 @@ noted in the log and shown to the reviewer. Larry's deploy needs these in `SEND_
 | `senior-staff-alerts` | New feedback, and follow ups to work           |
 | `controller-feedback` | Feedback published as identified, without CIDs |
 
+## Event briefings
+
+Event managers get a **Send briefing** button on an event with a roster. Larry posts the briefing
+in `controller-announcements`. The post has the event's name, linked to its page, its start time,
+the manager's text and the roster, facility by facility, with each vacant position on its own
+line. An optional link to the brief shows as an "Open brief" button. The modal's counter takes
+everything but the text off Discord's 2000 characters, so a briefing is always sent as one
+message.
+
+Sending first syncs the event's Discord role, `Event: <name>`, with Larry's `syncRoles()`. The
+role holds exactly the roster's controllers who have a Discord account in the server. The post
+pings that role and nobody else. The manager is told who the ping missed.
+
+Larry's message IDs and the role's ID are kept in `event_briefings`. After that, every roster
+change (assigning, signing up, adding or removing a position) and every event edit queues an edit
+of the post (`enqueueEdit()`, which pings nobody) and re-syncs the role. If the roster outgrows
+the message, it moves into messages of its own. Deleting the event deletes its role and leaves the
+post. The code is in `src/lib/server/eventBriefing.ts`, and the message is built in
+`src/lib/utils/briefing.ts`.
+
+Larry's deploy needs `controller-announcements:<channel ID>` in `SEND_CHANNELS`. The bot needs to
+post there and needs Manage Roles. It also needs the Server Members intent, or Larry can add people
+to the role but never remove them.
+
+## Event booking problems
+
+When the booking system won't book, cancel or move an event position, the roster change still
+saves. The error is kept in `event_booking_problems` (`src/lib/server/eventBookings.ts`). Event
+managers see it in a banner on the event page and on Edit Positions, with a button to copy the
+errors for the tech team. A problem clears when that position next syncs for the same
+controller, or when a manager dismisses it. Events longer than 18 hours (`LONG_EVENT_HOURS`) get a
+warning on the form and the event page, since a long event is often a mistyped date.
+
 ## Vars and secrets for the CMS
 
 Partners are edited in the CMS (Payload, at `cms.flyindycenter.com`) and read

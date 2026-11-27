@@ -43,6 +43,42 @@ export const eventPositionsTable = sqliteTable(
 	(table) => [index('event_positions_event_id_position_idx').on(table.eventId, table.position)]
 );
 
+export type EventBriefing = typeof eventBriefingsTable.$inferSelect;
+
+// The briefing posted to Discord for an event, kept so roster changes can edit the post
+export const eventBriefingsTable = sqliteTable('event_briefings', {
+	eventId: text('event_id').primaryKey(),
+	text: text('text').notNull(),
+	briefUrl: text('brief_url'),
+	// The event's Discord role, which the post pings
+	roleId: text('role_id'),
+	// Larry's messages, in order: the briefing first, then any the roster overflowed into
+	messageIds: text('message_ids', { mode: 'json' }).notNull().$type<string[]>(),
+	sentAt: integer('sent_at', { mode: 'timestamp' }).notNull(),
+	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
+});
+
+export type EventBookingProblem = typeof eventBookingProblemsTable.$inferSelect;
+
+// A roster position the booking system couldn't book, cancel or move, for the events team to pass
+// to the tech team. Cleared when that position next syncs, or when a manager dismisses it.
+export const eventBookingProblemsTable = sqliteTable(
+	'event_booking_problems',
+	{
+		id: text('id').primaryKey(),
+		eventId: text('event_id').notNull(),
+		positionId: text('position_id').notNull(),
+		// The position's callsign, when it could be worked out
+		callsign: text('callsign'),
+		cid: text('cid').notNull(),
+		action: text('action', { enum: ['book', 'cancel', 'move'] }).notNull(),
+		// What went wrong, as the booking system (or the site) put it
+		message: text('message').notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	},
+	(table) => [index('event_booking_problems_event_id_idx').on(table.eventId)]
+);
+
 export const eventRelations = relations(eventsTable, ({ many }) => ({
 	positions: many(eventPositionsTable),
 	positionRequests: many(eventPositionRequestsTable)
