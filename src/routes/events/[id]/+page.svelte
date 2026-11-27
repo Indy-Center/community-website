@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import {
 		Alert,
+		Badge,
 		Button,
 		EmptyState,
 		ErrorPage,
@@ -200,16 +201,24 @@
 
 {#if event}
 	{@const hasRoster = supportsRosters(event.type) && event.rosterType !== 'none'}
-	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<Heading level={1}>{event.name}</Heading>
+	<!-- The title and its status on one line, the actions on their own below, so many actions never squeeze the title -->
+	<div class="mb-8 flex flex-col gap-4">
+		<div class="flex flex-wrap items-center gap-3">
+			<Heading level={1}>{event.name}</Heading>
+			{#if canManageEvents(data?.roles)}
+				<!-- The event's state for staff, in words and colour; the button beside changes it -->
+				<Badge variant={event.isPublished ? 'green' : 'yellow'} pill>
+					{event.isPublished ? 'Published' : 'Draft'}
+				</Badge>
+			{/if}
+		</div>
 		<div class="flex shrink-0 flex-wrap gap-2">
 			<AddToCalendarDropdown {event} />
 			{#if canManageEvents(data?.roles)}
-				<!-- Toggles between published and draft -->
 				<form method="POST" action="?/togglePublish">
-					<Button type="submit" variant="secondary" pressed={event.isPublished}>
-						<Icon path={event.isPublished ? mdiPublish : mdiPublishOff} />
-						{event.isPublished ? 'Published' : 'Draft'}
+					<Button type="submit" variant="secondary">
+						<Icon path={event.isPublished ? mdiPublishOff : mdiPublish} />
+						{event.isPublished ? 'Move to draft' : 'Publish'}
 					</Button>
 				</form>
 				{#if hasRoster}

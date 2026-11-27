@@ -276,17 +276,20 @@
 </svelte:head>
 
 <PageHeader title={event?.name || 'Event'} class="mb-8">
+	<!-- The roster's state in words and colour; the button on the right changes it -->
+	<Badge variant={event.isRosterPublished ? 'green' : 'yellow'} pill class="mr-2 align-middle">
+		{event.isRosterPublished ? 'Roster released' : 'Roster draft'}
+	</Badge>
 	Manage the event's positions and who's assigned to them.
 	{#snippet actions()}
 		<Button variant="secondary" href="/events/{event?.id}">
 			<Icon path={mdiArrowLeft} />
 			Back to event
 		</Button>
-		<!-- Toggles the roster between released and draft -->
 		<form method="POST" action="?/toggleRosterPublished">
-			<Button type="submit" variant="secondary" pressed={event.isRosterPublished}>
-				<Icon path={event.isRosterPublished ? mdiPublish : mdiPublishOff} />
-				{event.isRosterPublished ? 'Roster released' : 'Roster draft'}
+			<Button type="submit" variant="secondary">
+				<Icon path={event.isRosterPublished ? mdiPublishOff : mdiPublish} />
+				{event.isRosterPublished ? 'Unrelease roster' : 'Release roster'}
 			</Button>
 		</form>
 		<Button onclick={() => (addOpen = true)}>
