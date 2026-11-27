@@ -10,6 +10,7 @@
 	import Panel from '$lib/components/Panel.svelte';
 	import BookingCalendar from '$lib/components/bookings/BookingCalendar.svelte';
 	import BookingMonth from '$lib/components/bookings/BookingMonth.svelte';
+	import BookingLegend from '$lib/components/bookings/BookingLegend.svelte';
 	import PositionPicker from '$lib/components/bookings/PositionPicker.svelte';
 	import ControllerSearch from '$lib/components/feedback/ControllerSearch.svelte';
 	import {
@@ -285,6 +286,11 @@
 	{/if}
 
 	<TimeZoneLine class="mb-2" />
+
+	<!-- The calendars show a booking's type by colour alone; the list names it on a badge -->
+	{#if view !== 'list'}
+		<BookingLegend class="mb-3" />
+	{/if}
 
 	{#if view === 'calendar'}
 		<BookingCalendar

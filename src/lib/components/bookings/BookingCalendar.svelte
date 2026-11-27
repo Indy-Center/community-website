@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { bookingTypeClasses as typeClasses } from './bookingTypes';
 	import { format } from 'date-fns';
 	import { getPositions, Position, Time } from '@indy-center/centerline-svelte';
 	import {
@@ -8,7 +9,7 @@
 		parseBookingTime
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
-	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
+	import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
 	import IconChevronLeft from '~icons/mdi/chevron-left';
 	import IconChevronRight from '~icons/mdi/chevron-right';
 	import IconMinus from '~icons/mdi/magnify-minus-outline';
@@ -64,13 +65,6 @@
 		Math.max(0, ...bookings.map((booking) => parseBookingTime(booking.end).getTime()))
 	);
 	const hasLaterWeeks = $derived(week[6].end.getTime() < lastBookingEnd);
-
-	const typeClasses: Record<BookingType, string> = {
-		booking: 'border-sky-400/60 bg-sky-500/25 text-sky-100',
-		event: 'border-purple-400/60 bg-purple-500/25 text-purple-100',
-		exam: 'border-orange-400/60 bg-orange-500/25 text-orange-100',
-		training: 'border-green-400/60 bg-green-500/25 text-green-100'
-	};
 
 	// Labels in the member's zone: "Tue", "Nov 24", and hours as "2 PM", or "14z" in Zulu
 	const dayLabel = (day: Date, pattern: string) => format(inZone(day, zone), pattern);
