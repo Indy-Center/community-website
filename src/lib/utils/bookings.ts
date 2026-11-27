@@ -8,7 +8,7 @@ import {
 	UNBOOKABLE_POSITIONS
 } from '$lib/config/bookings';
 import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
-import type { VnasFacility } from '$lib/types/vnas';
+import type { VnasController, VnasFacility } from '$lib/types/vnas';
 
 export type PositionType = 'ARTCC' | 'TRACON' | 'ATCT';
 
@@ -441,16 +441,33 @@ export function layoutCalendarDay(
 export function getDueReminders(
 	bookings: AtcBooking[],
 	runTime: Date,
-	leadHours: number,
+	leadMinutes: number,
 	windowMinutes: number
 ) {
-	const windowStart = runTime.getTime() + leadHours * 3600000;
+	const windowStart = runTime.getTime() + leadMinutes * 60000;
 	const windowEnd = windowStart + windowMinutes * 60000;
 
 	return bookings.filter((booking) => {
 		const start = parseBookingTime(booking.start).getTime();
 		return start >= windowStart && start < windowEnd;
 	});
+}
+
+// The controller working a booked position in vNAS right now, if any. Positions match by vNAS id
+// (the catalogue's) or by callsign, so a booking on a position the catalogue lacks still matches.
+export function findPositionController(
+	controllers: VnasController[],
+	callsign: string,
+	positionId?: string
+) {
+	return controllers.find((controller) =>
+		controller.positions.some(
+			(position) =>
+				position.isActive &&
+				((positionId && position.positionId === positionId) ||
+					position.defaultCallsign === callsign)
+		)
+	);
 }
 
 // Bookings that start within the next `leadHours`, soonest first. Once one starts the controller
