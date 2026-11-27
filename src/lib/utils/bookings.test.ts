@@ -15,6 +15,7 @@ import {
 	getUpcomingBookings,
 	groupEventBookings,
 	groupPositions,
+	notEnded,
 	isListed,
 	layoutCalendarDay,
 	meetsRequirements,
@@ -113,6 +114,18 @@ describe('groupPositions', () => {
 				]
 			]
 		]);
+	});
+});
+
+describe('notEnded', () => {
+	it('drops bookings that have ended and keeps those in progress or to come', () => {
+		const now = new Date('2026-12-01T19:00:00Z');
+		const ended = booking({ id: 1, start: '2026-12-01 15:00:00', end: '2026-12-01 18:00:00' });
+		const endsNow = booking({ id: 2, start: '2026-12-01 17:00:00', end: '2026-12-01 19:00:00' });
+		const inProgress = booking({ id: 3, start: '2026-12-01 18:00:00', end: '2026-12-01 20:00:00' });
+		const later = booking({ id: 4, start: '2026-12-02 18:00:00', end: '2026-12-02 20:00:00' });
+
+		expect(notEnded([ended, endsNow, inProgress, later], now)).toEqual([inProgress, later]);
 	});
 });
 

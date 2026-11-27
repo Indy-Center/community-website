@@ -27,6 +27,7 @@
 		getBookedPositions,
 		groupEventBookings,
 		inZone,
+		notEnded,
 		parseBookingTime
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
@@ -105,9 +106,10 @@
 	// An event with many positions shows as one block, opened to list them
 	const displayBookings = $derived(groupEventBookings(data.bookings, data.eventNames));
 
-	// Bookings arrive sorted by start, so days (the member's) come out in order
+	// The list's days, without bookings that have ended (Week and Month still show them). Bookings
+	// arrive sorted by start, so days (the member's) come out in order.
 	const days = $derived(
-		displayBookings.reduce<Map<string, AtcBooking[]>>((groups, booking) => {
+		notEnded(displayBookings, new Date()).reduce<Map<string, AtcBooking[]>>((groups, booking) => {
 			const day = bookingDay(booking, zone);
 			groups.set(day, [...(groups.get(day) ?? []), booking]);
 			return groups;
