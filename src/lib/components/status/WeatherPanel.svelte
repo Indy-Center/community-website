@@ -7,7 +7,7 @@
 	let { metars }: { metars: VatsimMetarResponse } = $props();
 </script>
 
-<Panel title="Weather" level={2} class="h-full">
+<Panel title="Weather" level={2}>
 	{#snippet icon()}<Icon path={mdiWeatherCloudy} />{/snippet}
 	<ul class="grid grid-cols-1 gap-2 md:grid-cols-2">
 		{#each metars as metar (metar.id)}

@@ -124,7 +124,7 @@
 		{/if}
 	</Card>
 
-	<div class="grid gap-8 lg:grid-cols-3">
+	<div class="grid items-start gap-8 lg:grid-cols-3">
 		<div class={hasRightColumn ? 'lg:col-span-2' : 'lg:col-span-3'}>
 			<Panel title="About" level={2}>
 				{#snippet icon()}<Icon path={mdiTextLong} />{/snippet}

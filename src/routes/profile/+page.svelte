@@ -76,7 +76,7 @@
 	</p>
 </ConfirmDialog>
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
 	<div class="space-y-6 lg:col-span-2">
 		{#if data.editing}
 			<EditProfile data={{ ...data, membership: user.membership }} />

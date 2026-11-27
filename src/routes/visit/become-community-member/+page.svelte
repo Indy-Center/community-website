@@ -42,15 +42,15 @@
 		</Text>
 	</Panel>
 
-	<div class="grid gap-6 md:grid-cols-2">
-		<Panel title="Mission" level={2} class="h-full">
+	<div class="grid items-start gap-6 md:grid-cols-2">
+		<Panel title="Mission" level={2}>
 			{#snippet icon()}<Icon path={mdiHeart} />{/snippet}
 			<p>
 				The Indy Center community is a vibrant and welcoming environment where flight simulation
 				enthusiasts can learn, enjoy, and share their passion for air traffic control and aviation.
 			</p>
 		</Panel>
-		<Panel title="Vision" level={2} class="h-full">
+		<Panel title="Vision" level={2}>
 			{#snippet icon()}<Icon path={mdiEye} />{/snippet}
 			<p>
 				We aim to foster a fun atmosphere that encourages continuous learning and skill development

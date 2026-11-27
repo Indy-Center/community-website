@@ -82,7 +82,7 @@
 			Thanks for being on the Indy Center roster.
 		</Alert>
 	{:else if controllerStatus === 'qualified-controller' && data.checklist}
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
 			<Panel title="Our controllers use great tools" level={2}>
 				{#snippet icon()}<Icon path={mdiToolbox} />{/snippet}
 				<ul class="flex flex-col gap-3">

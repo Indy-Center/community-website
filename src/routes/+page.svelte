@@ -76,7 +76,7 @@
 		<UpcomingBookings bookings={data.upcomingBookings} />
 	{/if}
 
-	<div class="flex w-full flex-col gap-4 md:flex-row">
+	<div class="flex w-full flex-col items-start gap-4 md:flex-row">
 		<div class="w-full md:w-3/5">
 			<WeatherPanel metars={data.metars} />
 		</div>

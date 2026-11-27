@@ -34,7 +34,7 @@
 	{/if}
 </div>
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
+<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
 	<Panel title="About" level={2} class="h-fit lg:col-span-3">
 		{#snippet icon()}<Icon path={mdiAccountCircle} />{/snippet}
 		{#if profile.bio}

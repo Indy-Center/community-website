@@ -30,7 +30,7 @@
 	);
 </script>
 
-<Panel title="Controllers online" level={2} flush class="h-full">
+<Panel title="Controllers online" level={2} flush>
 	{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
 	{#if groups.length > 0}
 		<ul class="divide-y divide-border">

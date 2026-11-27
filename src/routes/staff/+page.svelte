@@ -291,7 +291,7 @@
 </ul>
 
 <Heading level={2} class="mt-10 mb-4">Teams</Heading>
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+<div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
 	{#each data.teams as team (team.key)}
 		<Panel title={team.name} level={3} flush>
 			<div class="border-b border-border px-4 py-3">
