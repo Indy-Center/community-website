@@ -5,23 +5,44 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { format } from 'date-fns';
 	import { superForm } from 'sveltekit-superforms';
-	import Badge from '$lib/components/Badge.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import Panel from '$lib/components/Panel.svelte';
+	import {
+		Alert,
+		Badge,
+		Button,
+		confirmAction,
+		DateTimeInput,
+		Disclosure,
+		EmptyState,
+		Field,
+		getPositions,
+		Icon,
+		Link,
+		Modal,
+		PageHeader,
+		Panel,
+		Position,
+		setTimeZone,
+		Text,
+		Time,
+		TimeZoneLine,
+		toast
+	} from '@indy-center/centerline-svelte';
+	import {
+		mdiCalendarClock,
+		mdiCalendarMonth,
+		mdiCalendarWeek,
+		mdiFormatListBulleted,
+		mdiLogin,
+		mdiPencilOutline,
+		mdiPlus,
+		mdiTrashCanOutline
+	} from '@mdi/js';
 	import BookingCalendar from '$lib/components/bookings/BookingCalendar.svelte';
 	import BookingMonth from '$lib/components/bookings/BookingMonth.svelte';
 	import BookingLegend from '$lib/components/bookings/BookingLegend.svelte';
+	import { bookingTypeVariant } from '$lib/components/bookings/bookingTypes';
 	import PositionPicker from '$lib/components/bookings/PositionPicker.svelte';
 	import ControllerSearch from '$lib/components/feedback/ControllerSearch.svelte';
-	import {
-		DateTimeInput,
-		Field,
-		getPositions,
-		Position,
-		setTimeZone,
-		Time,
-		TimeZoneLine
-	} from '@indy-center/centerline-svelte';
 	import {
 		bookingDay,
 		findControllerConflict,
@@ -33,15 +54,8 @@
 		positionCount
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
-	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
-	import IconCalendarClock from '~icons/mdi/calendar-clock';
-	import IconPlus from '~icons/mdi/plus';
-	import IconPencil from '~icons/mdi/pencil-outline';
-	import IconTrash from '~icons/mdi/trash-can-outline';
-	import IconCalendarWeek from '~icons/mdi/calendar-week';
-	import IconListBox from '~icons/mdi/format-list-bulleted';
-	import IconCalendarMonth from '~icons/mdi/calendar-month';
-	import IconAccount from '~icons/mdi/account';
+	import { signInHref } from '$lib/utils/signIn';
+	import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
 
 	let { data } = $props();
 
@@ -56,20 +70,23 @@
 	});
 	const zone = $derived(timeZone.zone(mounted));
 
-	let createModal: Modal | undefined = $state();
+	let createOpen = $state(false);
 	// Starts off each time the form opens, so people see the primary positions first
 	let showAllPositions = $state(false);
 
 	function openCreate() {
 		showAllPositions = false;
-		createModal?.open();
+		createOpen = true;
 	}
-	let updateModal: Modal | undefined = $state();
+	let updateOpen = $state(false);
 	let editing: AtcBooking | undefined = $state();
 	let deleteError: string | undefined = $state();
-	// What the last change did, as the server worded it
-	let notice: string | undefined = $state();
 	let view: 'calendar' | 'month' | 'list' = $state('calendar');
+
+	// What the last change did, as the server worded it
+	const notify = (message: unknown) => {
+		if (typeof message === 'string' && message) toast('success', message);
+	};
 
 	const {
 		form: createForm,
@@ -79,8 +96,8 @@
 		resetForm: true,
 		onUpdated: ({ form }) => {
 			if (form.valid) {
-				notice = form.message;
-				createModal?.close();
+				notify(form.message);
+				createOpen = false;
 			}
 		}
 	});
@@ -92,18 +109,11 @@
 	} = superForm(data.updateForm, {
 		onUpdated: ({ form }) => {
 			if (form.valid) {
-				notice = form.message;
-				updateModal?.close();
+				notify(form.message);
+				updateOpen = false;
 			}
 		}
 	});
-
-	const typeColors: Record<BookingType, 'sky' | 'purple' | 'orange' | 'green'> = {
-		booking: 'sky',
-		event: 'purple',
-		exam: 'orange',
-		training: 'green'
-	};
 
 	// Each event shows as one block, opened to list its positions
 	const displayBookings = $derived(groupEventBookings(data.bookings, data.eventNames));
@@ -146,12 +156,12 @@
 	const dayTitle = (bookings: AtcBooking[]) =>
 		format(inZone(parseBookingTime(bookings[0].start), zone), 'EEEE, MMMM d');
 
-	let groupModal: Modal | undefined = $state();
+	let groupOpen = $state(false);
 	let openedGroup: AtcBooking | undefined = $state();
 
 	function openGroup(booking: AtcBooking) {
 		openedGroup = booking;
-		groupModal?.open();
+		groupOpen = true;
 	}
 
 	function openEdit(booking: AtcBooking) {
@@ -160,7 +170,7 @@
 		$updateForm.externalId = booking.externalId ?? '';
 		$updateForm.start = parseBookingTime(booking.start).toISOString() as never;
 		$updateForm.end = parseBookingTime(booking.end).toISOString() as never;
-		updateModal?.open();
+		updateOpen = true;
 	}
 
 	// A position in words, where <Position> can't go: confirm dialogs, aria-labels, titles
@@ -169,124 +179,95 @@
 
 	const confirmDelete =
 		(booking: AtcBooking): SubmitFunction =>
-		({ cancel }) => {
-			if (!confirm(`Delete the ${positionOf(booking)} booking?`)) cancel();
+		async ({ cancel }) => {
+			const confirmed = await confirmAction({
+				title: `Delete the ${positionOf(booking)} booking?`,
+				message: 'It comes off the booking system and the calendars.',
+				confirmLabel: 'Delete booking',
+				danger: true
+			});
+			if (!confirmed) cancel();
 			return async ({ result, update }) => {
 				deleteError =
 					result.type === 'failure'
-						? ((result.data?.message as string) ?? 'Failed to delete booking')
+						? ((result.data?.message as string) ?? 'The booking could not be deleted.')
 						: undefined;
 				if (result.type === 'success') {
-					notice = result.data?.message as string | undefined;
-					updateModal?.close();
+					notify(result.data?.message);
+					updateOpen = false;
 				}
 				await update();
 			};
 		};
 
-	const viewButton = (active: boolean) =>
-		`inline-flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active ? 'bg-sky-600/30 text-white' : 'text-slate-400 hover:text-white'}`;
-
-	const primaryButton =
-		'inline-flex cursor-pointer items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-sky-700';
-	const cancelButton =
-		'cursor-pointer rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-700';
+	const VIEWS = [
+		{ key: 'calendar', label: 'Week', icon: mdiCalendarWeek },
+		{ key: 'month', label: 'Month', icon: mdiCalendarMonth },
+		{ key: 'list', label: 'List', icon: mdiFormatListBulleted }
+	] as const;
 </script>
 
 <svelte:head>
-	<title>Indy Center | Bookings</title>
+	<title>Bookings | Indy Center</title>
 </svelte:head>
 
-<div class="mb-8">
-	<div class="flex items-center justify-between gap-3">
-		<h1 class="text-3xl font-bold text-white">Bookings</h1>
+<PageHeader title="Bookings" class="mb-6">
+	Upcoming controller bookings at Indy Center.
+	{#snippet actions()}
 		{#if canBook}
-			<button type="button" onclick={openCreate} class="{primaryButton} shadow-lg">
-				<IconPlus class="h-4 w-4" />
-				Book a Position
-			</button>
+			<Button onclick={openCreate}>
+				<Icon path={mdiPlus} />
+				Book a position
+			</Button>
 		{/if}
-	</div>
-	<div class="mt-2 flex flex-wrap items-center justify-between gap-3">
-		<p class="text-gray-400">Upcoming controller bookings at Indy Center.</p>
-		{#if data.loggedIn}
-			<div class="inline-flex rounded-lg border border-slate-700/60 bg-slate-800/60 p-1">
-				<button
-					type="button"
-					class={viewButton(view === 'calendar')}
-					aria-pressed={view === 'calendar'}
-					onclick={() => (view = 'calendar')}
-				>
-					<IconCalendarWeek class="h-4 w-4" />
-					Week
-				</button>
-				<button
-					type="button"
-					class={viewButton(view === 'month')}
-					aria-pressed={view === 'month'}
-					onclick={() => (view = 'month')}
-				>
-					<IconCalendarMonth class="h-4 w-4" />
-					Month
-				</button>
-				<button
-					type="button"
-					class={viewButton(view === 'list')}
-					aria-pressed={view === 'list'}
-					onclick={() => (view = 'list')}
-				>
-					<IconListBox class="h-4 w-4" />
-					List
-				</button>
-			</div>
-		{/if}
-	</div>
-</div>
+	{/snippet}
+</PageHeader>
 
 <!-- One controller on an event's position, as the event page lists them: the radio name with the
      sector beneath, and who holds it on one line beside -->
 {#snippet eventMember(member: AtcBooking)}
 	<li class="flex items-center justify-between gap-4 py-2.5">
 		<Position class="min-w-0" callsign={member.callsign} show={['radioName', 'name']} />
-		<span class="shrink-0 text-right font-medium whitespace-nowrap text-slate-200">
+		<span class="shrink-0 text-right font-medium whitespace-nowrap text-foreground">
 			{data.names[member.cid] ?? member.cid}
 		</span>
 	</li>
 {/snippet}
 
 {#if !data.loggedIn}
-	<div class="mx-auto flex w-fit items-center justify-center">
-		<div
-			class="flex flex-col items-center justify-center gap-4 overflow-hidden rounded-lg bg-slate-800/80 px-8 py-6 shadow-xl backdrop-blur-sm"
-		>
-			<div class="text-gray-400">You must connect your VATSIM account to see bookings.</div>
-			<a
-				href={`/login/connect?returnUrl=${encodeURIComponent(page.url.pathname)}`}
-				class="flex w-fit cursor-pointer items-center justify-center space-x-2 rounded-lg border border-sky-500/30 bg-sky-600/40 px-4 py-3 text-sm font-medium text-white transition-colors duration-200 hover:border-sky-400/50 hover:bg-sky-500/50"
-			>
-				<IconAccount class="h-5 w-5" />
-				<span>Connect VATSIM Account</span>
-			</a>
+	<EmptyState title="Sign in to see bookings" level={2}>
+		{#snippet icon()}<Icon path={mdiCalendarClock} />{/snippet}
+		Bookings are for Indy Center members. Sign in with your VATSIM account to see them.
+		{#snippet action()}
+			<Button href={signInHref(page.url.pathname)}>
+				<Icon path={mdiLogin} />
+				Sign in with VATSIM
+			</Button>
+		{/snippet}
+	</EmptyState>
+{:else}
+	{#if deleteError}
+		<Alert level="danger" class="mb-6" dismissible ondismiss={() => (deleteError = undefined)}>
+			{deleteError}
+		</Alert>
+	{/if}
+
+	<div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+		<TimeZoneLine />
+		<div class="flex gap-1" role="group" aria-label="View">
+			{#each VIEWS as option (option.key)}
+				<Button
+					variant="secondary"
+					size="sm"
+					pressed={view === option.key}
+					onclick={() => (view = option.key)}
+				>
+					<Icon path={option.icon} />
+					{option.label}
+				</Button>
+			{/each}
 		</div>
 	</div>
-{:else}
-	{#if notice}
-		<div
-			class="mx-auto mb-6 max-w-4xl rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200"
-		>
-			{notice}
-		</div>
-	{/if}
-
-	{#if deleteError}
-		<div
-			class="mx-auto mb-6 max-w-4xl rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
-		>
-			{deleteError}
-		</div>
-	{/if}
-
-	<TimeZoneLine class="mb-2" />
 
 	<!-- The calendars show a booking's type by colour alone; the list names it on a badge -->
 	{#if view !== 'list'}
@@ -312,93 +293,94 @@
 			{zone}
 		/>
 	{:else}
-		<div class="mx-auto max-w-4xl space-y-6">
+		<div class="mx-auto flex max-w-4xl flex-col gap-6">
 			{#each days as [day, bookings] (day)}
-				<Panel title={dayTitle(bookings)} icon={IconCalendarClock}>
-					<ul class="divide-y divide-slate-700/60">
+				<Panel title={dayTitle(bookings)} level={2} flush>
+					{#snippet icon()}<Icon path={mdiCalendarClock} />{/snippet}
+					<ul class="divide-y divide-border">
 						{#each bookings as booking (booking.externalId ?? booking.id)}
 							{#if booking.group}
 								<li class="px-4 py-3">
-									<details>
-										<summary class="flex cursor-pointer items-center justify-between gap-4 text-sm">
-											<span class="flex min-w-0 items-center gap-3">
-												<span class="truncate font-semibold text-white">{booking.group.name}</span>
-												<Badge label="event" color="purple" size="sm" />
-												<span class="shrink-0 text-slate-400">
-													{positionCount(booking.group.members.length)}
+									<Disclosure>
+										{#snippet summary()}
+											<span class="flex w-full items-center justify-between gap-4 text-sm">
+												<span class="flex min-w-0 items-center gap-3">
+													<span class="truncate font-semibold text-foreground">
+														{booking.group?.name}
+													</span>
+													<Badge variant="purple" size="sm">event</Badge>
+													<span class="shrink-0 text-muted-foreground">
+														{positionCount(booking.group?.members.length ?? 0)}
+													</span>
 												</span>
+												<Time
+													class="shrink-0 text-foreground"
+													value={parseBookingTime(booking.start)}
+													end={parseBookingTime(booking.end)}
+													zone="both"
+												/>
 											</span>
-											<Time
-												class="shrink-0 text-white"
-												value={parseBookingTime(booking.start)}
-												end={parseBookingTime(booking.end)}
-												zone="both"
-											/>
-										</summary>
-										<ul class="mt-3 divide-y divide-slate-700/40 text-sm">
+										{/snippet}
+										<ul class="divide-y divide-border text-sm">
 											{#each booking.group.members as member (member.externalId)}
 												{@render eventMember(member)}
 											{/each}
 										</ul>
-										<a
-											href="/events/{booking.group.eventId}"
-											class="mt-3 inline-block text-xs font-medium text-sky-400 hover:text-sky-300"
-										>
-											View event →
-										</a>
-									</details>
+										<p class="mt-3 text-sm">
+											<Link href="/events/{booking.group.eventId}">{booking.group.name}</Link>
+										</p>
+									</Disclosure>
 								</li>
 							{:else}
 								<!-- Fixed columns so names and times line up across rows; actions keep their width even when empty -->
 								<li
-									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[16rem_1fr_auto_3.5rem]"
+									class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[16rem_1fr_auto_5rem]"
 								>
 									<div class="flex min-w-0 items-center gap-3">
 										<Position class="min-w-0" callsign={booking.callsign} />
 										{#if booking.type !== 'booking'}
-											<Badge label={booking.type} color={typeColors[booking.type]} size="sm" />
+											<Badge variant={bookingTypeVariant[booking.type]} size="sm"
+												>{booking.type}</Badge
+											>
 										{/if}
 									</div>
-									{#if data.names[booking.cid]}
-										<a
-											href="/profile/{booking.cid}"
-											class="truncate text-right text-sm text-slate-300 hover:text-white sm:text-left"
-										>
-											{data.names[booking.cid]}
-										</a>
-									{:else}
-										<span class="text-right text-sm text-slate-400 sm:text-left">{booking.cid}</span
-										>
-									{/if}
+									<span class="truncate text-right text-sm sm:text-left">
+										{#if data.names[booking.cid]}
+											<Link href="/profile/{booking.cid}">{data.names[booking.cid]}</Link>
+										{:else}
+											<span class="font-mono text-muted-foreground">{booking.cid}</span>
+										{/if}
+									</span>
 									<Time
-										class="text-sm text-white"
+										class="text-sm text-foreground"
 										value={parseBookingTime(booking.start)}
 										end={parseBookingTime(booking.end)}
 										zone="both"
 									/>
-									<div class="flex items-center justify-end gap-3">
+									<div class="flex items-center justify-end gap-1">
 										{#if data.bookingEnabled && booking.externalId !== null && data.manageable.includes(booking.externalId)}
-											<button
-												type="button"
+											<Button
+												variant="secondary"
+												size="sm"
 												onclick={() => openEdit(booking)}
-												class="cursor-pointer text-slate-400 hover:text-white"
 												aria-label="Edit {positionOf(booking)} booking"
 											>
-												<IconPencil class="h-4 w-4" />
-											</button>
+												<Icon path={mdiPencilOutline} />
+											</Button>
 											<form
 												method="POST"
 												action="?/delete"
 												use:formEnhance={confirmDelete(booking)}
 											>
 												<input type="hidden" name="externalId" value={booking.externalId} />
-												<button
+												<Button
 													type="submit"
-													class="cursor-pointer text-slate-400 hover:text-red-400"
+													variant="danger"
+													size="sm"
 													aria-label="Delete {positionOf(booking)} booking"
 												>
-													<IconTrash class="h-4 w-4" />
-												</button>
+													<Icon path={mdiTrashCanOutline} />
+												</Button>
 											</form>
 										{/if}
 									</div>
@@ -408,11 +390,10 @@
 					</ul>
 				</Panel>
 			{:else}
-				<Panel title="No Bookings" icon={IconCalendarClock}>
-					<div class="p-8">
-						<p class="leading-relaxed text-slate-300">No positions are booked right now.</p>
-					</div>
-				</Panel>
+				<EmptyState title="No bookings" level={2}>
+					{#snippet icon()}<Icon path={mdiCalendarClock} />{/snippet}
+					No positions are booked right now.
+				</EmptyState>
 			{/each}
 		</div>
 	{/if}
@@ -443,73 +424,67 @@
 	</Field>
 {/snippet}
 
-<Modal title={openedGroup?.group?.name ?? 'Event'} bind:this={groupModal}>
+<Modal title={openedGroup?.group?.name ?? 'Event'} bind:open={groupOpen}>
 	{#if openedGroup?.group}
-		<div class="max-h-[70vh] w-[480px] max-w-[90vw] overflow-y-auto p-2">
-			<p class="mb-3 text-sm text-slate-400">
-				{positionCount(openedGroup.group.members.length)},
-				<Time
-					value={parseBookingTime(openedGroup.start)}
-					end={parseBookingTime(openedGroup.end)}
-					show="datetime"
-					zone="both"
-				/>
-			</p>
-			<ul class="divide-y divide-slate-700/60 text-sm">
-				{#each openedGroup.group.members as member (member.externalId)}
-					{@render eventMember(member)}
-				{/each}
-			</ul>
-			<a
-				href="/events/{openedGroup.group.eventId}"
-				class="mt-4 inline-block text-sm font-medium text-sky-400 hover:text-sky-300"
-			>
-				View event →
-			</a>
-		</div>
+		<Text size="small" class="mb-3">
+			{positionCount(openedGroup.group.members.length)},
+			<Time
+				value={parseBookingTime(openedGroup.start)}
+				end={parseBookingTime(openedGroup.end)}
+				show="datetime"
+				zone="both"
+			/>
+		</Text>
+		<ul class="max-h-[60vh] divide-y divide-border overflow-y-auto text-sm">
+			{#each openedGroup.group.members as member (member.externalId)}
+				{@render eventMember(member)}
+			{/each}
+		</ul>
 	{/if}
+	{#snippet actions()}
+		{#if openedGroup?.group}
+			<Button variant="secondary" href="/events/{openedGroup.group.eventId}">Go to the event</Button
+			>
+		{/if}
+	{/snippet}
 </Modal>
 
-<Modal title="Book a Position" bind:this={createModal}>
+<Modal title="Book a position" bind:open={createOpen}>
 	<form
+		id="create-booking"
 		method="POST"
 		action="?/create"
 		use:createEnhance
-		class="max-h-[80vh] w-[560px] max-w-[90vw] space-y-4 overflow-y-auto p-2"
+		class="flex flex-col gap-4"
 	>
 		{#if $createErrors._errors}
-			<p class="text-sm text-red-400">{$createErrors._errors.join(' ')}</p>
+			<Alert level="danger">{$createErrors._errors.join(' ')}</Alert>
 		{/if}
 		{#if data.students.length > 0}
 			<!-- Mentors only: book a training session for a student, on a position you hold -->
-			<div>
-				<label class="mb-2 block text-sm font-medium text-gray-300" for="forCid">
-					Book training for
-				</label>
-				<ControllerSearch
-					name="forCid"
-					users={data.students}
-					bind:value={$createForm.forCid}
-					invalid={!!$createErrors.forCid}
-				/>
-				{#if $createErrors.forCid}
-					<p class="mt-1 text-sm text-red-400">{$createErrors.forCid.join(' ')}</p>
-				{/if}
-				<p class="mt-1 text-xs text-slate-400">
-					{#if $createForm.forCid}
-						Posted as a training booking under the student's name.
-						<button
-							type="button"
-							class="cursor-pointer text-sky-400 hover:text-sky-300"
-							onclick={() => ($createForm.forCid = '')}
-						>
-							Book for myself instead
-						</button>
-					{:else}
-						Leave empty to book for yourself.
-					{/if}
-				</p>
-			</div>
+			<Field
+				label="Book training for"
+				hint={$createForm.forCid
+					? "Posted as a training booking under the student's name."
+					: 'Leave empty to book for yourself.'}
+				error={$createErrors.forCid?.join(' ')}
+			>
+				{#snippet children(control)}
+					<ControllerSearch
+						{...control}
+						name="forCid"
+						users={data.students}
+						bind:value={$createForm.forCid}
+					/>
+				{/snippet}
+			</Field>
+			{#if $createForm.forCid}
+				<div>
+					<Button variant="secondary" size="sm" onclick={() => ($createForm.forCid = '')}>
+						Book for myself instead
+					</Button>
+				</div>
+			{/if}
 		{/if}
 		<!-- Times come first so the picker can grey out positions already booked then -->
 		{@render timeField(createForm, $createForm, $createErrors, 'start', 'Start')}
@@ -522,17 +497,17 @@
 			booked={bookedPositions}
 		/>
 		{#if selectedConflict}
-			<p class="text-sm text-amber-300">
+			<Alert level="caution">
 				{positionOf(selectedConflict)} is already booked
 				<Time
 					value={parseBookingTime(selectedConflict.start)}
 					end={parseBookingTime(selectedConflict.end)}
 					zone="both"
 				/>. Pick another position or change your times.
-			</p>
+			</Alert>
 		{/if}
 		{#if bookerConflict}
-			<p class="text-sm text-amber-300">
+			<Alert level="caution">
 				{$createForm.forCid ? 'That member is' : "You're"} already booked on {positionOf(
 					bookerConflict
 				)}
@@ -541,59 +516,51 @@
 					end={parseBookingTime(bookerConflict.end)}
 					zone="both"
 				/>. Change the times, or cancel that booking first.
-			</p>
+			</Alert>
 		{/if}
-		<div class="flex justify-end gap-3">
-			<button type="button" onclick={() => createModal?.close()} class={cancelButton}>
-				Cancel
-			</button>
-			<button
-				type="submit"
-				class="{primaryButton} disabled:cursor-not-allowed disabled:opacity-50"
-				disabled={!!selectedConflict || !!bookerConflict}
-			>
-				<IconPlus class="h-4 w-4" />
-				Book
-			</button>
-		</div>
 	</form>
+	{#snippet actions()}
+		<Button variant="secondary" onclick={() => (createOpen = false)}>Cancel</Button>
+		<Button type="submit" form="create-booking" disabled={!!selectedConflict || !!bookerConflict}>
+			<Icon path={mdiPlus} />
+			Book
+		</Button>
+	{/snippet}
 </Modal>
 
-<Modal title="Edit {editing ? positionOf(editing) : ''} Booking" bind:this={updateModal}>
+<Modal title="Edit {editing ? positionOf(editing) : ''} booking" bind:open={updateOpen}>
 	<form
+		id="update-booking"
 		method="POST"
 		action="?/update"
 		use:updateEnhance
-		class="w-[500px] max-w-[90vw] space-y-4 p-2"
+		class="flex flex-col gap-4"
 	>
 		{#if $updateErrors._errors}
-			<p class="text-sm text-red-400">{$updateErrors._errors.join(' ')}</p>
+			<Alert level="danger">{$updateErrors._errors.join(' ')}</Alert>
 		{/if}
 		<input type="hidden" name="externalId" value={$updateForm.externalId} />
 		{@render timeField(updateForm, $updateForm, $updateErrors, 'start', 'Start')}
 		{@render timeField(updateForm, $updateForm, $updateErrors, 'end', 'End')}
-		<div class="flex justify-end gap-3">
-			<button type="button" onclick={() => updateModal?.close()} class={cancelButton}>
-				Cancel
-			</button>
-			<button type="submit" class={primaryButton}>Save</button>
-		</div>
 	</form>
 	{#if editing}
 		<form
+			id="delete-booking"
 			method="POST"
 			action="?/delete"
 			use:formEnhance={confirmDelete(editing)}
-			class="border-t border-slate-700 p-2 pt-4"
 		>
 			<input type="hidden" name="externalId" value={editing.externalId} />
-			<button
-				type="submit"
-				class="inline-flex cursor-pointer items-center gap-2 text-sm text-red-400 hover:text-red-300"
-			>
-				<IconTrash class="h-4 w-4" />
-				Delete booking
-			</button>
 		</form>
 	{/if}
+	{#snippet actions()}
+		{#if editing}
+			<Button type="submit" form="delete-booking" variant="danger" class="mr-auto">
+				<Icon path={mdiTrashCanOutline} />
+				Delete booking
+			</Button>
+		{/if}
+		<Button variant="secondary" onclick={() => (updateOpen = false)}>Cancel</Button>
+		<Button type="submit" form="update-booking">Save</Button>
+	{/snippet}
 </Modal>

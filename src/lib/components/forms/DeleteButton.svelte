@@ -1,12 +1,28 @@
 <script lang="ts">
-	import IconTrash from '~icons/mdi/trash-can-outline';
-	import ActionButton from '../ActionButton.svelte';
+	import { Button, confirmAction, Icon } from '@indy-center/centerline-svelte';
+	import { mdiTrashCanOutline } from '@mdi/js';
+
+	let { what = 'this' }: { what?: string } = $props();
 </script>
 
-<ActionButton
+<!-- Posts ?/delete once the member confirms -->
+<form
+	method="POST"
 	action="?/delete"
-	message="Are you sure? This action cannot be undone."
-	label="Delete"
-	icon={IconTrash}
-	color="red"
-/>
+	onsubmit={async (event) => {
+		event.preventDefault();
+		const form = event.currentTarget;
+		const confirmed = await confirmAction({
+			title: `Delete ${what}?`,
+			message: 'This cannot be undone.',
+			confirmLabel: 'Delete',
+			danger: true
+		});
+		if (confirmed) form.submit();
+	}}
+>
+	<Button type="submit" variant="danger">
+		<Icon path={mdiTrashCanOutline} />
+		Delete
+	</Button>
+</form>

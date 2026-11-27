@@ -1,18 +1,34 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll, goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import Modal from '$lib/components/Modal.svelte';
-	import Panel from '$lib/components/Panel.svelte';
-	import IconAccountGroup from '~icons/mdi/account-group';
-	import IconPlus from '~icons/mdi/plus';
-	import IconAccount from '~icons/mdi/account';
-	import IconClose from '~icons/mdi/close';
-	import IconStar from '~icons/mdi/star';
-	import IconPublish from '~icons/mdi/publish';
-	import IconDraft from '~icons/mdi/publish-off';
-	import IconArrowLeft from '~icons/mdi/arrow-left';
-	import ActionToggle from '$lib/components/ActionToggle.svelte';
+	import {
+		Badge,
+		Button,
+		Checkbox,
+		Chip,
+		EmptyState,
+		Field,
+		Heading,
+		Icon,
+		Modal,
+		PageHeader,
+		Panel,
+		Position,
+		Select,
+		Table,
+		Text,
+		Th,
+		Time
+	} from '@indy-center/centerline-svelte';
+	import {
+		mdiAccount,
+		mdiAccountGroup,
+		mdiArrowLeft,
+		mdiClose,
+		mdiPlus,
+		mdiPublish,
+		mdiPublishOff,
+		mdiStar
+	} from '@mdi/js';
 	import ControllerPicker from '$lib/components/events/ControllerPicker.svelte';
 	import { credentialName } from '$lib/credentials';
 	import BookingProblems from '$lib/components/events/BookingProblems.svelte';
@@ -21,7 +37,7 @@
 
 	const { event, users, artccInformation } = data;
 
-	let modal: Modal | null = $state(null);
+	let addOpen = $state(false);
 	let selectedFacility: string | null = $state(artccInformation?.facility?.id || null);
 	let selectedPositions: Set<string> = $state(new Set());
 
@@ -180,7 +196,7 @@
 		form.requestSubmit();
 		selectedPositions.clear();
 		selectedPositions = new Set(selectedPositions);
-		modal?.close();
+		addOpen = false;
 	};
 
 	const getPositionId = (position: any): string => {
@@ -256,41 +272,29 @@
 </script>
 
 <svelte:head>
-	<title>Indy Center | {event?.name || 'Event'} - Positions</title>
+	<title>Positions | {event?.name || 'Event'} | Indy Center</title>
 </svelte:head>
 
-<!-- Page Header -->
-<div class="mb-8">
-	<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<div class="flex-1">
-			<h1 class="mb-2 text-3xl font-bold text-white">{event?.name || 'Event'}</h1>
-			<p class="text-slate-400">Manage event positions and assignments.</p>
-		</div>
-		<div class="flex flex-shrink-0 gap-3">
-			<a
-				href="/events/{event?.id}"
-				class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-600 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
-			>
-				<IconArrowLeft class="h-4 w-4" />
-				Return to Event
-			</a>
-			<ActionToggle
-				action="?/toggleRosterPublished"
-				currentState={event.isRosterPublished}
-				label={event.isRosterPublished ? 'Roster: Released' : 'Roster: Draft'}
-				icon={event.isRosterPublished ? IconPublish : IconDraft}
-				color={event.isRosterPublished ? 'green' : 'sky'}
-			/>
-			<button
-				onclick={() => modal?.open()}
-				class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900 focus:outline-none"
-			>
-				<IconPlus class="h-4 w-4" />
-				Add Positions
-			</button>
-		</div>
-	</div>
-</div>
+<PageHeader title={event?.name || 'Event'} class="mb-8">
+	Manage the event's positions and who's assigned to them.
+	{#snippet actions()}
+		<Button variant="secondary" href="/events/{event?.id}">
+			<Icon path={mdiArrowLeft} />
+			Back to event
+		</Button>
+		<!-- Toggles the roster between released and draft -->
+		<form method="POST" action="?/toggleRosterPublished">
+			<Button type="submit" variant="secondary" pressed={event.isRosterPublished}>
+				<Icon path={event.isRosterPublished ? mdiPublish : mdiPublishOff} />
+				{event.isRosterPublished ? 'Roster released' : 'Roster draft'}
+			</Button>
+		</form>
+		<Button onclick={() => (addOpen = true)}>
+			<Icon path={mdiPlus} />
+			Add positions
+		</Button>
+	{/snippet}
+</PageHeader>
 
 {#if data.bookingProblems.length > 0}
 	<div class="mb-8">
@@ -302,389 +306,214 @@
 	</div>
 {/if}
 
-<!-- Position Requests Panel -->
 {#if event.positionRequests && event.positionRequests.length > 0}
-	<div class="mb-8">
-		<Panel title="Position Requests" icon={IconAccount} mode="dark">
-			<div class="divide-y divide-slate-700/60">
-				{#each event.positionRequests as request}
-					<div class="p-6 transition-colors hover:bg-slate-700/30">
-						<div class="flex items-start justify-between">
-							<div>
-								<div class="font-medium text-white">
-									{getUserDisplayName(request.user)} ({request.user?.operatingInitials})
-								</div>
-								<div class="mt-1 text-sm text-slate-400">
-									{request.comments || 'No comments provided'}
-								</div>
-							</div>
-							<div class="text-xs text-slate-500">
-								{request.createdAt?.toLocaleDateString()}
-							</div>
-						</div>
+	<Panel title="Position requests" level={2} flush class="mb-8">
+		{#snippet icon()}<Icon path={mdiAccount} />{/snippet}
+		<ul class="divide-y divide-border">
+			{#each event.positionRequests as request (request.userId)}
+				<li class="flex items-start justify-between gap-3 px-4 py-3">
+					<div>
+						<span class="font-medium text-foreground">{getUserDisplayName(request.user)}</span>
+						{#if request.user?.operatingInitials}
+							<span class="font-mono text-muted-foreground">
+								({request.user.operatingInitials})
+							</span>
+						{/if}
+						<Text size="small" class="mt-1">{request.comments || 'No comments'}</Text>
 					</div>
-				{/each}
-			</div>
-		</Panel>
-	</div>
+					{#if request.createdAt}
+						<Text as="span" size="small" class="shrink-0">
+							<Time value={request.createdAt} show="datetime" />
+						</Text>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	</Panel>
 {/if}
 
-<!-- Event Positions Panel -->
-<Panel title="Event Positions" icon={IconAccountGroup} mode="dark">
+<Panel title="Event positions" level={2}>
+	{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
 	{#key eventPositions.length}
 		{#if eventPositions.length > 0}
-			<div class="overflow-hidden">
-				<table class="w-full">
-					<thead class="bg-slate-700/50">
-						<tr class="border-b border-slate-600">
-							<th
-								class="px-6 py-4 text-left text-xs font-semibold tracking-wider text-slate-300 uppercase"
-								>Position</th
-							>
-							<th
-								class="px-6 py-4 text-left text-xs font-semibold tracking-wider text-slate-300 uppercase"
-								>Requirements</th
-							>
-							<th
-								class="px-6 py-4 text-left text-xs font-semibold tracking-wider text-slate-300 uppercase"
-								>Assigned To</th
-							>
-							<th
-								class="px-6 py-4 text-right text-xs font-semibold tracking-wider text-slate-300 uppercase"
-								>Actions</th
-							>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-700/60">
-						{#each eventPositions as position}
-							<tr class="transition-colors hover:bg-slate-700/30">
-								<!-- Position Info -->
-								<td class="px-6 py-4">
-									{#if true}
-										{@const posInfo = getPositionInfo(position.position)}
-										<div class="flex items-center gap-3">
-											<div>
-												<div class="text-lg font-semibold text-white">
-													{posInfo?.radioName}
-												</div>
-												<div class="text-sm text-slate-400">
-													{posInfo?.name}
-												</div>
-											</div>
-											{#if isPositionPrimary(position.position)}
-												<div
-													class="rounded-full bg-amber-400/20 px-2 py-1 text-xs font-medium text-amber-300"
-												>
-													Primary
-												</div>
-											{/if}
-										</div>
+			<Table>
+				{#snippet caption()}The event's positions{/snippet}
+				<thead>
+					<tr>
+						<Th scope="col">Position</Th>
+						<Th scope="col">Requirements</Th>
+						<Th scope="col">Assigned to</Th>
+						<Th scope="col"><span class="sr-only">Actions</span></Th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each eventPositions as position (position.position)}
+						{@const posInfo = getPositionInfo(position.position)}
+						<tr>
+							<td>
+								<div class="flex items-center gap-2">
+									<Position
+										callsign={posInfo?.defaultCallsign || posInfo?.callsign || position.position}
+										positionId={position.position}
+									/>
+									{#if isPositionPrimary(position.position)}
+										<Badge variant="yellow" size="sm">Primary</Badge>
 									{/if}
-								</td>
-
-								<!-- Requirements -->
-								<td class="px-6 py-4">
-									<div class="text-sm">
-										{#if position.requiredCertifications && position.requiredCertifications.length > 0}
-											<div class="mb-2 flex flex-wrap gap-1">
-												{#each position.requiredCertifications as cert}
-													<span class="rounded bg-blue-500/20 px-2 py-1 text-xs text-blue-300"
-														>{credentialName(data.credentials, cert)}</span
-													>
-												{/each}
-											</div>
-										{/if}
-										{#if position.requiredEndorsements && position.requiredEndorsements.length > 0}
-											<div class="flex flex-wrap gap-1">
-												{#each position.requiredEndorsements as endorsement}
-													<span class="rounded bg-purple-500/20 px-2 py-1 text-xs text-purple-300"
-														>{credentialName(data.credentials, endorsement)}</span
-													>
-												{/each}
-											</div>
-										{:else if !position.requiredCertifications || position.requiredCertifications.length === 0}
-											<span class="text-xs text-slate-500">None specified</span>
-										{/if}
+								</div>
+							</td>
+							<td>
+								{#if position.requiredCertifications?.length || position.requiredEndorsements?.length}
+									<div class="flex flex-wrap gap-1">
+										{#each position.requiredCertifications ?? [] as cert (cert)}
+											<Chip variant="certification">{credentialName(data.credentials, cert)}</Chip>
+										{/each}
+										{#each position.requiredEndorsements ?? [] as endorsement (endorsement)}
+											<Chip variant="endorsement">
+												{credentialName(data.credentials, endorsement)}
+											</Chip>
+										{/each}
 									</div>
-								</td>
-
-								<!-- Assignment -->
-								<td class="px-6 py-4">
-									<form
-										method="POST"
-										action="?/updateAssignment"
-										use:enhance={() => {
-											return async ({ result, update }) => {
-												if (result.type === 'success') {
-													await update({ reset: false });
-												}
-											};
+								{:else}
+									<Text as="span" size="small">None</Text>
+								{/if}
+							</td>
+							<td>
+								<form
+									method="POST"
+									action="?/updateAssignment"
+									use:enhance={() =>
+										async ({ result, update }) => {
+											if (result.type === 'success') await update({ reset: false });
 										}}
-										class="block"
-									>
-										<input type="hidden" name="positionId" value={position.position} />
-										<ControllerPicker
-											name="userId"
-											{users}
-											value={position.userId}
-											onselect={(form) => form?.requestSubmit()}
-										/>
-									</form>
-								</td>
-
-								<!-- Actions -->
-								<td class="px-6 py-4 text-right">
-									<form
-										method="POST"
-										action="?/removePosition"
-										use:enhance={({ formData }) => {
-											const positionToRemove = formData.get('position') as string;
-
-											return async ({ result, update }) => {
-												if (result.type === 'success') {
-													// Manually remove from local state
-													eventPositions = eventPositions.filter(
-														(p) => p.position !== positionToRemove
-													);
-													await update();
-												}
-											};
-										}}
-										class="inline"
-									>
-										<input type="hidden" name="position" value={position.position} />
-										<button
-											type="submit"
-											class="inline-flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20"
-										>
-											<IconClose class="h-4 w-4" />
-											Remove
-										</button>
-									</form>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+								>
+									<input type="hidden" name="positionId" value={position.position} />
+									<ControllerPicker
+										name="userId"
+										{users}
+										value={position.userId}
+										onselect={(form) => form?.requestSubmit()}
+									/>
+								</form>
+							</td>
+							<td class="text-right">
+								<form
+									method="POST"
+									action="?/removePosition"
+									use:enhance={({ formData }) => {
+										const positionToRemove = formData.get('position') as string;
+										return async ({ result, update }) => {
+											if (result.type === 'success') {
+												// Taken off the list at once, before the page reloads its data
+												eventPositions = eventPositions.filter(
+													(p) => p.position !== positionToRemove
+												);
+												await update();
+											}
+										};
+									}}
+								>
+									<input type="hidden" name="position" value={position.position} />
+									<Button type="submit" variant="danger" size="sm">
+										<Icon path={mdiClose} />
+										Remove
+									</Button>
+								</form>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</Table>
 		{:else}
-			<div class="p-12 text-center">
-				<div class="mb-4 flex justify-center">
-					<div class="rounded-full bg-slate-700/50 p-4">
-						<IconAccountGroup class="h-8 w-8 text-slate-400" />
-					</div>
-				</div>
-				<h3 class="mb-2 text-lg font-medium text-white">No positions configured</h3>
-				<p class="mb-6 text-slate-400">
-					Add positions to this event to get started with controller assignments.
-				</p>
-				<button
-					onclick={() => modal?.open()}
-					class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700"
-				>
-					<IconPlus class="h-4 w-4" />
-					Add Positions
-				</button>
-			</div>
+			<EmptyState title="No positions yet" level={3}>
+				{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
+				Add positions to this event to start assigning controllers.
+				{#snippet action()}
+					<Button onclick={() => (addOpen = true)}>
+						<Icon path={mdiPlus} />
+						Add positions
+					</Button>
+				{/snippet}
+			</EmptyState>
 		{/if}
 	{/key}
 </Panel>
 
-<!-- Enhanced Add Positions Modal -->
-<Modal title="Add Positions" bind:this={modal}>
-	<div class="flex h-[70vh] max-h-[600px] w-[90vw] max-w-[1000px]">
-		<!-- Facility Sidebar -->
-		<div
-			class="flex w-1/2 flex-col {selectedFacility
-				? 'border-r border-slate-600'
-				: ''} bg-slate-800/60"
-		>
-			<div class="flex-1 overflow-y-auto p-6">
-				<h3 class="mb-6 text-sm font-semibold tracking-wider text-slate-300 uppercase">
-					Facilities
-				</h3>
-
-				<!-- Major Facilities Only -->
-				{#each getMajorFacilities() as facility}
-					<div class="mb-2">
-						<div
-							class="group flex items-start gap-2 rounded-lg p-3 transition-colors hover:bg-slate-600/50"
-						>
-							<button
-								class="min-w-0 flex-1 text-left"
-								onclick={() =>
-									(selectedFacility = selectedFacility === facility.id ? null : facility.id)}
-							>
-								<span class="break-words text-white {facility.isMainFacility ? 'font-medium' : ''}"
-									>{facility.name}</span
-								>
-								<div class="text-xs text-slate-400">
-									{getStarredPositions(facility, facility.isMainFacility).length} starred positions
-								</div>
-							</button>
-							<button
-								type="button"
-								class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
-								onclick={(e) => {
-									e.stopPropagation();
-									addAllStarredPositions(facility, facility.isMainFacility);
-								}}
-							>
-								<IconPlus class="h-4 w-4" />
-							</button>
-						</div>
-					</div>
-				{/each}
-
-				{#if !selectedFacility}
-					<div class="mt-8 text-center">
-						<div class="mb-4 flex justify-center">
-							<div class="rounded-full bg-slate-700/50 p-4">
-								<IconAccountGroup class="h-8 w-8 text-slate-400" />
-							</div>
-						</div>
-						<p class="text-slate-400">Select a facility to view positions</p>
-					</div>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Position Grid -->
-		{#if selectedFacility}
-			<div class="flex w-1/2 flex-col bg-slate-700/50">
-				<div class="flex-1 overflow-y-auto p-6">
-					{#if true}
-						{@const facility = getMajorFacilities().find((f) => f.id === selectedFacility)}
-
-						{#if facility}
-							<h3 class="mb-4 text-lg font-semibold text-white">{facility.name}</h3>
-
-							{#each getPositionsGroupedByFacility(facility) as group}
-								{#if !facility.isMainFacility}
-									<div class="mb-4">
-										<div
-											class="mb-3 flex items-center justify-between border-b border-slate-600 pb-2"
-										>
-											<h4 class="text-sm font-medium tracking-wider text-slate-300 uppercase">
-												{group.facility.name}
-											</h4>
-											{#if group.positions.some((pos) => pos.starred)}
-												<button
-													type="button"
-													class="flex-shrink-0 rounded bg-sky-500/20 p-1.5 text-sky-300 transition-colors hover:bg-sky-500/30"
-													onclick={(e) => {
-														e.stopPropagation();
-														addStarredPositionsForFacility(group.facility);
-													}}
-													title="Add all starred positions from {group.facility.name}"
-												>
-													<IconPlus class="h-4 w-4" />
-												</button>
-											{/if}
-										</div>
-										<div class="grid gap-3">
-											{#each group.positions as position}
-												{@const positionId = getPositionId(position)}
-												<div
-													class="flex items-center justify-between rounded-lg border p-2.5 transition-all {selectedPositions.has(
-														positionId
-													)
-														? 'border-sky-500 bg-sky-500/10'
-														: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
-												>
-													<div class="flex min-w-0 flex-1 items-center gap-3">
-														<div class="min-w-0">
-															<div class="flex items-center gap-1.5">
-																<span class="font-mono text-sm font-semibold text-white"
-																	>{position.radioName}</span
-																>
-																{#if position.starred}
-																	<IconStar class="h-3 w-3 flex-shrink-0 text-yellow-400" />
-																{/if}
-															</div>
-															<div class="truncate text-xs text-slate-400">{position.name}</div>
-														</div>
-													</div>
-													<button
-														type="button"
-														class="flex-shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors {selectedPositions.has(
-															positionId
-														)
-															? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
-															: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
-														onclick={() => togglePosition(positionId)}
-													>
-														{selectedPositions.has(positionId) ? '−' : '+'}
-													</button>
-												</div>
-											{/each}
-										</div>
-									</div>
-								{:else}
-									<div class="grid gap-3">
-										{#each group.positions as position}
-											{@const positionId = getPositionId(position)}
-											<div
-												class="flex items-center justify-between rounded-lg border p-2.5 transition-all {selectedPositions.has(
-													positionId
-												)
-													? 'border-sky-500 bg-sky-500/10'
-													: 'border-slate-600 bg-slate-700/30 hover:bg-slate-700/50'}"
-											>
-												<div class="flex min-w-0 flex-1 items-center gap-3">
-													<div class="min-w-0">
-														<div class="flex items-center gap-1.5">
-															<span class="font-mono text-sm font-semibold text-white"
-																>{position.radioName}</span
-															>
-															{#if position.starred}
-																<IconStar class="h-3 w-3 flex-shrink-0 text-yellow-400" />
-															{/if}
-														</div>
-														<div class="truncate text-xs text-slate-400">{position.name}</div>
-													</div>
-												</div>
-												<button
-													type="button"
-													class="flex-shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors {selectedPositions.has(
-														positionId
-													)
-														? 'border border-red-500/30 bg-red-500/20 text-red-300 hover:bg-red-500/30'
-														: 'border border-sky-500/30 bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'}"
-													onclick={() => togglePosition(positionId)}
-												>
-													{selectedPositions.has(positionId) ? '−' : '+'}
-												</button>
-											</div>
-										{/each}
-									</div>
-								{/if}
-							{/each}
-						{/if}
-					{/if}
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Modal Footer -->
-	<div
-		class="flex items-center justify-between border-t border-slate-600 bg-slate-800/80 px-6 py-4"
+{#snippet positionChoice(position: any)}
+	{@const positionId = getPositionId(position)}
+	<Checkbox
+		label="{position.radioName} · {position.name}"
+		checked={selectedPositions.has(positionId)}
+		onchange={() => togglePosition(positionId)}
 	>
-		<div class="text-sm text-slate-400">
-			{selectedPositions.size} position{selectedPositions.size !== 1 ? 's' : ''} selected
+		{#if position.starred}
+			<span class="inline-flex items-center gap-1">
+				<Icon path={mdiStar} />
+				Starred
+			</span>
+		{/if}
+	</Checkbox>
+{/snippet}
+
+<Modal title="Add positions" size="lg" bind:open={addOpen}>
+	{@const facilities = getMajorFacilities()}
+	{@const facility = facilities.find((f) => f.id === selectedFacility)}
+	<div class="flex flex-col gap-4">
+		<div class="flex flex-wrap items-end gap-2">
+			<Field label="Facility" class="min-w-0 flex-1">
+				{#snippet children(control)}
+					<Select {...control} bind:value={selectedFacility}>
+						{#each facilities as option (option.id)}
+							<option value={option.id}>
+								{option.name} ({getStarredPositions(option, option.isMainFacility).length} starred)
+							</option>
+						{/each}
+					</Select>
+				{/snippet}
+			</Field>
+			{#if facility}
+				<Button
+					variant="secondary"
+					onclick={() => addAllStarredPositions(facility, facility.isMainFacility)}
+					disabled={getStarredPositions(facility, facility.isMainFacility).length === 0}
+				>
+					<Icon path={mdiStar} />
+					Choose all starred
+				</Button>
+			{/if}
 		</div>
-		<button
-			type="button"
-			onclick={addSelectedPositions}
-			class="rounded-lg px-4 py-2 text-sm font-medium transition-colors {selectedPositions.size ===
-			0
-				? 'cursor-not-allowed bg-slate-600 text-slate-400'
-				: 'bg-sky-600 text-white hover:bg-sky-700'}"
-			disabled={selectedPositions.size === 0}
-		>
-			Add {selectedPositions.size} Position{selectedPositions.size !== 1 ? 's' : ''}
-		</button>
+
+		<div class="max-h-[50vh] overflow-y-auto">
+			{#if facility}
+				{@const groups = getPositionsGroupedByFacility(facility)}
+				{#each groups as group (group.facility.id)}
+					<section class="mb-4 last:mb-0">
+						{#if !facility.isMainFacility}
+							<div class="mb-2 flex items-center justify-between gap-2 border-b border-border pb-2">
+								<Heading level={3} look="label">{group.facility.name}</Heading>
+								{#if group.positions.some((pos) => pos.starred)}
+									<Button
+										variant="secondary"
+										size="sm"
+										onclick={() => addStarredPositionsForFacility(group.facility)}
+									>
+										Choose starred
+									</Button>
+								{/if}
+							</div>
+						{/if}
+						<div class="flex flex-col gap-2">
+							{#each group.positions as position (getPositionId(position))}
+								{@render positionChoice(position)}
+							{/each}
+						</div>
+					</section>
+				{:else}
+					<EmptyState size="inline">Every position here is already on the event.</EmptyState>
+				{/each}
+			{:else}
+				<EmptyState size="inline">Choose a facility to see its positions.</EmptyState>
+			{/if}
+		</div>
 	</div>
 
 	<form
@@ -693,10 +522,9 @@
 		action="?/addPosition"
 		use:enhance={({ formData }) => {
 			const newPositions = formData.getAll('position') as string[];
-
 			return async ({ result, update }) => {
 				if (result.type === 'success') {
-					// Manually add new positions to local state
+					// Shown at once, before the page reloads its data
 					const positionsToAdd = newPositions.map((position) => ({
 						position,
 						eventId: event.id,
@@ -707,7 +535,6 @@
 						createdAt: new Date(),
 						updatedAt: new Date()
 					}));
-
 					eventPositions = [...eventPositions, ...positionsToAdd];
 					await update();
 				}
@@ -715,4 +542,15 @@
 		}}
 		class="hidden"
 	></form>
+
+	{#snippet actions()}
+		<Text as="span" size="small" class="mr-auto self-center">
+			{selectedPositions.size} chosen
+		</Text>
+		<Button variant="secondary" onclick={() => (addOpen = false)}>Cancel</Button>
+		<Button onclick={addSelectedPositions} disabled={selectedPositions.size === 0}>
+			Add {selectedPositions.size}
+			{selectedPositions.size === 1 ? 'position' : 'positions'}
+		</Button>
+	{/snippet}
 </Modal>

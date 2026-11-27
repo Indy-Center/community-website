@@ -1,5 +1,6 @@
 <script lang="ts">
-	import IconCalendarEvent from '~icons/mdi/calendar-star';
+	import { Icon } from '@indy-center/centerline-svelte';
+	import { mdiCalendarStar } from '@mdi/js';
 
 	interface Props {
 		src: string | null | undefined;
@@ -41,8 +42,8 @@
 
 {#if showFallback}
 	<!-- Fallback content -->
-	<div class="flex items-center justify-center {fallbackClass} {className}">
-		<IconCalendarEvent class="h-8 w-8 text-slate-500" />
+	<div class="flex items-center justify-center bg-muted {fallbackClass} {className}">
+		<Icon path={mdiCalendarStar} size={32} class="text-muted-foreground" />
 	</div>
 {:else}
 	<!-- Actual image -->

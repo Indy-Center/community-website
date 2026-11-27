@@ -2,12 +2,18 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import ControllerSearch from './ControllerSearch.svelte';
-
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
+	import {
+		Alert,
+		Button,
+		Field,
+		Input,
+		StarRating,
+		Textarea
+	} from '@indy-center/centerline-svelte';
+	import ControllerSearch from './ControllerSearch.svelte';
 	import type { feedbackSchema } from '$lib/forms/feedback';
 	import type { PickableShownMember } from '$lib/members';
-	import StarRating from './StarRating.svelte';
 
 	const {
 		data,
@@ -19,6 +25,9 @@
 
 	const { form, errors, enhance, constraints, message } = superForm(data);
 
+	// The stars, one to five, stand for the stored ratings in order
+	const RATINGS = ['poor', 'fair', 'good', 'very_good', 'excellent'] as const;
+
 	// Keep the URL in sync as /feedback/<cid> so the link for the selected controller can be copied
 	$effect(() => {
 		const cid = controllers.find((c) => c.id === $form.controllerId)?.cid;
@@ -28,119 +37,92 @@
 	});
 </script>
 
-<form method="POST" use:enhance class="w-full max-w-5xl">
+<form method="POST" use:enhance class="flex flex-col gap-6">
 	{#if $message}
-		<div
-			class="mb-8 rounded-lg border border-green-400/30 bg-green-400/10 px-6 py-4 backdrop-blur-sm"
-		>
-			<div class="flex items-center gap-3">
-				<div class="rounded-full bg-green-400/20 p-1">
-					<svg class="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"
-						></path>
-					</svg>
-				</div>
-				<p class="font-medium text-green-300">{$message}</p>
-			</div>
-		</div>
+		<Alert level="success">{$message}</Alert>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-		<!-- Main Form Fields -->
-		<div class="space-y-6 lg:col-span-2">
-			<!-- Controller Selection -->
-			<div>
-				<label for="controllerId" class="mb-2 block text-sm font-medium text-gray-300"
-					>Controller {#if $errors.controllerId}<span class="text-red-400"
-							>- {$errors.controllerId}</span
-						>{/if}</label
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+		<div class="flex flex-col gap-6 lg:col-span-2">
+			<Field
+				label="Controller"
+				hint="Name, operating initials or CID."
+				error={$errors.controllerId?.[0]}
+				required
+			>
+				{#snippet children(control)}
+					<ControllerSearch
+						{...control}
+						name="controllerId"
+						users={controllers}
+						bind:value={$form.controllerId}
+					/>
+				{/snippet}
+			</Field>
+
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+				<Field
+					label="Position"
+					hint="Such as CMH_LCE or Indy Center."
+					error={$errors.position?.[0]}
+					required
 				>
-				<ControllerSearch
-					name="controllerId"
-					users={controllers}
-					bind:value={$form.controllerId}
-					invalid={!!$errors.controllerId}
-				/>
+					{#snippet children(control)}
+						<Input
+							{...control}
+							name="position"
+							bind:value={$form.position}
+							{...$constraints.position}
+						/>
+					{/snippet}
+				</Field>
+				<Field label="Your callsign" hint="Such as AAL123." error={$errors.callsign?.[0]}>
+					{#snippet children(control)}
+						<Input
+							{...control}
+							name="callsign"
+							bind:value={$form.callsign}
+							{...$constraints.callsign}
+						/>
+					{/snippet}
+				</Field>
 			</div>
 
-			<!-- Position and Callsign -->
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				<div>
-					<label for="position" class="mb-2 block text-sm font-medium text-gray-300"
-						>Position {#if $errors.position}<span class="text-red-400">- {$errors.position}</span
-							>{/if}</label
-					>
-					<input
-						type="text"
-						name="position"
-						bind:value={$form.position}
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-						placeholder="e.g., CMH_LCE or Indy Center"
-						aria-invalid={$errors.position ? 'true' : undefined}
-						{...$constraints.position}
-					/>
-				</div>
-				<div>
-					<label for="callsign" class="mb-2 block text-sm font-medium text-gray-300"
-						>Your Callsign <span class="text-gray-500">(optional)</span>
-						{#if $errors.callsign}<span class="text-red-400">- {$errors.callsign}</span>{/if}</label
-					>
-					<input
-						type="text"
-						name="callsign"
-						bind:value={$form.callsign}
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-						placeholder="e.g., AAL123"
-						aria-invalid={$errors.callsign ? 'true' : undefined}
-						{...$constraints.callsign}
-					/>
-				</div>
-			</div>
-
-			<!-- Rating -->
-			<div>
-				<label for="rating" class="mb-2 block text-sm font-medium text-gray-300"
-					>Overall Rating {#if $errors.rating}<span class="text-red-400">- {$errors.rating}</span
-						>{/if}</label
-				>
-				<StarRating
-					name="rating"
-					bind:value={$form.rating}
-					invalid={!!$errors.rating}
-					required={$constraints.rating?.required}
-				/>
-			</div>
+			<!-- Sends the stars as "ratingStars"; the hidden input sends the stored rating -->
+			<StarRating
+				legend="Overall rating"
+				name="ratingStars"
+				required
+				error={$errors.rating?.[0]}
+				bind:value={
+					() => {
+						const index = RATINGS.indexOf($form.rating as (typeof RATINGS)[number]);
+						return index >= 0 ? index + 1 : undefined;
+					},
+					(stars) => ($form.rating = stars ? RATINGS[stars - 1] : ('' as 'poor'))
+				}
+			/>
+			<input type="hidden" name="rating" value={$form.rating} />
 		</div>
 
-		<!-- Comments Section -->
-		<div class="space-y-4">
-			<div>
-				<label for="feedback" class="mb-2 block text-sm font-medium text-gray-300"
-					>Comments <span class="text-gray-500">(optional)</span>
-					{#if $errors.feedback}<span class="text-red-400">- {$errors.feedback}</span>{/if}</label
-				>
-				<textarea
+		<Field
+			label="Comments"
+			hint="What did they do well? Anything they could do better?"
+			error={$errors.feedback?.[0]}
+		>
+			{#snippet children(control)}
+				<Textarea
+					{...control}
 					name="feedback"
+					rows={10}
 					bind:value={$form.feedback}
-					rows="12"
-					class="w-full resize-none rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-					placeholder="Share your experience with this controller...
-
-What did they do well? Any suggestions for improvement?"
-					aria-invalid={$errors.feedback ? 'true' : undefined}
 					{...$constraints.feedback}
-				></textarea>
-			</div>
-		</div>
+				/>
+			{/snippet}
+		</Field>
 	</div>
 
-	<!-- Submit Button - Outside grid to flow naturally on mobile -->
-	<div class="mt-8 border-t border-slate-600 pt-6">
-		<button
-			type="submit"
-			class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-8 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none sm:w-auto"
-		>
-			Submit Feedback
-		</button>
+	<div class="border-t border-border pt-6">
+		<Button type="submit">Send feedback</Button>
 	</div>
 </form>

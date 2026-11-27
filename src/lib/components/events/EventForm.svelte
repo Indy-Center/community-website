@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
-
 	import type { SuperValidated, Infer } from 'sveltekit-superforms';
+	import {
+		Alert,
+		Button,
+		DateTimeInput,
+		Field,
+		Input,
+		Select,
+		Textarea
+	} from '@indy-center/centerline-svelte';
 	import type { EventSchema } from '$lib/forms/events';
 	import {
 		EVENT_ROSTER_TYPES,
@@ -11,12 +19,22 @@
 		LONG_EVENT_HOURS,
 		longEventHours
 	} from '$lib/config/events';
-	import { Alert } from '@indy-center/centerline-svelte';
-	import DateTimeInput from '$lib/components/forms/DateTimeInput.svelte';
 
 	const { data }: { data: SuperValidated<Infer<EventSchema>> } = $props();
 
 	const { form, errors, enhance, constraints } = superForm(data);
+
+	// DateTimeInput takes and sends UTC ISO strings; the form keeps Dates for the long-event check
+	const toIso = (value: unknown) => {
+		const date = value ? new Date(value as string | Date) : null;
+		return date && !isNaN(date.getTime()) ? date.toISOString() : undefined;
+	};
+	let start = $state(toIso($form.startTime));
+	let end = $state(toIso($form.endTime));
+	$effect(() => {
+		if (start) $form.startTime = new Date(start);
+		if (end) $form.endTime = new Date(end);
+	});
 
 	// A warning, not an error: a long event is allowed, but often a mistyped date
 	const longHours = $derived(longEventHours($form.startTime, $form.endTime));
@@ -35,131 +53,77 @@
 	});
 </script>
 
-<form method="POST" use:enhance>
-	<div class="space-y-6">
-		<!-- Basic Event Information -->
-		<div class="space-y-4">
-			<h2 class="text-lg font-semibold text-white">Event Details</h2>
+<form method="POST" use:enhance class="flex flex-col gap-6">
+	<Field label="Event name" error={$errors.name?.[0]} required>
+		{#snippet children(control)}
+			<Input {...control} name="name" bind:value={$form.name} {...$constraints.name} />
+		{/snippet}
+	</Field>
 
-			<div class="space-y-6">
-				<!-- Event Name -->
-				<div>
-					<label for="name" class="mb-2 block text-sm font-medium text-gray-300"
-						>Event Name {#if $errors.name}<span class="text-red-400">- {$errors.name}</span
-							>{/if}</label
-					>
-					<input
-						type="text"
-						name="name"
-						bind:value={$form.name}
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-						placeholder="Enter event name"
-						aria-invalid={$errors.name ? 'true' : undefined}
-						{...$constraints.name}
-					/>
-				</div>
+	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+		<Field label="Start" hint="In your time zone." error={$errors.startTime?.[0]} required>
+			{#snippet children(control)}
+				<DateTimeInput {...control} name="startTime" bind:value={start} />
+			{/snippet}
+		</Field>
+		<Field label="End" hint="In your time zone." error={$errors.endTime?.[0]} required>
+			{#snippet children(control)}
+				<DateTimeInput {...control} name="endTime" bind:value={end} min={start} />
+			{/snippet}
+		</Field>
+	</div>
 
-				<!-- Event Times -->
-				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-					<DateTimeInput {form} {errors} {constraints} fieldName="startTime" label="Start Time" />
-					<DateTimeInput {form} {errors} {constraints} fieldName="endTime" label="End Time" />
-				</div>
+	{#if longHours}
+		<Alert level="caution" title="This event runs {longHours} hours">
+			That's more than {LONG_EVENT_HOURS} hours. Check the start and end times before saving.
+		</Alert>
+	{/if}
 
-				{#if longHours}
-					<Alert level="caution" title="This event runs {longHours} hours">
-						That's more than {LONG_EVENT_HOURS} hours. Check the start and end times before saving.
-					</Alert>
-				{/if}
+	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+		<Field label="Event type" error={$errors.type?.[0]} required>
+			{#snippet children(control)}
+				<Select {...control} name="type" bind:value={$form.type}>
+					{#each EVENT_TYPES as type (type.key)}
+						<option value={type.key}>{type.label}</option>
+					{/each}
+				</Select>
+			{/snippet}
+		</Field>
+		<Field label="Roster type" error={$errors.rosterType?.[0]} required>
+			{#snippet children(control)}
+				<Select {...control} name="rosterType" bind:value={$form.rosterType}>
+					{#each eventTypeConfig?.allowedRosterTypes as rosterType (rosterType)}
+						{@const rosterTypeConfig = EVENT_ROSTER_TYPES.find((type) => type.key === rosterType)}
+						<option value={rosterTypeConfig?.key}>{rosterTypeConfig?.label}</option>
+					{/each}
+				</Select>
+			{/snippet}
+		</Field>
+	</div>
 
-				<!-- Event Classification -->
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<div>
-						<label for="type" class="mb-2 block text-sm font-medium text-gray-300"
-							>Event Type {#if $errors.type}<span class="text-red-400">- {$errors.type}</span
-								>{/if}</label
-						>
-						<select
-							name="type"
-							bind:value={$form.type}
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-							aria-invalid={$errors.type ? 'true' : undefined}
-							{...$constraints.type}
-						>
-							{#each EVENT_TYPES as type}
-								<option value={type.key}>{type.label}</option>
-							{/each}
-						</select>
-					</div>
+	<Field label="Description" error={$errors.description?.[0]} required>
+		{#snippet children(control)}
+			<Textarea
+				{...control}
+				name="description"
+				rows={6}
+				bind:value={$form.description}
+				{...$constraints.description}
+			/>
+		{/snippet}
+	</Field>
 
-					<div>
-						<label for="rosterType" class="mb-2 block text-sm font-medium text-gray-300"
-							>Roster Type {#if $errors.rosterType}<span class="text-red-400"
-									>- {$errors.rosterType}</span
-								>{/if}</label
-						>
-						<select
-							name="rosterType"
-							bind:value={$form.rosterType}
-							class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-							aria-invalid={$errors.rosterType ? 'true' : undefined}
-							{...$constraints.rosterType}
-						>
-							{#each eventTypeConfig?.allowedRosterTypes as rosterType}
-								{@const rosterTypeConfig = EVENT_ROSTER_TYPES.find(
-									(type) => type.key === rosterType
-								)}
-								<option value={rosterTypeConfig?.key}>{rosterTypeConfig?.label}</option>
-							{/each}
-						</select>
-					</div>
-				</div>
+	<Field
+		label="Banner image address"
+		hint="A link to the image, starting https://."
+		error={$errors.bannerUrl?.[0]}
+	>
+		{#snippet children(control)}
+			<Input {...control} type="url" name="bannerUrl" bind:value={$form.bannerUrl} />
+		{/snippet}
+	</Field>
 
-				<!-- Description -->
-				<div>
-					<label for="description" class="mb-2 block text-sm font-medium text-gray-300"
-						>Description {#if $errors.description}<span class="text-red-400"
-								>- {$errors.description}</span
-							>{/if}</label
-					>
-					<textarea
-						name="description"
-						bind:value={$form.description}
-						rows="4"
-						class="w-full resize-none rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-						placeholder="Describe your event..."
-						aria-invalid={$errors.description ? 'true' : undefined}
-						{...$constraints.description}
-					></textarea>
-				</div>
-
-				<!-- Banner URL -->
-				<div>
-					<label for="bannerUrl" class="mb-2 block text-sm font-medium text-gray-300"
-						>Banner URL <span class="text-gray-500">(optional)</span>
-						{#if $errors.bannerUrl}<span class="text-red-400">- {$errors.bannerUrl}</span
-							>{/if}</label
-					>
-					<input
-						type="url"
-						name="bannerUrl"
-						bind:value={$form.bannerUrl}
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-gray-400 transition-colors focus:border-sky-500 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-						placeholder="https://example.com/banner.jpg"
-						aria-invalid={$errors.bannerUrl ? 'true' : undefined}
-						{...$constraints.bannerUrl}
-					/>
-				</div>
-			</div>
-		</div>
-
-		<!-- Submit Button -->
-		<div class="flex justify-end border-t border-slate-600 pt-6">
-			<button
-				type="submit"
-				class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-3 text-sm font-medium text-white shadow-lg transition-all hover:bg-sky-700 hover:shadow-xl focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
-			>
-				Save Event
-			</button>
-		</div>
+	<div class="flex justify-end border-t border-border pt-6">
+		<Button type="submit">Save event</Button>
 	</div>
 </form>

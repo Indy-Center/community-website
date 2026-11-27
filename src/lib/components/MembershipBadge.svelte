@@ -1,35 +1,23 @@
 <script lang="ts">
-	import IconBasicMembership from '~icons/mdi/account-group';
-	import IconCommunityMembership from '~icons/mdi/hand-heart-outline';
-	import IconControllerMembership from '~icons/mdi/transmission-tower';
-	import Badge from './Badge.svelte';
+	import { Badge, Icon, type BadgeVariant } from '@indy-center/centerline-svelte';
+	import { mdiAccountGroup, mdiHandHeartOutline, mdiTransmissionTower } from '@mdi/js';
 
 	let {
 		membership,
 		size = 'md'
 	}: { membership: 'basic' | 'community' | 'controller'; size?: 'sm' | 'md' } = $props();
 
-	const MEMBERSHIP_MAP = {
-		basic: {
-			icon: IconBasicMembership,
-			color: 'sky'
-		},
-		community: {
-			icon: IconCommunityMembership,
-			color: 'purple'
-		},
-		controller: {
-			icon: IconControllerMembership,
-			color: 'green'
-		}
+	// Said in words as well as colour and icon
+	const STYLES: Record<string, { label: string; icon: string; variant: BadgeVariant }> = {
+		basic: { label: 'Member', icon: mdiAccountGroup, variant: 'sky' },
+		community: { label: 'Community member', icon: mdiHandHeartOutline, variant: 'purple' },
+		controller: { label: 'Controller', icon: mdiTransmissionTower, variant: 'green' }
 	};
+
+	const style = $derived(STYLES[membership] ?? STYLES.basic);
 </script>
 
-<Badge
-	{size}
-	icon={MEMBERSHIP_MAP[membership as keyof typeof MEMBERSHIP_MAP].icon}
-	color={MEMBERSHIP_MAP[membership as keyof typeof MEMBERSHIP_MAP].color as
-		| 'sky'
-		| 'purple'
-		| 'green'}
-/>
+<Badge variant={style.variant} {size}>
+	{#snippet icon()}<Icon path={style.icon} />{/snippet}
+	{style.label}
+</Badge>

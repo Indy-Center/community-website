@@ -1,81 +1,65 @@
 <script lang="ts">
-	import { format } from 'date-fns';
-	import { utc } from '@date-fns/utc';
-	import IconGlobe from '~icons/mdi/earth';
-	import IconClock from '~icons/mdi/clock-outline';
+	import { Badge, Card, Heading, Time } from '@indy-center/centerline-svelte';
 	import type { Event } from '$lib/db/schema/events';
+	import { supportsRosters } from '$lib/config/events';
 	import ImageWithFallback from '$lib/components/ui/ImageWithFallback.svelte';
+	import AddToCalendarDropdown from './AddToCalendarDropdown.svelte';
+	import EventTypeBadge from './EventTypeBadge.svelte';
+	import RosterTypeBadge from './RosterTypeBadge.svelte';
 
-	let { event }: { event: Event } = $props();
-
-	const startDate = event.startTime;
-	const endDate = event.endTime;
-	const startTimeUTC = format(utc(startDate), 'HH:mm');
-	const endTimeUTC = format(utc(endDate), 'HH:mm');
-	const startLocal = format(startDate, 'HH:mm');
-	const endLocal = format(endDate, 'HH:mm');
-	const localTimezone = format(startDate, 'zzz');
-	const eventDate = format(startDate, 'MMM d');
-	const eventYear = format(startDate, 'yyyy');
-	const currentYear = new Date().getFullYear().toString();
+	let {
+		event,
+		level = 3,
+		details = false
+	}: {
+		event: Event;
+		level?: 2 | 3 | 4;
+		/** Its type and roster badges, a Draft badge, and the add-to-calendar menu */
+		details?: boolean;
+	} = $props();
 </script>
 
-<a href={`/events/${event.id}`} class="group block h-full">
-	<article
-		class="flex h-full flex-col overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/40 backdrop-blur-sm transition-all duration-300 hover:border-sky-500/40 hover:shadow-lg hover:shadow-sky-500/10"
-	>
-		<!-- Event Banner -->
-		<div class="relative h-32 flex-shrink-0 overflow-hidden">
-			<ImageWithFallback
-				src={event.bannerUrl}
-				alt="{event.name} banner"
-				class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-				fallbackClass="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
-			/>
-			<div
-				class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"
-			></div>
-
-			<!-- Date Badge -->
-			<div class="absolute top-2 right-2">
-				<div
-					class="flex flex-col items-center rounded-md bg-slate-900/90 px-2 py-1.5 backdrop-blur-sm"
-				>
-					<span class="text-lg leading-none font-bold text-white">{eventDate.split(' ')[1]}</span>
-					<span class="text-[10px] leading-none font-medium text-sky-400 uppercase"
-						>{eventDate.split(' ')[0]}</span
-					>
-				</div>
-			</div>
-		</div>
-
-		<!-- Event Content -->
-		<div class="flex flex-1 flex-col p-3">
-			<h3
-				class="mb-1.5 line-clamp-2 text-base font-bold text-white transition-colors duration-300 group-hover:text-sky-300"
+<!-- The link is on the heading; it stretches over the card so the whole card can be clicked.
+     Controls on the card sit above it (relative z-10). -->
+<Card as="article" flush class="relative flex h-full flex-col overflow-hidden">
+	<ImageWithFallback
+		src={event.bannerUrl}
+		alt=""
+		class="h-32 w-full shrink-0 object-cover"
+		fallbackClass="h-32 w-full shrink-0"
+	/>
+	<div class="flex flex-1 flex-col p-4">
+		<Heading {level} look={4} class="line-clamp-2">
+			<a
+				href="/events/{event.id}"
+				class="after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:outline-2 focus-visible:after:outline-ring"
 			>
 				{event.name}
-			</h3>
-
-			{#if event.description}
-				<p class="mb-3 line-clamp-2 flex-1 text-xs leading-relaxed text-slate-400">
-					{event.description}
-				</p>
-			{/if}
-
-			<!-- Event Time -->
-			{#if event.startTime}
-				<div class="mt-auto space-y-0.5 border-t border-slate-700/60 pt-2">
-					<div class="flex items-center gap-1.5 text-[11px] text-slate-400">
-						<IconGlobe class="h-3 w-3" />
-						<span>{startTimeUTC} - {endTimeUTC} UTC</span>
-					</div>
-					<div class="flex items-center gap-1.5 text-xs font-medium text-sky-300">
-						<IconClock class="h-3 w-3" />
-						<span>{startLocal} - {endLocal} {localTimezone}</span>
-					</div>
+			</a>
+		</Heading>
+		{#if details}
+			<div class="mt-2 flex flex-wrap gap-1">
+				{#if !event.isPublished}
+					<Badge variant="yellow" size="sm" pill>Draft</Badge>
+				{/if}
+				<EventTypeBadge eventType={event.type} size="sm" />
+				{#if supportsRosters(event.type)}
+					<RosterTypeBadge rosterType={event.rosterType} size="sm" />
+				{/if}
+			</div>
+		{/if}
+		{#if event.description}
+			<p class="mt-2 line-clamp-2 flex-1 text-sm text-muted-foreground">{event.description}</p>
+		{/if}
+		<div
+			class="mt-3 flex items-end justify-between gap-2 border-t border-border pt-2 text-sm text-foreground-soft"
+		>
+			<Time value={event.startTime} end={event.endTime} show="datetime" zone="both" />
+			{#if details}
+				<div class="relative z-10 shrink-0">
+					<AddToCalendarDropdown {event} compact />
 				</div>
 			{/if}
 		</div>
-	</article>
-</a>
+	</div>
+</Card>

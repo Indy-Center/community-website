@@ -1,22 +1,50 @@
 <script lang="ts">
-	import Panel from '$lib/components/Panel.svelte';
-	import IconAccountGroup from '~icons/mdi/account-group';
-	import ControllerRow from './ControllerRow.svelte';
+	import {
+		EmptyState,
+		getPositions,
+		groupByPosition,
+		Icon,
+		OnlineController,
+		Panel
+	} from '@indy-center/centerline-svelte';
+	import { mdiAccountGroup } from '@mdi/js';
 	import type { VnasController } from '$lib/types/vnas';
 
 	let { controllers }: { controllers: VnasController[] } = $props();
+
+	const positions = getPositions();
+
+	// One row per position: a relief login joins the person on the position it covers
+	const groups = $derived(
+		groupByPosition(
+			controllers.map((controller) => ({
+				callsign: controller.vatsimData.callsign,
+				positionId: controller.primaryPositionId,
+				name: controller.vatsimData.realName,
+				cid: controller.vatsimData.cid,
+				loggedInAt: controller.loginTime,
+				info: controller.vatsimData.controllerInfo || null
+			})),
+			positions()
+		)
+	);
 </script>
 
-<Panel title="Controllers Online" icon={IconAccountGroup} overflow={controllers.length > 0}>
-	<div class="grid grid-cols-1 gap-1">
-		{#if controllers.length > 0}
-			{#each controllers as controller}
-				<ControllerRow {controller} />
+<Panel title="Controllers online" level={2} flush class="h-full">
+	{#snippet icon()}<Icon path={mdiAccountGroup} />{/snippet}
+	{#if groups.length > 0}
+		<ul class="divide-y divide-border">
+			{#each groups as group (group.callsign)}
+				<li class="px-4 py-2.5">
+					<OnlineController
+						callsign={group.callsign}
+						positionId={group.position?.id}
+						members={group.logins}
+					/>
+				</li>
 			{/each}
-		{:else}
-			<div class="py-2">
-				<span class="p-2 text-sm text-slate-400">No controllers online</span>
-			</div>
-		{/if}
-	</div>
+		</ul>
+	{:else}
+		<EmptyState size="inline" class="px-4 py-3">No controllers are online right now.</EmptyState>
+	{/if}
 </Panel>

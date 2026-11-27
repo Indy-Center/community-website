@@ -1,14 +1,22 @@
 <script lang="ts">
-	import IconWeatherWindy from '~icons/mdi/weather-windy';
-	import IconEye from '~icons/mdi/eye';
-	import IconThermometer from '~icons/mdi/thermometer';
-	import IconGauge from '~icons/mdi/gauge';
-	import IconCloud from '~icons/mdi/cloud';
-	import IconWeatherRainy from '~icons/mdi/weather-rainy';
-	import IconWeatherSnowy from '~icons/mdi/weather-snowy';
-	import IconWeatherFog from '~icons/mdi/weather-fog';
-	import IconChart from '~icons/mdi/chart-box-outline';
-	import IconInformation from '~icons/mdi/information-outline';
+	import {
+		Airport,
+		FlightCategory,
+		Icon,
+		type FlightCategoryCode
+	} from '@indy-center/centerline-svelte';
+	import {
+		mdiChartBoxOutline,
+		mdiCloud,
+		mdiEye,
+		mdiGauge,
+		mdiInformationOutline,
+		mdiThermometer,
+		mdiWeatherFog,
+		mdiWeatherRainy,
+		mdiWeatherSnowy,
+		mdiWeatherWindy
+	} from '@mdi/js';
 
 	type Props = {
 		id: string;
@@ -67,7 +75,7 @@
 		const ceiling = ceilingMatch ? parseInt(ceilingMatch[1]) * 100 : null;
 
 		// Weather phenomena parsing
-		const weatherPhenomena = [];
+		const weatherPhenomena: ('rain' | 'snow' | 'fog')[] = [];
 		if (metar.includes('RA') || metar.includes('-RA') || metar.includes('+RA')) {
 			weatherPhenomena.push('rain');
 		}
@@ -131,183 +139,99 @@
 			categories.indexOf(ceilingCategory),
 			categories.indexOf(visibilityCategory)
 		);
-		const finalCategory = categories[worstCategory];
-
-		// Return appropriate styling for each category
-		switch (finalCategory) {
-			case 'LIFR':
-				return {
-					category: 'LIFR',
-					color: 'text-purple-300',
-					bg: 'bg-purple-500/20 border-purple-500/30'
-				};
-			case 'IFR':
-				return { category: 'IFR', color: 'text-red-300', bg: 'bg-red-500/20 border-red-500/30' };
-			case 'MVFR':
-				return {
-					category: 'MVFR',
-					color: 'text-blue-300',
-					bg: 'bg-blue-500/20 border-blue-500/30'
-				};
-			case 'VFR':
-			default:
-				return {
-					category: 'VFR',
-					color: 'text-green-300',
-					bg: 'bg-green-500/20 border-green-500/30'
-				};
-		}
+		return categories[worstCategory] as FlightCategoryCode;
 	}
 
 	const parsed = $derived(parseMetar(metar));
-	const flightConditions = $derived(getFlightConditions(parsed.visibility, parsed.ceiling));
+	const category = $derived(getFlightConditions(parsed.visibility, parsed.ceiling));
+
+	const PHENOMENA = {
+		rain: { label: 'Rain', icon: mdiWeatherRainy },
+		snow: { label: 'Snow', icon: mdiWeatherSnowy },
+		fog: { label: 'Fog or mist', icon: mdiWeatherFog }
+	} as const;
 </script>
 
-<div
-	class="group flex flex-col gap-1.5 rounded-r-md border border-l-[3px] border-slate-700/50 px-2.5 py-2 shadow-sm transition-all hover:shadow-md {flightConditions.category ===
-	'VFR'
-		? 'border-l-green-500 bg-slate-800/60 hover:bg-slate-800/80'
-		: flightConditions.category === 'MVFR'
-			? 'border-l-blue-500 bg-slate-800/60 hover:bg-slate-800/80'
-			: flightConditions.category === 'IFR'
-				? 'border-l-red-500 bg-slate-800/60 hover:bg-slate-800/80'
-				: 'border-l-purple-500 bg-slate-800/60 hover:bg-slate-800/80'}"
->
-	<!-- Header: Airport code and flight category -->
-	<div class="flex items-center justify-between">
-		<div class="font-mono text-base font-semibold tracking-wide text-slate-100">
-			{id}
-		</div>
+<li class="flex flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2">
+	<div class="flex items-center justify-between gap-2">
+		<Airport airport={{ code: id }} class="font-semibold text-foreground" />
 		<div class="flex items-center gap-1">
 			<a
 				href="https://metar-taf.com/{id}"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-700/50 hover:text-sky-400"
-				title="View METAR/TAF for {id}"
+				aria-label="METAR and TAF for {id} (opens in a new tab)"
+				class="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
 			>
-				<IconInformation class="h-4 w-4" />
+				<Icon path={mdiInformationOutline} />
 			</a>
 			<a
 				href="https://tools.flyindycenter.com/charts?airport={id}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-700/50 hover:text-sky-400"
-				title="View charts for {id}"
+				aria-label="Charts for {id}"
+				class="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
 			>
-				<IconChart class="h-4 w-4" />
+				<Icon path={mdiChartBoxOutline} />
 			</a>
-			<div
-				class="rounded bg-slate-700/40 px-1.5 py-0.5 text-xs font-semibold {flightConditions.color}"
-			>
-				{flightConditions.category}
-			</div>
+			<FlightCategory {category} />
 		</div>
 	</div>
 
-	<!-- Main weather data grid -->
-	<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-		<!-- Wind -->
+	<dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-foreground-soft">
 		<div class="flex items-center gap-1">
-			<IconWeatherWindy class="h-3 w-3 flex-shrink-0 text-slate-400" />
-			{#if parsed.wind && !parsed.wind.calm}
-				<span class="text-slate-100">
-					{#if parsed.wind.variable}
-						<span class="text-yellow-400">VRB</span>
-					{:else}
-						<span class="text-slate-200">{parsed.wind.direction}°</span>
-					{/if}
-					<span class="text-slate-400">@</span>
-					<span class="text-sky-400">{parsed.wind.speed}</span>
-					{#if parsed.wind.gusts}
-						<span class="text-orange-400">G{parsed.wind.gusts}</span>
-					{/if}
-				</span>
-			{:else if parsed.wind?.calm}
-				<span class="text-slate-300">Calm</span>
-			{/if}
+			<dt><Icon path={mdiWeatherWindy} label="Wind" class="text-muted-foreground" /></dt>
+			<dd class="font-mono">
+				{#if parsed.wind?.calm}
+					Calm
+				{:else if parsed.wind}
+					{parsed.wind.variable ? 'VRB' : `${parsed.wind.direction}°`} @ {parsed.wind
+						.speed}{#if parsed.wind.gusts}&nbsp;G{parsed.wind.gusts}{/if}
+				{:else}
+					--
+				{/if}
+			</dd>
 		</div>
-
-		<!-- Altimeter -->
 		<div class="flex items-center gap-1">
-			<IconGauge class="h-3 w-3 flex-shrink-0 text-slate-400" />
-			<span class="text-slate-200">
-				{parsed.altimeter || '--'}"
-			</span>
+			<dt><Icon path={mdiGauge} label="Altimeter" class="text-muted-foreground" /></dt>
+			<dd class="font-mono">{parsed.altimeter ? `${parsed.altimeter}"` : '--'}</dd>
 		</div>
-
-		<!-- Temperature/Dewpoint -->
 		<div class="flex items-center gap-1">
-			<IconThermometer class="h-3 w-3 flex-shrink-0 text-slate-400" />
-			{#if parsed.temperature && parsed.dewpoint}
-				<span class="text-slate-100">
-					<span class="text-orange-300">{parsed.temperature}°</span>
-					<span class="text-slate-400">/</span>
-					<span class="text-cyan-300">{parsed.dewpoint}°</span>
-				</span>
-			{:else}
-				<span class="text-slate-400">--</span>
-			{/if}
+			<dt>
+				<Icon
+					path={mdiThermometer}
+					label="Temperature and dew point"
+					class="text-muted-foreground"
+				/>
+			</dt>
+			<dd class="font-mono">
+				{parsed.temperature && parsed.dewpoint
+					? `${parsed.temperature}° / ${parsed.dewpoint}°`
+					: '--'}
+			</dd>
 		</div>
-
-		<!-- Visibility -->
 		<div class="flex items-center gap-1">
-			<IconEye class="h-3 w-3 flex-shrink-0 text-slate-400" />
-			<span class="text-slate-200">
+			<dt><Icon path={mdiEye} label="Visibility" class="text-muted-foreground" /></dt>
+			<dd class="font-mono">
 				{parsed.visibility !== null
 					? (parsed.visibility >= 10 ? '10+' : parsed.visibility) + 'SM'
 					: '--'}
-			</span>
+			</dd>
 		</div>
-
-		<!-- Ceiling -->
 		<div class="col-span-2 flex items-center gap-1">
-			<IconCloud class="h-3 w-3 flex-shrink-0 text-slate-400" />
-			<span class="text-slate-200">
-				{parsed.ceiling !== null
-					? (parsed.ceiling >= 10000
-							? parsed.ceiling.toLocaleString()
-							: (parsed.ceiling / 100).toFixed(0) + (parsed.ceiling < 1000 ? '' : '00')) + 'ft'
-					: 'Unlimited'}
-			</span>
+			<dt><Icon path={mdiCloud} label="Ceiling" class="text-muted-foreground" /></dt>
+			<dd class="font-mono">
+				{parsed.ceiling !== null ? `${parsed.ceiling.toLocaleString()}ft` : 'Unlimited'}
+			</dd>
 		</div>
-	</div>
+	</dl>
 
-	<!-- Weather phenomena (only show if present) -->
 	{#if parsed.weatherPhenomena.length > 0}
-		<div class="flex items-center gap-1.5">
-			{#each parsed.weatherPhenomena as phenomenon}
-				<div class="group/icon relative">
-					{#if phenomenon === 'rain'}
-						<IconWeatherRainy
-							class="h-3.5 w-3.5 text-blue-400 transition-colors group-hover/icon:text-blue-300"
-						/>
-						<div
-							class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded bg-slate-900/95 px-2 py-1 text-xs whitespace-nowrap text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100"
-						>
-							Rain
-						</div>
-					{:else if phenomenon === 'snow'}
-						<IconWeatherSnowy
-							class="h-3.5 w-3.5 text-blue-200 transition-colors group-hover/icon:text-blue-100"
-						/>
-						<div
-							class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded bg-slate-900/95 px-2 py-1 text-xs whitespace-nowrap text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100"
-						>
-							Snow
-						</div>
-					{:else if phenomenon === 'fog'}
-						<IconWeatherFog
-							class="h-3.5 w-3.5 text-slate-400 transition-colors group-hover/icon:text-slate-300"
-						/>
-						<div
-							class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 rounded bg-slate-900/95 px-2 py-1 text-xs whitespace-nowrap text-slate-200 opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100"
-						>
-							Fog
-						</div>
-					{/if}
-				</div>
+		<ul class="flex flex-wrap items-center gap-3 text-xs text-foreground-soft">
+			{#each parsed.weatherPhenomena as phenomenon (phenomenon)}
+				<li class="flex items-center gap-1">
+					<Icon path={PHENOMENA[phenomenon].icon} class="text-muted-foreground" />
+					{PHENOMENA[phenomenon].label}
+				</li>
 			{/each}
-		</div>
+		</ul>
 	{/if}
-</div>
+</li>

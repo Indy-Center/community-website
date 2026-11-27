@@ -1,39 +1,25 @@
 <script lang="ts">
-	import Badge from '$lib/components/Badge.svelte';
-	import IconAccountGroup from '~icons/mdi/account-group';
-	import IconAccountOff from '~icons/mdi/account-off';
-	import IconAccountPlus from '~icons/mdi/account-plus';
+	import { Badge, Icon, type BadgeVariant } from '@indy-center/centerline-svelte';
+	import { mdiAccountGroup, mdiAccountOff, mdiAccountPlus } from '@mdi/js';
 
 	let { rosterType, size = 'md' }: { rosterType: string; size?: 'sm' | 'md' } = $props();
 
-	const config = $derived.by(() => {
-		switch (rosterType) {
-			case 'none':
-				return {
-					label: 'No Roster',
-					icon: IconAccountOff,
-					color: 'green' as const
-				};
-			case 'open':
-				return {
-					label: 'Open Roster',
-					icon: IconAccountPlus,
-					color: 'orange' as const
-				};
-			case 'assigned':
-				return {
-					label: 'Assigned Roster',
-					icon: IconAccountGroup,
-					color: 'red' as const
-				};
-			default:
-				return {
-					label: rosterType.charAt(0).toUpperCase() + rosterType.slice(1),
-					icon: IconAccountGroup,
-					color: 'purple' as const
-				};
+	const STYLES: Record<string, { label: string; icon: string; variant: BadgeVariant }> = {
+		none: { label: 'No roster', icon: mdiAccountOff, variant: 'green' },
+		open: { label: 'Open roster', icon: mdiAccountPlus, variant: 'orange' },
+		assigned: { label: 'Assigned roster', icon: mdiAccountGroup, variant: 'red' }
+	};
+
+	const style = $derived(
+		STYLES[rosterType] ?? {
+			label: rosterType.charAt(0).toUpperCase() + rosterType.slice(1),
+			icon: mdiAccountGroup,
+			variant: 'purple'
 		}
-	});
+	);
 </script>
 
-<Badge icon={config.icon} label={config.label} {size} color={config.color} />
+<Badge variant={style.variant} {size}>
+	{#snippet icon()}<Icon path={style.icon} />{/snippet}
+	{style.label}
+</Badge>

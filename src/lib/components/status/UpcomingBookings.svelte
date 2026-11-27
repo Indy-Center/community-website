@@ -1,10 +1,7 @@
 <script lang="ts">
-	import { format } from 'date-fns';
-	import { utc } from '@date-fns/utc';
-	import Panel from '$lib/components/Panel.svelte';
-	import { Position } from '@indy-center/centerline-svelte';
+	import { Icon, Link, Panel, Position, Time } from '@indy-center/centerline-svelte';
+	import { mdiCalendarClock } from '@mdi/js';
 	import { parseBookingTime, positionCount } from '$lib/utils/bookings';
-	import IconCalendarClock from '~icons/mdi/calendar-clock';
 
 	type Props = {
 		bookings: {
@@ -16,47 +13,32 @@
 	};
 
 	let { bookings }: Props = $props();
-
-	const zulu = (time: string) => format(utc(parseBookingTime(time)), 'HHmm') + 'z';
-
-	// "in 2h 15m" or "in 40m", counted from the minute the page was drawn
-	let now = $state(Date.now());
-	$effect(() => {
-		const timer = setInterval(() => (now = Date.now()), 30000);
-		return () => clearInterval(timer);
-	});
-
-	function until(time: string) {
-		const minutes = Math.max(0, Math.round((parseBookingTime(time).getTime() - now) / 60000));
-		return minutes >= 60 ? `in ${Math.floor(minutes / 60)}h ${minutes % 60}m` : `in ${minutes}m`;
-	}
 </script>
 
-<Panel title="Controllers Starting Soon" icon={IconCalendarClock}>
-	<ul class="divide-y divide-slate-700/60">
+<Panel title="Controllers starting soon" level={2} flush>
+	{#snippet icon()}<Icon path={mdiCalendarClock} />{/snippet}
+	<ul class="divide-y divide-border">
 		{#each bookings as booking (booking.group?.eventId ?? booking.callsign + booking.start)}
+			{@const start = parseBookingTime(booking.start)}
 			<li class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
 				{#if booking.group}
-					<span class="min-w-0 truncate font-semibold text-white" title={booking.group.name}>
+					<span class="min-w-0 truncate font-semibold text-foreground" title={booking.group.name}>
 						{booking.group.name}
-						<span class="font-normal text-slate-400">· {positionCount(booking.group.count)}</span>
+						<span class="font-normal text-muted-foreground">
+							· {positionCount(booking.group.count)}
+						</span>
 					</span>
 				{:else}
 					<Position class="min-w-0" callsign={booking.callsign} layout="inline" />
 				{/if}
 				<span class="shrink-0 text-right">
-					<span class="font-mono text-white">{zulu(booking.start)}</span>
-					<span class="ml-2 text-slate-400">{until(booking.start)}</span>
+					<Time value={start} zone="zulu" class="font-mono text-foreground" />
+					<Time value={start} show="relative" class="ml-2 text-muted-foreground" />
 				</span>
 			</li>
 		{/each}
 	</ul>
-	<div class="border-t border-slate-700/60 px-4 py-3">
-		<a
-			href="/bookings"
-			class="inline-flex items-center text-xs font-medium text-sky-400 transition-colors hover:text-sky-300"
-		>
-			View All Bookings →
-		</a>
+	<div class="border-t border-border px-4 py-3 text-sm">
+		<Link href="/bookings">All bookings</Link>
 	</div>
 </Panel>
