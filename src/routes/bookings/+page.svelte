@@ -29,7 +29,8 @@
 		groupEventBookings,
 		inZone,
 		notEnded,
-		parseBookingTime
+		parseBookingTime,
+		positionCount
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, BookingType, CmsPosition } from '$lib/types/bookings';
@@ -104,7 +105,7 @@
 		training: 'green'
 	};
 
-	// An event with many positions shows as one block, opened to list them
+	// Each event shows as one block, opened to list its positions
 	const displayBookings = $derived(groupEventBookings(data.bookings, data.eventNames));
 
 	// The list's days, without bookings that have ended (Week and Month still show them). Bookings
@@ -324,7 +325,7 @@
 												<span class="truncate font-semibold text-white">{booking.group.name}</span>
 												<Badge label="event" color="purple" size="sm" />
 												<span class="shrink-0 text-slate-400">
-													{booking.group.members.length} positions
+													{positionCount(booking.group.members.length)}
 												</span>
 											</span>
 											<Time
@@ -446,7 +447,7 @@
 	{#if openedGroup?.group}
 		<div class="max-h-[70vh] w-[480px] max-w-[90vw] overflow-y-auto p-2">
 			<p class="mb-3 text-sm text-slate-400">
-				{openedGroup.group.members.length} positions,
+				{positionCount(openedGroup.group.members.length)},
 				<Time
 					value={parseBookingTime(openedGroup.start)}
 					end={parseBookingTime(openedGroup.end)}

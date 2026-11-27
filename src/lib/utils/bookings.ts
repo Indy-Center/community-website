@@ -32,8 +32,9 @@ export function eventIdOf(externalId: string | null | undefined) {
 	return /^ev_(.+)_[0-9a-f]{16}$/.exec(externalId ?? '')?.[1] ?? null;
 }
 
-// An event with this many bookings or more shows as one block instead of one per position
-export const EVENT_GROUP_MIN = 4;
+// "1 position", "6 positions": an event block's size
+export const positionCount = (count: number) =>
+	`${count} ${count === 1 ? 'position' : 'positions'}`;
 
 type FacilityNode = {
 	childFacilities: FacilityNode[];
@@ -267,14 +268,10 @@ export function positionRank(callsign: string) {
 export const comparePositions = (a: string, b: string) =>
 	positionRank(a) - positionRank(b) || a.localeCompare(b);
 
-// Folds each event's bookings into one stand-in booking once there are `min` or more of them, so
-// an event with twenty positions is one block, not twenty. Everything else is left as it was.
-// `eventNames` is by event ID; an event we have no name for is called "Event".
-export function groupEventBookings(
-	bookings: AtcBooking[],
-	eventNames: Record<string, string>,
-	min = EVENT_GROUP_MIN
-) {
+// Folds each event's bookings into one stand-in booking, however many there are, so every event
+// looks the same and one with twenty positions is one block, not twenty. Everything else is left
+// as it was. `eventNames` is by event ID; an event we have no name for is called "Event".
+export function groupEventBookings(bookings: AtcBooking[], eventNames: Record<string, string>) {
 	const byEvent = new Map<string, AtcBooking[]>();
 	for (const booking of bookings) {
 		const eventId = eventIdOf(booking.externalId);
@@ -282,29 +279,27 @@ export function groupEventBookings(
 	}
 
 	const grouped = new Set<AtcBooking>();
-	const stands = [...byEvent]
-		.filter(([, members]) => members.length >= min)
-		.map(([eventId, members]): AtcBooking => {
-			members.forEach((member) => grouped.add(member));
-			const sorted = sortBookings(members);
-			// The panel lists them in roster order
-			const roster = [...members].sort((a, b) => comparePositions(a.callsign, b.callsign));
+	const stands = [...byEvent].map(([eventId, members]): AtcBooking => {
+		members.forEach((member) => grouped.add(member));
+		const sorted = sortBookings(members);
+		// The panel lists them in roster order
+		const roster = [...members].sort((a, b) => comparePositions(a.callsign, b.callsign));
 
-			return {
-				id: -1,
-				externalId: `group:${eventId}`,
-				callsign: '',
-				cid: 0,
-				type: 'event',
-				start: sorted[0].start,
-				end:
-					members
-						.map((member) => member.end)
-						.sort()
-						.at(-1) ?? sorted[0].end,
-				group: { eventId, name: eventNames[eventId] ?? 'Event', members: roster }
-			};
-		});
+		return {
+			id: -1,
+			externalId: `group:${eventId}`,
+			callsign: '',
+			cid: 0,
+			type: 'event',
+			start: sorted[0].start,
+			end:
+				members
+					.map((member) => member.end)
+					.sort()
+					.at(-1) ?? sorted[0].end,
+			group: { eventId, name: eventNames[eventId] ?? 'Event', members: roster }
+		};
+	});
 
 	return sortBookings([...bookings.filter((booking) => !grouped.has(booking)), ...stands]);
 }

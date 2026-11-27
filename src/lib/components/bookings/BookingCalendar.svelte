@@ -6,7 +6,8 @@
 		getCalendarWeek,
 		inZone,
 		layoutCalendarDay,
-		parseBookingTime
+		parseBookingTime,
+		positionCount
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
 	import type { AtcBooking, CmsPosition } from '$lib/types/bookings';
@@ -179,13 +180,13 @@
 						<!-- null stands for the booking's times, drawn by <Time> in the member's zone -->
 						{@const lines = (
 							group
-								? [`${group.members.length} positions`, null]
+								? [positionCount(group.members.length), null]
 								: compact
 									? [null, names[booking.cid] ?? String(booking.cid)]
 									: [names[booking.cid] ?? String(booking.cid), null]
 						).slice(0, fit)}
 						{@const title = group
-							? `${group.name} · ${group.members.length} positions · ${timeRange(booking)}`
+							? `${group.name} · ${positionCount(group.members.length)} · ${timeRange(booking)}`
 							: `${positionText(booking.callsign, positions())} · ${timeRange(booking)} · ${
 									names[booking.cid] ?? booking.cid
 								}${booking.type !== 'booking' ? ` · ${booking.type}` : ''}`}
