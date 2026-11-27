@@ -266,7 +266,7 @@
 		<EventDetailsPanel {event} />
 	</div>
 
-	<div class="grid grid-cols-1 gap-8 {hasRoster ? 'lg:grid-cols-2' : ''}">
+	<div class="grid grid-cols-1 items-start gap-8 {hasRoster ? 'lg:grid-cols-2' : ''}">
 		<Panel title="Event details" level={2}>
 			{#snippet icon()}<Icon path={mdiTextLong} />{/snippet}
 			<p class="whitespace-pre-line">{event.description}</p>
