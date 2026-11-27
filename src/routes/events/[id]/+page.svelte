@@ -289,10 +289,13 @@
 											<li
 												class="flex items-center justify-between gap-3 rounded-lg bg-muted px-4 py-3"
 											>
+												<!-- The radio name and sector, as the old page had them: members signing
+												     up don't need the short name or frequency here -->
 												<Position
 													class="min-w-0"
 													callsign={info?.defaultCallsign || info?.callsign || position.position}
 													positionId={position.position}
+													show={['radioName', 'name']}
 												/>
 												<div class="flex shrink-0 items-center gap-2">
 													{#if position.user}
