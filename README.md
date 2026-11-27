@@ -234,9 +234,13 @@ pings that role and nobody else. The manager is told who the ping missed.
 Larry's message IDs and the role's ID are kept in `event_briefings`. After that, every roster
 change (assigning, signing up, adding or removing a position) and every event edit queues an edit
 of the post (`enqueueEdit()`, which pings nobody) and re-syncs the role. If the roster outgrows
-the message, it moves into messages of its own. Deleting the event deletes its role and leaves the
-post. The code is in `src/lib/server/eventBriefing.ts`, and the message is built in
-`src/lib/utils/briefing.ts`.
+the message, it moves into messages of its own. The code is in `src/lib/server/eventBriefing.ts`,
+and the message is built in `src/lib/utils/briefing.ts`.
+
+Once an event ends, its post stays as it was: roster changes no longer edit it, and a briefing
+can't be sent. Events are never deleted, so the 5-minute cron deletes the role of every event
+that has ended (`src/lib/server/eventRoles.ts`). Deleting an event deletes its role straight away.
+The post always stays.
 
 Larry's deploy needs `controller-announcements:<channel ID>` in `SEND_CHANNELS`. The bot needs to
 post there and needs Manage Roles. It also needs the Server Members intent, or Larry can add people

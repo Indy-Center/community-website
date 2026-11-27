@@ -25,6 +25,15 @@ const binding = () => larry as unknown as LarryBinding;
 const send = (text = 'Expect heavy arrivals.', briefUrl: string | null = null) =>
 	sendBriefing(binding(), db, catalogue, EVENT_ID, { text, briefUrl }, ORIGIN);
 const refresh = () => refreshBriefing(binding(), db, async () => catalogue, EVENT_ID, ORIGIN);
+// Moves the event to start and end this many hours from now
+const setEventHours = (start: number, end: number) =>
+	db
+		.update(eventsTable)
+		.set({
+			startTime: new Date(Date.now() + start * 3600000),
+			endTime: new Date(Date.now() + end * 3600000)
+		})
+		.where(eq(eventsTable.id, EVENT_ID));
 const saved = () =>
 	db.query.eventBriefingsTable.findFirst({ where: eq(eventBriefingsTable.eventId, EVENT_ID) });
 
@@ -49,6 +58,8 @@ beforeEach(async () => {
 			{ position: 'crw-gnd', userId: null }
 		]
 	});
+	// Briefings are for events still to come
+	await setEventHours(48, 51);
 	larry = fakeLarry({
 		discordByCid: {
 			1000001: { id: '100000000000000001', source: 'linked', inServer: true },
@@ -143,6 +154,14 @@ describe('sendBriefing', () => {
 		expect(await saved()).toBeUndefined();
 	});
 
+	it('refuses an event that has ended, and makes no role', async () => {
+		await setEventHours(-5, -2);
+
+		expect(await send()).toMatchObject({ ok: false, status: 400 });
+		expect(larry.roleSyncs).toEqual([]);
+		expect(larry.sent).toEqual([]);
+	});
+
 	it("says so when there's no Larry", async () => {
 		const result = await sendBriefing(
 			undefined,
@@ -186,6 +205,20 @@ describe('refreshBriefing', () => {
 			allowedMentions: { parse: [] }
 		});
 		expect(larry.edited[0].content).toContain('LC - Vacant');
+	});
+
+	it('leaves the post and role alone once the event has ended', async () => {
+		await send();
+		await setEventHours(-5, -2);
+		await db
+			.update(eventPositionsTable)
+			.set({ userId: null })
+			.where(eq(eventPositionsTable.position, 'crw-twr'));
+
+		await refresh();
+
+		expect(larry.roleSyncs).toHaveLength(1);
+		expect(larry.edited).toEqual([]);
 	});
 
 	it('follows a new name and start time', async () => {

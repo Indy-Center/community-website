@@ -219,7 +219,8 @@
 							Edit Positions
 						</a>
 
-						{#if data.briefing}
+						<!-- An ended event's post stays as it was, and its role is deleted -->
+						{#if data.briefing && event.endTime > new Date()}
 							<Button variant="secondary" onclick={() => (briefingOpen = true)}>
 								<IconBullhorn class="h-4 w-4" aria-hidden="true" />
 								{data.briefing.sent ? 'Update briefing' : 'Send briefing'}
