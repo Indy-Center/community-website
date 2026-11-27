@@ -80,3 +80,13 @@ export function isRosterTypeAllowed(eventType: EventType, rosterType: RosterType
 	const config = getEventTypeConfig(eventType);
 	return config ? config.allowedRosterTypes.includes(rosterType) : false;
 }
+
+// Events longer than this get a warning, since a start or end time is more likely mistyped
+export const LONG_EVENT_HOURS = 18;
+
+/** The event's length in whole hours, rounded down, when it runs longer than LONG_EVENT_HOURS. */
+export function longEventHours(start: Date | null | undefined, end: Date | null | undefined) {
+	if (!start || !end) return null;
+	const hours = (end.getTime() - start.getTime()) / 3600000;
+	return hours > LONG_EVENT_HOURS ? Math.floor(hours) : null;
+}

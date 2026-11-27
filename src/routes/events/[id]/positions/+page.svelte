@@ -15,6 +15,7 @@
 	import ActionToggle from '$lib/components/ActionToggle.svelte';
 	import ControllerPicker from '$lib/components/events/ControllerPicker.svelte';
 	import { credentialName } from '$lib/credentials';
+	import BookingProblems from '$lib/components/events/BookingProblems.svelte';
 
 	let { data } = $props();
 
@@ -290,6 +291,16 @@
 		</div>
 	</div>
 </div>
+
+{#if data.bookingProblems.length > 0}
+	<div class="mb-8">
+		<!-- The dismiss action lives on the event page, beside the event's other actions -->
+		<BookingProblems
+			problems={data.bookingProblems}
+			dismissAction="/events/{event.id}?/dismissBookingProblems"
+		/>
+	</div>
+{/if}
 
 <!-- Position Requests Panel -->
 {#if event.positionRequests && event.positionRequests.length > 0}
