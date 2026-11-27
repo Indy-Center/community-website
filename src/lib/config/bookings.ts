@@ -10,6 +10,13 @@ export const UNBOOKABLE_POSITIONS = /_EM_/;
 // lead time Larry uses to show a facility as planned
 export const BOOKING_REMINDER_HOURS = 3;
 
+// This long before a booking starts, a controller whose booked position is already being worked
+// in vNAS is told to coordinate with whoever is on it
+export const BOOKING_COORDINATE_MINUTES = 30;
+
+// And this long before, a last reminder, unless the position is being worked
+export const BOOKING_FINAL_REMINDER_MINUTES = 15;
+
 export const BOOKINGS_URL = 'https://flyindycenter.com/bookings';
 
 // The booking system refuses longer bookings, and ones starting further ahead
