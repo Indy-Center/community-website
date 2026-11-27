@@ -14,6 +14,7 @@ import {
 	formatPosition,
 	getUpcomingBookings,
 	groupEventBookings,
+	positionCount,
 	groupPositions,
 	notEnded,
 	isListed,
@@ -259,14 +260,19 @@ describe('groupEventBookings', () => {
 		expect(grouped[0].group?.members).toHaveLength(5);
 	});
 
-	it('leaves small events and ordinary bookings as they are', () => {
-		const small = [1, 2, 3].map((n) => eventBooking(n));
+	it('folds even a one-position event, and leaves ordinary bookings as they are', () => {
 		const ordinary = booking({ id: 99, start: '2026-12-01 01:00:00' });
 
-		const result = groupEventBookings([...small, ordinary], names);
+		const result = groupEventBookings([eventBooking(1), ordinary], names);
 
-		expect(result.map((b) => b.id)).toEqual([99, 1, 2, 3]);
-		expect(result.every((b) => !b.group)).toBe(true);
+		expect(result.map((b) => b.id)).toEqual([99, -1]);
+		expect(result[0].group).toBeUndefined();
+		expect(result[1].group?.members.map((m) => m.id)).toEqual([1]);
+	});
+
+	it('counts positions in the singular for one', () => {
+		expect(positionCount(1)).toBe('1 position');
+		expect(positionCount(6)).toBe('6 positions');
 	});
 
 	it('groups each event separately, and names one it has no name for "Event"', () => {

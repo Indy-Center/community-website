@@ -3,7 +3,7 @@
 	import { utc } from '@date-fns/utc';
 	import Panel from '$lib/components/Panel.svelte';
 	import { Position } from '@indy-center/centerline-svelte';
-	import { parseBookingTime } from '$lib/utils/bookings';
+	import { parseBookingTime, positionCount } from '$lib/utils/bookings';
 	import IconCalendarClock from '~icons/mdi/calendar-clock';
 
 	type Props = {
@@ -39,7 +39,7 @@
 				{#if booking.group}
 					<span class="min-w-0 truncate font-semibold text-white" title={booking.group.name}>
 						{booking.group.name}
-						<span class="font-normal text-slate-400">· {booking.group.count} positions</span>
+						<span class="font-normal text-slate-400">· {positionCount(booking.group.count)}</span>
 					</span>
 				{:else}
 					<Position class="min-w-0" callsign={booking.callsign} layout="inline" />

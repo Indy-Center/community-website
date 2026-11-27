@@ -9,6 +9,7 @@
 		getCalendarWeek,
 		inZone,
 		parseBookingTime,
+		positionCount,
 		type CalendarDay
 	} from '$lib/utils/bookings';
 	import { positionText } from '$lib/positionText';
@@ -53,7 +54,7 @@
 		!!onEdit && booking.externalId !== null && manageable.includes(booking.externalId);
 	const describe = (booking: AtcBooking) =>
 		booking.group
-			? `${booking.group.name} · ${booking.group.members.length} positions`
+			? `${booking.group.name} · ${positionCount(booking.group.members.length)}`
 			: `${positionText(booking.callsign, positions())} · ${names[booking.cid] ?? booking.cid}${
 					booking.type !== 'booking' ? ` · ${booking.type}` : ''
 				}`;
