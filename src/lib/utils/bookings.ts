@@ -470,6 +470,11 @@ export function findPositionController(
 	);
 }
 
+// Bookings that haven't ended yet, one in progress included. The booking system keeps ended
+// bookings and the org list returns them; the list view hides them, the calendars keep them.
+export const notEnded = (bookings: AtcBooking[], now: Date) =>
+	bookings.filter((booking) => parseBookingTime(booking.end) > now);
+
 // Bookings that start within the next `leadHours`, soonest first. Once one starts the controller
 // is on the network, so it drops off.
 export function getUpcomingBookings(bookings: AtcBooking[], now: Date, leadHours: number) {
