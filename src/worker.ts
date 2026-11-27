@@ -2,6 +2,7 @@ import { bookingsApiFromEnv } from '$lib/server/bookingsApi';
 import { cacheApiReadStore } from '$lib/server/keptReads';
 import { createPositionsReader } from '$lib/server/positions';
 import { drizzle } from '$lib/server/db';
+import { removeEndedEventRoles } from '$lib/server/eventRoles';
 import { runProcessRoster } from '$lib/server/triggers/processRoster.js';
 import { runRemindBookings } from '$lib/server/triggers/remindBookings.js';
 import { setEnv } from '@indy-center/adapter-cloudflare/env-shim';
@@ -22,7 +23,7 @@ export default {
 			cmsUrl: env.CMS_URL ?? 'https://cms.flyindycenter.com',
 			store
 		});
-		// Independent jobs, so one failing doesn't stop the other; failures still fail the run
+		// Independent jobs, so one failing doesn't stop the others; failures still fail the run
 		const results = await Promise.allSettled([
 			runProcessRoster({
 				training: env.TRAINING,
@@ -30,7 +31,9 @@ export default {
 				bookings,
 				t2RestrictionId: env.VATSIM_BOOKING_T2_RESTRICTION_ID
 			}),
-			runRemindBookings(env.LARRY, bookings, positions, new Date(event.scheduledTime))
+			runRemindBookings(env.LARRY, bookings, positions, new Date(event.scheduledTime)),
+			// Events are never deleted, so their Discord roles go once they're over
+			removeEndedEventRoles(env.LARRY, drizzle(env.DB), new Date(event.scheduledTime))
 		]);
 		const errors = results.flatMap((result) =>
 			result.status === 'rejected' ? [result.reason] : []

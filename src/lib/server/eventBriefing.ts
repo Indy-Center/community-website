@@ -10,6 +10,7 @@ import {
 import type { Database } from '$lib/server/db';
 import { errorMessage, LarryChannel, readLinks, type LarryBinding } from '$lib/server/larry';
 import { logger } from '$lib/server/logger';
+import { deleteRole } from '$lib/server/eventRoles';
 import { shownMember, shownMemberQuery } from '$lib/members';
 import type { CmsPosition } from '$lib/types/bookings';
 import {
@@ -189,6 +190,10 @@ export async function sendBriefing(
 
 	const { event, briefing, roster } = await fetchBriefingInputs(db, eventId);
 	if (!event) return { ok: false, status: 404, message: 'Event not found.' };
+	// The cron deletes an ended event's role; a briefing now would only make it again
+	if (event.endTime <= new Date()) {
+		return { ok: false, status: 400, message: 'This event has ended, so it takes no briefing.' };
+	}
 
 	const text = input.text.replace(/\r\n?/g, '\n').trim();
 	const { briefingEvent, sections, fixed } = briefingDraft(event, roster, catalogue, origin);
@@ -261,6 +266,8 @@ export async function refreshBriefing(
 	try {
 		const { event, briefing, roster } = await fetchBriefingInputs(db, eventId);
 		if (!event || !briefing) return;
+		// Once the event is over, its post stays as it was, and its role is the cron's to delete
+		if (event.endTime <= new Date()) return;
 		if (!larry) {
 			logger.warn(`LARRY binding is not set; the briefing for event ${eventId} is out of date`);
 			return;
@@ -316,9 +323,7 @@ export async function removeEventRole(
 				logger.warn(`LARRY binding is not set; the role for event ${eventId} was left in Discord`);
 				return;
 			}
-			const { deleted } = await larry.deleteRoles({ ids: [briefing.roleId] });
-			const failed = deleted.find((deletion) => deletion.error);
-			if (failed) throw new Error(failed.error);
+			await deleteRole(larry, briefing.roleId);
 			logger.info(`Deleted the Discord role for event ${eventId}`);
 		}
 		await db.delete(eventBriefingsTable).where(eq(eventBriefingsTable.eventId, eventId));
