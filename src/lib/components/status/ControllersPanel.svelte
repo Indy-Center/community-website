@@ -4,9 +4,9 @@
 		getPositions,
 		groupByPosition,
 		Icon,
-		OnlineController,
 		Panel
 	} from '@indy-center/centerline-svelte';
+	import PilotOnlineController from './PilotOnlineController.svelte';
 	import { mdiAccountGroup } from '@mdi/js';
 	import type { VnasController } from '$lib/types/vnas';
 
@@ -36,7 +36,7 @@
 		<ul class="divide-y divide-border">
 			{#each groups as group (group.callsign)}
 				<li class="px-4 py-2.5">
-					<OnlineController
+					<PilotOnlineController
 						callsign={group.callsign}
 						positionId={group.position?.id}
 						members={group.logins}
